@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>memgraph</title>
+<title>Mindbaton</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#09090b">
 <link rel="apple-touch-icon" href="/assets/app-192.png">
 <meta name="color-scheme" content="dark">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2309090b'/%3E%3Cpath d='M9 22V11l7 7 7-7v11' fill='none' stroke='%23a5b0ff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="icon" href="/assets/brand/app-icon.svg">
 <style>
 @font-face { font-family: "Geist"; src: url("/assets/fonts/Geist-Variable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
 @font-face { font-family: "Geist Mono"; src: url("/assets/fonts/GeistMono-Variable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
@@ -58,9 +58,7 @@ img.lg { object-fit: contain; }
 .app { display: grid; grid-template-columns: 248px minmax(0, 1fr); height: 100vh; }
 .side { background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 16px 16px 12px; }
-.brand-mark { width: 26px; height: 26px; border-radius: 7px; background: linear-gradient(145deg, #2a2f5c, #14162a); border: 1px solid var(--accent-line);
-  display: grid; place-items: center; }
-.brand-mark svg { width: 16px; height: 16px; stroke: var(--accent-strong); fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.brand-mark { width: 26px; height: 26px; border-radius: 7px; box-shadow: 0 0 0 1px var(--line-2); }
 .brand b { font-weight: 600; font-size: 15px; letter-spacing: -.01em; }
 .brand .live { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--fg-3); }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--fg-3)); flex: none; }
@@ -113,7 +111,7 @@ img.lg { object-fit: contain; }
 .btn.sm { height: 28px; padding: 0 10px; font-size: 12.5px; }
 
 .view { flex: 1; overflow-y: auto; min-height: 0; }
-.view[hidden] { display: none; }
+[hidden] { display: none !important; }
 .wrap { max-width: 1120px; margin: 0 auto; padding: 36px 40px 64px; }
 .hello { margin: 0; font-size: 30px; line-height: 1.15; font-weight: 600; letter-spacing: -.025em; }
 .hello-sub { margin: 10px 0 0; color: var(--fg-2); font-size: 15px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
@@ -246,7 +244,6 @@ a.btn { text-decoration: none; }
 .keyform select, .keyform input { height: 34px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg); color: var(--fg); padding: 0 10px; font: 13px var(--sans); }
 .keyform input { flex: 1; min-width: 220px; font-family: var(--mono); }
 .banner { display: flex; align-items: center; gap: 10px; padding: 9px 20px; background: var(--danger-soft); color: #ffb3b6; border-bottom: 1px solid rgba(255, 99, 105, .3); font-size: 13px; }
-.banner[hidden] { display: none; }
 dialog.help { background: var(--panel); color: var(--fg); border: 1px solid var(--line-2); border-radius: var(--r); padding: 20px 22px; max-width: 380px; width: 90vw; }
 dialog.help::backdrop { background: rgba(0, 0, 0, .55); }
 dialog.help h3 { margin: 0 0 12px; font-size: 16px; }
@@ -340,7 +337,6 @@ dialog.help dd { margin: 0; color: var(--fg-2); }
 
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--fg); color: #0b0b0d; padding: 8px 14px;
   border-radius: 9px; font-size: 13px; font-weight: 500; box-shadow: 0 10px 30px rgba(0, 0, 0, .4); z-index: 9; }
-.toast[hidden] { display: none; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .fresh { animation: rise .4s var(--ease) both; }
 @media (prefers-reduced-motion: reduce) { .fresh { animation: none; } * { transition: none !important; } }
@@ -372,7 +368,7 @@ dialog.help dd { margin: 0; color: var(--fg-2); }
 </head>
 <body>
 <!--
-THESIS: memgraph as a calm, fast, precise dark app at the craft level of Linear and Vercel — your AI memory reads like a well-kept profile you can search in one keystroke. Refuses the blueprint costume and the neon dashboard.
+THESIS: Mindbaton as a calm, fast, precise dark app at the craft level of Linear and Vercel — your AI memory reads like a well-kept profile you can search in one keystroke. Refuses the blueprint costume and the neon dashboard.
 OWN-WORLD: charcoal #09090b surfaces stepped by hairline rgba borders; Geist + Geist Mono; one periwinkle accent (#8b95ff) for focus, selection and the answer; colour codes only for kinds of fact and topics; real brand logos (Simple Icons, LobeHub, Devicon) are the only imagery.
 STORY: open, see what every AI knows about you grouped by kind with real logos, what you said lately, search anything (answer first), explore the map, correct the record in the slide-over.
 FIRST VIEWPORT: 248px sidebar (mark, nav, topics with colour dots, sources with AI logos, live status) | 56px top bar (page, search with /, Copy briefing) | greeting + one status line with an AI logo stack | two columns: profile by kind (chips with logos) / recent entries + connect an AI.
@@ -382,8 +378,8 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 <div class="app">
   <aside class="side" aria-label="Sidebar">
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.2 12.2V4.6L8 9.4l4.8-4.8v7.6"/></svg></span>
-      <b>memgraph</b>
+      <img class="brand-mark" src="/assets/brand/app-icon.svg" alt="" width="26" height="26">
+      <b>Mindbaton</b>
       <span class="live" id="live"><span class="dot"></span><span>—</span></span>
     </div>
     <nav class="nav" aria-label="Views">
@@ -404,7 +400,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 
   <div class="main">
     <div class="banner" id="offline" role="alert" hidden><svg class="i" viewBox="0 0 24 24"><path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/></svg>
-      <span>Can't reach the memgraph server. It may be restarting — this page reconnects on its own.</span></div>
+      <span>Can't reach the Mindbaton server. It may be restarting — this page reconnects on its own.</span></div>
     <header class="top">
       <h1 id="page-title"><b>You</b></h1>
       <form class="search" role="search" id="lookup">
@@ -412,7 +408,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         <input id="q" type="search" autocomplete="off" placeholder="Ask your memory — where do I live, jellyfin, my gpu…" aria-label="Search your memory">
         <kbd aria-hidden="true">/</kbd>
       </form>
-      <button class="btn primary" id="copy-brief" title="Copy what memgraph knows, ready to paste into any AI chat">
+      <button class="btn primary" id="copy-brief" title="Copy what Mindbaton knows, ready to paste into any AI chat">
         <svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8"/></svg><span>Copy briefing</span></button>
     </header>
 
@@ -421,7 +417,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
     <section class="view" id="chats" aria-label="Chats" hidden></section>
     <section class="view" id="setup" aria-label="Setup" hidden></section>
     <section class="view" id="map" aria-label="Map" hidden>
-      <canvas id="canvas" aria-label="Map of what memgraph knows about you"></canvas>
+      <canvas id="canvas" aria-label="Map of what Mindbaton knows about you"></canvas>
       <div class="dg-head">
         <div class="segs" role="group" aria-label="Map view"><button data-dg-view="you" aria-pressed="true">You</button><button data-dg-view="topics" aria-pressed="false">Topics</button></div>
         <nav class="dg-crumbs" id="dg-crumbs" aria-label="Where you are"></nav>
@@ -715,10 +711,10 @@ function renderOverview(fresh) {
 function connectCard() {
   const base = location.origin;
   return `<section class="card" style="flex:1;min-height:0" aria-labelledby="h-connect"><div class="card-h">${ICON.plug}<h2 id="h-connect">Connect an AI</h2></div><div class="card-b connect">
-    <div class="conn">${logo("claude code", "lg-lg")}<div><b>Claude Code</b><p><code>claude mcp add --transport http memgraph ${esc(base)}/mcp</code></p></div></div>
+    <div class="conn">${logo("claude code", "lg-lg")}<div><b>Claude Code</b><p><code>claude mcp add --transport http mindbaton ${esc(base)}/mcp</code></p></div></div>
     <div class="conn">${logo("cursor", "lg-lg")}<div><b>Cursor, Windsurf, any MCP app</b><p>Server URL <code>${esc(base)}/mcp</code></p></div></div>
-    <div class="conn">${logo("claude", "lg-lg")}<div><b>Claude Desktop</b><p>Add <a href="/mcp_stdio.py" download>mcp_stdio.py</a> as a server, with <code>MEMGRAPH_URL=${esc(base)}</code></p></div></div>
-    <div class="conn"><span class="stack">${["ChatGPT", "Gemini", "Perplexity"].map(a => aiLogo(a, "")).join("")}</span><div><b>ChatGPT, Gemini & co. on the web</b><p>The extension saves what you send; <code>Alt+M</code> brings your memory into the chat. <a href="/memgraph-extension.zip" download>Get the extension</a></p></div></div>
+    <div class="conn">${logo("claude", "lg-lg")}<div><b>Claude Desktop</b><p>Add <a href="/mcp_stdio.py" download>mcp_stdio.py</a> as a server, with <code>MINDBATON_URL=${esc(base)}</code></p></div></div>
+    <div class="conn"><span class="stack">${["ChatGPT", "Gemini", "Perplexity"].map(a => aiLogo(a, "")).join("")}</span><div><b>ChatGPT, Gemini & co. on the web</b><p>The extension saves what you send; <code>Alt+M</code> brings your memory into the chat. <a href="/mindbaton-extension.zip" download>Get the extension</a></p></div></div>
   </div></section>`;
 }
 
@@ -782,17 +778,17 @@ const cmdBox = (text, label = "Copy") => `<div class="cmd"><pre>${esc(text)}</pr
 function agentCards(base, st) {
   const url = base + "/mcp", seen = st.agents?.apps || {}, ccLast = st.agents?.claude_code?.last;
   const cards = [
-    ["Claude Code", "claude code", "In a terminal:", `claude mcp add --transport http -s user memgraph ${url}`, ccLast || seen["Claude Code"]],
-    ["Codex", "codex", "In a terminal:", `codex mcp add memgraph --url ${url}`, seen.Codex],
-    ["Antigravity", "Antigravity", "Add to ~/.gemini/config/mcp_config.json:", JSON.stringify({ mcpServers: { memgraph: { serverUrl: url } } }, null, 2), seen.Antigravity],
-    ["Cursor", "cursor", "Add to ~/.cursor/mcp.json:", JSON.stringify({ mcpServers: { memgraph: { url } } }, null, 2), seen.Cursor],
-    ["Windsurf", "windsurf", "Add to ~/.codeium/windsurf/mcp_config.json:", JSON.stringify({ mcpServers: { memgraph: { serverUrl: url } } }, null, 2), seen.Windsurf],
-    ["VS Code · Copilot", "vscode", "In a terminal:", `code --add-mcp '${JSON.stringify({ name: "memgraph", type: "http", url })}'`, seen["GitHub Copilot"]],
-    ["Gemini CLI", "Gemini", "In a terminal:", `gemini mcp add --transport http memgraph ${url}`, seen["Gemini CLI"]],
-    ["Cline", "cline", "Cline → MCP Servers → Configure, add:", JSON.stringify({ mcpServers: { memgraph: { url, type: "streamableHttp" } } }, null, 2), seen.Cline],
-    ["Zed", "zed", "Add to Zed's settings.json:", JSON.stringify({ context_servers: { memgraph: { url } } }, null, 2), seen.Zed],
+    ["Claude Code", "claude code", "In a terminal:", `claude mcp add --transport http -s user mindbaton ${url}`, ccLast || seen["Claude Code"]],
+    ["Codex", "codex", "In a terminal:", `codex mcp add mindbaton --url ${url}`, seen.Codex],
+    ["Antigravity", "Antigravity", "Add to ~/.gemini/config/mcp_config.json:", JSON.stringify({ mcpServers: { mindbaton: { serverUrl: url } } }, null, 2), seen.Antigravity],
+    ["Cursor", "cursor", "Add to ~/.cursor/mcp.json:", JSON.stringify({ mcpServers: { mindbaton: { url } } }, null, 2), seen.Cursor],
+    ["Windsurf", "windsurf", "Add to ~/.codeium/windsurf/mcp_config.json:", JSON.stringify({ mcpServers: { mindbaton: { serverUrl: url } } }, null, 2), seen.Windsurf],
+    ["VS Code · Copilot", "vscode", "In a terminal:", `code --add-mcp '${JSON.stringify({ name: "mindbaton", type: "http", url })}'`, seen["GitHub Copilot"]],
+    ["Gemini CLI", "Gemini", "In a terminal:", `gemini mcp add --transport http mindbaton ${url}`, seen["Gemini CLI"]],
+    ["Cline", "cline", "Cline → MCP Servers → Configure, add:", JSON.stringify({ mcpServers: { mindbaton: { url, type: "streamableHttp" } } }, null, 2), seen.Cline],
+    ["Zed", "zed", "Add to Zed's settings.json:", JSON.stringify({ context_servers: { mindbaton: { url } } }, null, 2), seen.Zed],
     ["Claude Desktop", "claude", `Download <a href="/mcp_stdio.py" download>mcp_stdio.py</a>, then add to claude_desktop_config.json:`,
-      JSON.stringify({ mcpServers: { memgraph: { command: "python3", args: ["/path/to/mcp_stdio.py"], env: { MEMGRAPH_URL: base } } } }, null, 2), seen.Claude],
+      JSON.stringify({ mcpServers: { mindbaton: { command: "python3", args: ["/path/to/mcp_stdio.py"], env: { MINDBATON_URL: base } } } }, null, 2), seen.Claude],
   ];
   return cards.map(([name, lg, how, cfg, when]) => `<div class="agent${when ? " done" : ""}"><div class="agent-h">${logo(lg) || badge(name)}<b>${esc(name)}</b>${
     when ? `<span class="ok"><i></i>connected${typeof when === "number" && when > 1e9 ? " · " + ago(when) : ""}</span>` : ""}</div>
@@ -802,22 +798,22 @@ async function renderSetup() {
   const el = $("#setup");
   let st;
   try { st = await api("/status"); } catch { el.innerHTML = `<div class="wrap"><h1 class="hello">Setup</h1><div class="empty"><p>Can't reach the server.</p></div></div>`; return; }
-  const base = location.origin.startsWith("http://127.") || location.origin.includes("localhost") ? st.server.lan : location.origin;
-  const parts = [["server", true], ["extension", st.extension.ok], ["agents", st.agents.ok], ["phone", st.phone.ok], ["ai", st.ai.enabled], ["public", st.public.ok]];
+  const base = location.origin.startsWith("http://127.") || location.origin.includes("localhost") ? st.server.base : location.origin;
+  const parts = [["server", true], ["extension", st.extension.ok], ["agents", st.agents.ok], ["phone", st.phone.ok], ["ai", st.ai.enabled], ["public", st.connector.ok]];
   const done = parts.filter(p => p[1]).length;
   const step = (n, ok, title, sub, body) => `<section class="step${ok ? " done" : ""}"><div class="step-h"><span class="tick">${ok ? TICK : n}</span>
     <div><h3>${title}</h3><p>${sub}</p></div></div>${body || ""}</section>`;
   const webAIs = ["ChatGPT", "Claude", "Gemini", "Perplexity", "DeepSeek", "Grok", "Copilot", "Mistral"];
-  el.innerHTML = `<div class="wrap"><h1 class="hello">Set up memgraph</h1>
-    <p class="hello-sub">${done} of ${parts.length} connected — every green tick is something memgraph has actually seen working.</p>
+  el.innerHTML = `<div class="wrap"><h1 class="hello">Set up Mindbaton</h1>
+    <p class="hello-sub">${done} of ${parts.length} connected — every green tick is something Mindbaton has actually seen working.</p>
     <div class="progress" aria-hidden="true"><b style="width:${Math.round(done / parts.length * 100)}%"></b></div>
     <div class="steps">
-    ${step(1, true, "Your memory server is running", "Other devices on your Wi-Fi use this address:", cmdBox(st.server.lan))}
+    ${step(1, true, "Your memory server is running", "Other devices on your Wi-Fi use this address:", cmdBox(st.server.base))}
     ${step(2, st.extension.ok, "Browser extension — ChatGPT, Claude, Gemini and more",
       st.extension.ok ? `Saving from ${esc(st.extension.ais.join(", ") || "your AI chats")}${st.extension.last ? " · last " + ago(st.extension.last) : ""}${st.extension.live ? " · Live mode on" : ""}`
         : "Remembers what you tell AI websites, and hands a full chat to another AI.",
       `<div class="stack">${webAIs.map(a => aiLogo(a, "")).join("")}</div><ol>
-        <li><a class="btn sm primary" href="/memgraph-extension.zip" download>Download the extension</a> and unzip it.</li>
+        <li><a class="btn sm primary" href="/mindbaton-extension.zip" download>Download the extension</a> and unzip it.</li>
         <li>Open <b>chrome://extensions</b> ${`<button class="btn sm" data-copy="chrome://extensions">Copy</button>`}, turn on <b>Developer mode</b> (top right).</li>
         <li>Click <b>Load unpacked</b> and pick the unzipped folder. Done — chat with any AI and it shows up here.</li></ol>`)}
     ${step(3, st.agents.ok, "Coding agents and desktop apps",
@@ -825,23 +821,23 @@ async function renderSetup() {
         : "Give Claude Code, Codex, Cursor and friends your memory: they read it, add to it, and continue chats.",
       `<div class="agents">${agentCards(base, st)}</div>`)}
     ${step(4, st.phone.ok, "Your phone",
-      st.phone.ok ? "Used from your phone · last " + ago(st.phone.last) : "memgraph as an app, and “Share → memgraph” from any app.",
+      st.phone.ok ? "Used from your phone · last " + ago(st.phone.last) : "Mindbaton as an app, and “Share → Mindbaton” from any app.",
       st.phone.url ? `<ol><li>Install <b>Tailscale</b> on the phone and sign in (same account as this computer).</li>
         <li>On the phone, open this in <b>Chrome</b>:</li></ol>${cmdBox(st.phone.url)}<ol start="3"><li>Tap <b>⋮ → Add to Home screen → Install</b>.</li>
-        <li>In ChatGPT, Gemini or any app: long-press a message → <b>Share</b> → <b>memgraph</b>.</li></ol>`
-        : `<p style="margin:0;color:var(--fg-3);font-size:13px">Install Tailscale on this computer and your phone to use memgraph from anywhere.</p>`)}
+        <li>In ChatGPT, Gemini or any app: long-press a message → <b>Share</b> → <b>Mindbaton</b>.</li></ol>`
+        : `<p style="margin:0;color:var(--fg-3);font-size:13px">Install Tailscale on this computer and your phone to use Mindbaton from anywhere.</p>`)}
     ${step(5, st.ai.enabled, "Free AI (optional) — summaries, answers, topic names",
       st.ai.enabled ? `On: ${esc(st.ai.providers.join(" → "))} · ${st.ai.used_today} requests today${st.ai.last_error ? " · last error: " + esc(st.ai.last_error) : ""}`
-        : "memgraph works without it. With a free key it writes hand-off summaries and answers questions from your memory.",
+        : "Mindbaton works without it. With a free key it writes hand-off summaries and answers questions from your memory.",
       `<ol><li>Get a free key: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent-strong)">Google AI Studio ↗</a>
         or <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style="color:var(--accent-strong)">Groq ↗</a>.</li><li>Paste it here — it's tested before it's saved:</li></ol>
       <form class="keyform" id="keyform"><select name="provider" aria-label="Provider"><option value="gemini">Google Gemini</option><option value="groq">Groq</option></select>
         <input name="key" type="password" autocomplete="off" placeholder="Paste your key" aria-label="API key" required><button class="btn primary sm">Test and save</button></form>`)}
-    ${step(6, st.public.ok, "Claude and ChatGPT apps (optional, phone too)",
-      st.public.ok ? "Connected · last used " + ago(st.public.last) : st.public.configured ? "Ready — add the connector in Claude or ChatGPT." : "Needs a one-time public address (see the README).",
-      st.public.url ? `<ol><li>On <b>claude.ai</b>: Settings → Connectors → Add custom connector. On <b>chatgpt.com</b>: Settings → Apps & Connectors → Developer mode → Create.</li>
-        <li>Paste this address (treat it like a password):</li></ol><div class="cmd"><pre id="conn-url">•••• hidden ••••</pre><button class="btn sm" data-reveal="${esc(st.public.url)}">Reveal</button>
-        <button class="btn sm" data-copy="${esc(st.public.url)}">Copy</button></div>` : "")}
+    ${step(6, st.connector.ok, "Claude and ChatGPT apps (optional, phone too)",
+      st.connector.ok ? "Connected · last used " + ago(st.connector.last) : st.connector.configured ? "Ready — add the connector in Claude or ChatGPT." : "Needs a one-time public address (see the README).",
+      st.connector.url ? `<ol><li>On <b>claude.ai</b>: Settings → Connectors → Add custom connector. On <b>chatgpt.com</b>: Settings → Apps & Connectors → Developer mode → Create.</li>
+        <li>Paste this address (treat it like a password):</li></ol><div class="cmd"><pre id="conn-url">•••• hidden ••••</pre><button class="btn sm" data-reveal="${esc(st.connector.url)}">Reveal</button>
+        <button class="btn sm" data-copy="${esc(st.connector.url)}">Copy</button></div>` : "")}
     </div></div>`;
   $("#keyform").onsubmit = async ev => {
     ev.preventDefault();

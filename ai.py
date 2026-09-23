@@ -128,8 +128,9 @@ def _transcript(turns, ai, limit):
     return head + "\n\n[… middle of the conversation omitted …]\n\n" + tail
 
 
-def signature(sid, turns):
-    return f"{sid}:{len(turns)}:" + hashlib.sha1("".join(t["text"][-200:] for t in turns[-3:]).encode()).hexdigest()[:12]
+def signature(g, sid, turns):
+    """A summary's cache key: whose memory (g.account: ids are never reused), which chat, and its current state."""
+    return f"{getattr(g, 'account', None)}/{sid}:{len(turns)}:" + hashlib.sha1("".join(t["text"][-200:] for t in turns[-3:]).encode()).hexdigest()[:12]
 
 
 def clean(text):
@@ -139,11 +140,11 @@ def clean(text):
     return text[i:].strip() if i >= 0 else None
 
 
-def summarise(sid, ai, title, turns):
+def summarise(g, sid, ai, title, turns):
     """The AI summary for this exact state of the conversation (cached). None when AI is off or unavailable."""
     if not enabled() or len(turns) < 2:
         return None
-    sig = signature(sid, turns)
+    sig = signature(g, sid, turns)
     if sig in _cache:
         return _cache[sig]
     text, who = chat(lambda cap: PROMPT.format(ai=ai or "another AI", title=title or "untitled",
@@ -165,25 +166,25 @@ def prepare(g, lock, ref):
     if not m:
         return None
     turns = [{"role": t["role"], "text": t["text"]} for t in m["messages"]]
-    return summarise(sid, m["ai"], m["chat"], turns)
+    return summarise(g, sid, m["ai"], m["chat"], turns)
 
 
 def warm(g, lock, sid):
     """Pre-make the summary in the background (a chat filling up), so the hand-off is instant when it's needed."""
-    if not enabled() or sid in _pending:
+    if not enabled() or (g, sid) in _pending:
         return
-    _pending.add(sid)
+    _pending.add((g, sid))
 
     def run():
         try:
             prepare(g, lock, str(sid))
         finally:
-            _pending.discard(sid)
+            _pending.discard((g, sid))
     threading.Thread(target=run, daemon=True).start()
 
 
-def cached(sid, turns):
-    return _cache.get(signature(sid, turns))
+def cached(g, sid, turns):
+    return _cache.get(signature(g, sid, turns))
 
 
 def sections(text):
@@ -218,7 +219,8 @@ def ask(q, notes):
     """notes: [{id|None, text, where}] best first -> {text, cites:[ids], by} or None. Cached per question + notes."""
     if not enabled() or not notes:
         return None
-    sig = hashlib.sha1((q.strip().lower() + "|" + "|".join(f"{n.get('id')}:{n['text'][:80]}" for n in notes)).encode()).hexdigest()
+    sig = hashlib.sha1(json.dumps([q.strip().lower(), notes], sort_keys=True).encode()).hexdigest()  # all of it: two
+    # accounts share a cached answer only if they would send the AI exactly the same notes
     if sig in _asks:
         return _asks[sig]
     with _lock:
@@ -295,15 +297,15 @@ def name_topics(items, apps=()):
     return out
 
 
-_naming = threading.Event()
+_naming = set()  # graphs (accounts) being named right now
 
 
 def warm_topics(g, lock, apps=()):
-    """Name topics whose membership changed, in the background (single-flight). The graph picks the names up from the
-    cache at its next re-sort; nothing waits for the AI."""
-    if not enabled() or _naming.is_set():
+    """Name topics whose membership changed, in the background (single-flight per account). The graph picks the names
+    up from its own cache at its next re-sort; nothing waits for the AI."""
+    if not enabled() or g in _naming:
         return
-    _naming.set()
+    _naming.add(g)
 
     def run():
         try:
@@ -315,9 +317,9 @@ def warm_topics(g, lock, apps=()):
                 with lock:
                     g.save_topic_names({it["sig"]: got[it["ref"]] for it in todo if it["ref"] in got})
         except Exception as e:  # never take the server down over a name
-            _used["error"] = f"topic names: {type(e).__name__}: {e}"
+            _used["error"] = f"topic names: {type(e).__name__}"  # no message: /ai is install-wide, a name may quote a memory
         finally:
-            _naming.clear()
+            _naming.discard(g)
     threading.Thread(target=run, daemon=True, name="topic-names").start()
 
 
@@ -326,6 +328,6 @@ if __name__ == "__main__":  # live check against the configured providers
     t = [{"role": "user", "text": "I want Jellyfin hardware transcoding in docker on my Intel i5. No bare metal."},
          {"role": "assistant", "text": "Pass /dev/dri into the container and enable Intel QSV in the dashboard."},
          {"role": "user", "text": "works, but 4k HDR stutters. tone mapping?"}]
-    s = summarise(0, "Claude", "Jellyfin", t)
+    s = summarise(None, 0, "Claude", "Jellyfin", t)
     assert s and "## Summary" in s["text"] and "/dev/dri" in s["text"], s
     print(s["by"], "ok\n" + s["text"])

@@ -326,7 +326,7 @@ def make_handoff(g, ref=None, budget=1500, to=None):
     said = {S().mkey(t["text"])[:200] for t in turns}
     related = [x["text"] for x in g.recall(seed, 8)["memories"] if S().mkey(x["text"])[:200] not in said][:5] if seed.strip() else []
     import ai
-    summary = ai.cached(sid, turns)  # made outside the lock by ai.prepare; never a network call here
+    summary = ai.cached(g, sid, turns)  # made outside the lock by ai.prepare; never a network call here
     pack = handoff.build({"ai": m["ai"], "chat": m["chat"]}, turns, about, related, budget_tokens=budget, summary=summary)
     pack["summary_by"] = summary and summary["by"]
     out = {**pack, "session": {k: m[k] for k in ("id", "ai", "chat", "url", "tokens", "window", "pct", "limit")}}
@@ -493,10 +493,15 @@ def project_dir(cwds):
 
 
 def watch_claude_code(g, lock, root=os.path.expanduser("~/.claude/projects"), every=30):
-    """Keep Claude Code sessions on this machine in sync (a background thread in the server)."""
+    """Keep Claude Code sessions on this machine in sync (a background thread in the server). g: a graph, or a function
+    returning the one to feed now (the server's first admin; None = nobody yet). A demo memory never takes real transcripts."""
     seen = {}
 
     def scan():
+        with lock:
+            gg = g() if callable(g) else g
+            if gg is None or gg.meta("demo"):
+                return
         cutoff = time.time() - 7 * 86400
         for path in glob.glob(os.path.join(root, "*", "*.jsonl")):
             try:
@@ -512,7 +517,7 @@ def watch_claude_code(g, lock, root=os.path.expanduser("~/.claude/projects"), ev
             sid = os.path.splitext(os.path.basename(path))[0]
             name = title or handoff._clip(next((t["text"] for t in turns if t["role"] == "user"), "Claude Code session"), 70)
             with lock:
-                sync(g, None, "claude-code", name, turns, ts=mtime, key=f"claude-code/{sid}", cwd=cwd)
+                sync(gg, None, "claude-code", name, turns, ts=mtime, key=f"claude-code/{sid}", cwd=cwd)
 
     def loop():
         while True:

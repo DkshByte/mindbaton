@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
-"""Seed a data dir with a believable, entirely fictional person — for screenshots, demos and trying Mindbaton out.
+"""Seed a data dir with believable, entirely fictional people — for screenshots, demos and trying Mindbaton out.
 
-    MINDBATON_DATA=/tmp/mb-demo python3 demo.py --password demo-pass-123
+    MINDBATON_DATA=/tmp/mb-demo python3 demo.py --password demo-pass-123                        # maya (first = admin)
+    MINDBATON_DATA=/tmp/mb-demo python3 demo.py --account sam --display "Sam" --password sam-pass-123   # a second person
     MINDBATON_DATA=/tmp/mb-demo python3 server.py
 
-Noor Haddad is a product designer who moved from Porto to Lisbon for a job at Kestrel Mobility. Six weeks of her chats
-with ChatGPT, Claude, Gemini, Perplexity, Claude Code and Cursor go through the real ingest path (the same code the
-extension and MCP use): a work project (Wayfinder), a side project (Pantry), her portfolio, half-marathon training,
-preferences, a move and a job change that replace older facts, and a long Claude chat that hit its limit and was
-handed to ChatGPT. Timestamps are relative to now, so it always looks current. The server never watches this machine's
-Claude Code transcripts for a demo data dir, so nothing real mixes in.
+Each account gets its own memory. maya: Maya Haddad is a product designer who moved from Porto to Lisbon for a job at
+Kestrel Mobility. Six weeks of her chats with ChatGPT, Claude, Gemini, Perplexity, Claude Code and Cursor go through the
+real ingest path (the same code the extension and MCP use): a work project (Wayfinder), a side project (Pantry), her
+portfolio, half-marathon training, preferences, a move and a job change that replace older facts, and a long Claude chat
+that hit its limit and was handed to ChatGPT. sam: Sam Reyes, a physics teacher who plays bass in a funk band, bakes
+sourdough and is planning a bike trip down the coast — a different life, so a leak between accounts would show at once.
+Timestamps are relative to now, so it always looks current. The first account seeded into a data dir is the admin;
+without --password nobody can sign in to it yet (the first visit claims the admin; an admin sets a member's password).
+A demo memory never takes this machine's Claude Code transcripts.
 """
 import os, sys, time
 from datetime import datetime, timedelta
@@ -29,7 +33,7 @@ def at(days, hour, minute=0):
 # (days ago, hour, site, url, title, model, turns: user / assistant alternating, extra sync args)
 CHATS = [
     (42, 20, "chatgpt.com", "https://chatgpt.com/c/6a1f-relocate", "Relocating to Lisbon", "gpt-5-5", [
-        "hi! I'm Noor, a product designer. I live in Porto for now. I just accepted a job at Kestrel Mobility in Lisbon, so "
+        "hi! I'm Maya, a product designer. I live in Porto for now. I just accepted a job at Kestrel Mobility in Lisbon, so "
         "I'm relocating in a few weeks",
         "Congratulations on the new role! Moving from Porto to Lisbon is a big but manageable change. Want a checklist for the "
         "move — NIF address change, rental search, utilities — or help picking a neighbourhood first?",
@@ -187,18 +191,74 @@ def sync(g, chat, limit=None):
     return live.sync(g, url, site, title, turns, limit=limit, model=model, ts=turns[-1]["ts"], **(extra[0] if extra else {}))
 
 
-def main():
-    if os.path.exists(server.DB):
-        sys.exit(f"{server.DB} already exists — demo.py only seeds a fresh data dir (point MINDBATON_DATA at an empty folder)")
-    os.makedirs(server.DATA, mode=0o700, exist_ok=True)
-    g = server.Graph()
-    g.meta("demo", "1")  # the server won't watch this machine's Claude Code transcripts for this data dir
-    for days, hour, site, chat, text in CAPTURES:
+SAM_CAPTURES = [
+    (40, 19, "chatgpt.com", "Lesson ideas", "I'm Sam, I teach physics at a secondary school in Lisbon"),
+    (38, 21, "gemini.google.com", "Music", "I play bass guitar in a funk band called The Tidal Shifts"),
+    (30, 8, "claude.ai", "Commute", "I live in Lisbon and cycle to school every day"),
+    (22, 7, "chatgpt.com", "Bread", "I bake sourdough every Sunday, my starter is called Bubbles"),
+    (15, 18, "www.perplexity.ai", "Bike", "I ride a steel touring bike, a Surly Long Haul Trucker"),
+    (9, 20, "gemini.google.com", "Diet", "I'm lactose intolerant"),
+    (4, 9, "chatgpt.com", "Grading", "I prefer handwritten feedback over rubrics for lab reports"),
+    (1, 22, "claude.ai", "Tools", "I use Notion for lesson plans and Anki for Portuguese vocabulary"),
+]
+SAM_CHATS = [
+    (35, 20, "chatgpt.com", "https://chatgpt.com/c/41ce-pendulum", "Pendulum lab for year 10", "gpt-5-5", [
+        "I'm planning a pendulum lab for my year 10 physics class. 28 students, 50 minutes, we have stopwatches and string",
+        "A clean 50-minute plan: 10 min predict (does mass change the period?), 25 min measure 10 swings at three lengths and "
+        "two masses, 15 min plot T² against length. Groups of four keep it to seven setups.",
+        "some of them will time one swing instead of ten. how do I stop that?",
+        "Put 'time 10 swings, divide by 10' on the worksheet in bold, and give each group a results table with room only for "
+        "10-swing times. Walk the room in the first five minutes."]),
+    (26, 21, "claude.ai", "https://claude.ai/chat/7f02-eurovelo", "EuroVelo 1 down the Portuguese coast", "claude-opus-5", [
+        "I want to cycle EuroVelo 1 from Porto to Lisbon in the Easter holidays. about 350 km, I have 6 days",
+        "Six days is comfortable: about 60 km a day. Porto → Aveiro → Figueira da Foz → Nazaré → Peniche → Ericeira → Lisbon. "
+        "The coast is mostly flat; the climb out of Nazaré is the hardest bit.",
+        "I'd rather camp than stay in hotels, is wild camping allowed?",
+        "Wild camping isn't allowed in Portugal; use parques de campismo — Aveiro, Figueira da Foz, Nazaré and Peniche all have "
+        "good ones. Book Peniche ahead at Easter.",
+        "what should I carry for repairs on a steel touring bike?",
+        "Two tubes, patches, tyre levers, a mini pump, a multitool with a chain breaker, two quick links, spare brake pads and "
+        "zip ties. A steel frame can be fixed almost anywhere, which is the point."]),
+    (19, 16, "gemini.google.com", "https://gemini.google.com/app/2d9a-sourdough", "Sourdough too dense", "gemini-3-pro", [
+        "my sourdough comes out dense and gummy in the middle. 75% hydration, 20% whole wheat",
+        "Most likely under-proofed: with whole wheat at 75% hydration, end bulk fermentation when the dough has grown about 50% "
+        "and feels airy. Let the loaf cool two hours before cutting.",
+        "my kitchen is cold in winter, around 17 degrees",
+        "Then stretch bulk to 7–9 hours, or proof in the oven with only the light on. Mixing with 30°C water helps too."]),
+    (12, 22, "codex", None, "Physics grades script", "gpt-5-codex", [
+        "write a python script that reads my class grades CSV and plots the distribution per test",
+        "Added `grades.py`: reads `grades.csv` with pandas, draws one histogram per test with matplotlib and saves them to `plots/`.",
+        "I prefer no pandas, just the csv module — the school laptops can't install packages",
+        "Rewrote it with `csv` and plain lists; the plots only need matplotlib, which the school image already has."],
+        {"cwd": HOME + "/grades", "key": "codex/9c2e-grades"}),
+    (6, 19, "www.perplexity.ai", "https://www.perplexity.ai/search/bass-strings-7qe", "Flatwound bass strings", "sonar-pro", [
+        "are flatwound strings good for funk bass?",
+        "Flatwounds give a warm, thumpy tone with less finger noise — great for Motown-style grooves, less so for bright slap. "
+        "Many funk players keep roundwounds for slap and flats for fingerstyle."]),
+    (2, 21, "chatgpt.com", "https://chatgpt.com/c/8b33-gig", "First gig setlist", "gpt-5-5", [
+        "The Tidal Shifts have our first gig at a bar in Cais do Sodré next month. 45 minute set, help me order the songs",
+        "Open with your tightest mid-tempo groove, put the ballad around minute 20 to let the room breathe, and end on the one "
+        "people dance to. Keep tuning breaks under 30 seconds.",
+        "we have 11 songs, two are covers: Chameleon and Cissy Strut",
+        "Open with Cissy Strut (instantly recognisable) and close with Chameleon; your originals go between, fastest in the last third."]),
+]
+SAM_REMEMBERED = [
+    (12, 23, "Codex", "gpt-5-codex", "The user prefers the csv module over pandas for small scripts"),
+    (3, 10, "Claude", "claude-opus-5", "The user is planning to cycle from Porto to Lisbon over Easter"),
+]
+
+
+def seed(g, captures, chats, remembered):
+    for days, hour, site, chat, text in captures:
         g.ingest(text, site, chat, None, at(days, hour) if days else NOW - 1500)
-    for chat in CHATS:
+    for chat in chats:
         sync(g, chat)
-    for days, hour, who, model, fact in REMEMBERED:
+    for days, hour, who, model, fact in remembered:
         g.ingest(fact, "agent", ts=at(days, hour), meta={"ai": who, "model": model, "model_src": "self"})
+
+
+def maya(g):
+    seed(g, CAPTURES, CHATS, REMEMBERED)
     old = sync(g, LIMITED[:7], limit=LIMITED[7])
     pack = live.make_handoff(g, str(old["id"]), 1500)["text"]  # the baton: Claude's full chat continues in ChatGPT
     sync(g, (10, 8, "chatgpt.com", "https://chatgpt.com/c/b51c-pantry-continued", "Pantry onboarding, continued", "gpt-5-5", [
@@ -210,15 +270,32 @@ def main():
         "ok, decided: many-to-many membership, last-used household opens first, no cross-household sync"]))
     for chat in LATER:
         sync(g, chat)
+
+
+PERSONAS = {"maya": ("Maya", maya), "sam": ("Sam", lambda g: seed(g, SAM_CAPTURES, SAM_CHATS, SAM_REMEMBERED))}
+
+
+def main():
+    args = sys.argv[1:]
+    opt = lambda k: args[args.index(k) + 1] if k in args and args.index(k) + 1 < len(args) else None
+    user, pw = (opt("--account") or "maya").lower(), opt("--password")
+    if user not in PERSONAS:
+        sys.exit(f"--account must be one of {', '.join(PERSONAS)} (each is a different fictional person)")
+    if "--password" in args and len(pw or "") < 8:
+        sys.exit("--password needs at least 8 characters")
+    server.open_data(server.DATA)
+    if server.AUTH.execute("SELECT 1 FROM accounts WHERE username=?", (user,)).fetchone():
+        sys.exit(f"{user} already exists in {server.DATA} — demo.py only adds a new account (or use an empty folder)")
+    role = "member" if server.AUTH.execute("SELECT 1 FROM accounts").fetchone() else "admin"
+    aid = server.create_account(user, pw and server.hash_password(pw), opt("--display") or PERSONAS[user][0], role=role)
+    g = server.graph(aid)
+    g.meta("demo", "1")  # the server never feeds this machine's Claude Code transcripts into a demo memory
+    PERSONAS[user][1](g)
     g.rebuild()  # derive everything once more in time order, exactly as a restart after an upgrade would
-    if "--password" in sys.argv:
-        pw = sys.argv[sys.argv.index("--password") + 1] if sys.argv.index("--password") + 1 < len(sys.argv) else ""
-        if len(pw) < 8:
-            sys.exit("--password needs at least 8 characters")
-        server.set_password(g.db, server.hash_password(pw))
     stats = g.graph()["stats"]
-    print(f"Seeded {server.DB}: {stats['captures']} captures, {stats['memories']} memories, {stats['entities']} things, "
-          f"{stats['chats']} chats, {len(g.topics)} topics" + ("" if "--password" in sys.argv else " (no owner yet: first visit sets the password)"))
+    print(f"Seeded {user} ({role}) in {server.DATA}: {stats['captures']} captures, {stats['memories']} memories, "
+          f"{stats['entities']} things, {stats['chats']} chats, {len(g.topics)} topics"
+          + ("" if pw else " (no password yet: " + ("the first visit claims it)" if role == "admin" else "an admin sets one)")))
 
 
 if __name__ == "__main__":

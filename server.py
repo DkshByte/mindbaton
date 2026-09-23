@@ -12,11 +12,12 @@ derived from them by brain.py, so improving the logic and bumping LOGIC_VERSION 
   DELETE /node/<id>             forget (and stay forgotten across rebuilds)
   POST   /rebuild               re-derive the graph from captures
   POST   /mcp                   Model Context Protocol (streamable HTTP): the same, as tools for Claude, Cursor, …
-Everything but the app's files, /health, login and pairing needs the owner's session cookie or a device token.
+Everything but the app's files, /health, login and pairing needs a session cookie or a device token, and reaches only
+that account's memory: <data>/auth.db holds the accounts, sessions and tokens; <data>/accounts/<id>/memory.db each one's graph.
 
-  python3 server.py [--check | --setup-code | --reset-password]
+  python3 server.py [--check | --setup-code | --reset-password [username]]
 """
-import difflib, glob, hashlib, hmac, io, ipaddress, json, math, os, re, secrets, sqlite3, threading, time, uuid, zipfile
+import difflib, glob, hashlib, hmac, io, ipaddress, json, math, os, re, secrets, shutil, sqlite3, threading, time, uuid, zipfile
 from datetime import datetime
 from collections import deque, Counter, defaultdict
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
@@ -41,11 +42,13 @@ import ai, brain, handoff, live  # noqa: E402  (after the env file: ai.py reads 
 
 HOST = os.environ.get("MINDBATON_HOST", "127.0.0.1")
 PORT = int(os.environ.get("MINDBATON_PORT", 3004))
-DATA = os.path.expanduser(os.environ.get("MINDBATON_DATA") or os.path.join(HERE, "data"))  # db, ai_keys, access.log
-DB = os.path.join(DATA, "mindbaton.db")
+DATA = os.path.expanduser(os.environ.get("MINDBATON_DATA") or os.path.join(HERE, "data"))  # auth.db, accounts/, ai_keys
+DB = os.path.join(DATA, "mindbaton.db")  # before accounts: one owner's memory and auth in one file (migrated on start)
+LEGACY = ("mindbaton.db", "memgraph.db")
 PUBLIC_URL = os.environ.get("MINDBATON_PUBLIC_URL", "").strip().rstrip("/") or None  # e.g. https://mindbaton.example.com
 VERSION = "0.1.0"
-LOCK = threading.Lock()  # one request touches the graph at a time; threads only keep idle sockets from blocking others
+LOCK = threading.RLock()  # one request touches the databases at a time; threads only keep idle sockets from blocking others
+# ponytail: one lock for every account's graph; per-account locks if many people use one install at once
 LOGIC_VERSION = "14"  # 14: hand-off packs and briefings are marked [mindbaton]
 PERSONAL = brain.PERSONAL
 AI_SITE = {}  # "ChatGPT" -> "chatgpt.com"
@@ -84,9 +87,6 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS captures(id INTEGER PRIMARY KEY, ts REAL, text TEXT NOT NULL, site TEXT, chat TEXT, url TEXT, extra TEXT);
 CREATE TABLE IF NOT EXISTS forgotten(kind TEXT, key TEXT, PRIMARY KEY(kind, key));
 CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT);
-CREATE TABLE IF NOT EXISTS tokens(id INTEGER PRIMARY KEY, name TEXT, kind TEXT, scope TEXT, hash TEXT UNIQUE, created REAL,
-  last_used REAL, revoked REAL);
-CREATE TABLE IF NOT EXISTS logins(hash TEXT PRIMARY KEY, created REAL, expires REAL);
 """
 DERIVED = """
 CREATE TABLE IF NOT EXISTS nodes(id INTEGER PRIMARY KEY, kind TEXT NOT NULL, key TEXT NOT NULL, label TEXT NOT NULL,
@@ -157,7 +157,8 @@ def third_to_first(text):
 
 
 class Graph:
-    def __init__(self, path=DB):
+    def __init__(self, path, account=None):
+        self.account, self.mcp_client = account, {}  # mcp_client: the MCP app that initialised last on this account
         self.db = self.migrate(path)
         live.setup(self)
         self.db.executescript(DERIVED)
@@ -1310,12 +1311,11 @@ MCP_INSTRUCTIONS = ("Mindbaton is the user's personal long-term memory, fed by t
                     "lasting fact about themselves, save it with `remember`. If they want to continue a chat from another AI, call "
                     "`handoff`. When this conversation grows long or nears your context limit, call `save_conversation` so it can be "
                     "continued elsewhere.")
-MCP_CLIENT = {}  # the most recently initialised client: for clients that don't send Mcp-Session-Id back
-MCP_SESSIONS = {}  # Mcp-Session-Id -> {name, version}: each connected app is credited with its own saves
+MCP_SESSIONS = {}  # Mcp-Session-Id -> {account, name, version, seen}: each connected app is credited with its own saves
 
 
 def mcp_call(g, name, a, client=None):
-    client = client or MCP_CLIENT
+    client = client or g.mcp_client  # clients that don't send Mcp-Session-Id back: the app that initialised last
     if name == "context":
         return g.context(a.get("topic") or None)["text"]
     if name == "recall":
@@ -1374,8 +1374,8 @@ def mcp_handle(g, msg, connector=False, client=None):
     if method == "initialize":
         info = params.get("clientInfo") or {}
         who = {"name": re.sub(r"[^a-z0-9-]+", "-", str(info.get("name") or "mcp").lower())[:40], "version": str(info.get("version") or "")[:20]}
-        MCP_CLIENT.clear()
-        MCP_CLIENT.update(who)
+        g.mcp_client.clear()
+        g.mcp_client.update(who)
         if client is not None:
             client.update(who)
         want = params.get("protocolVersion")
@@ -1400,23 +1400,162 @@ def mcp_handle(g, msg, connector=False, client=None):
     return {"jsonrpc": "2.0", "id": mid, "error": {"code": -32601, "message": f"method not found: {method}"}}
 
 
-# ---- auth: one owner (a password and browser sessions) and device tokens ------------------------------------------------
+# ---- auth: accounts (each with its own memory), browser sessions and device tokens ------------------------------------------
 KINDS = ("extension", "mcp", "agent", "phone", "connector", "other")
 SESSION_S = 30 * 86400   # a browser session lasts 30 days from its last use
-PAIR_S = 600             # a pairing request waits 10 minutes for the owner
+PAIR_S = 600             # a pairing request waits 10 minutes for someone to approve it
 CONN_LIMITS = ((60, 60), (600, 3600))  # a connector token: at most 60 requests a minute and 600 an hour
-ACCESS_LOG = os.path.join(DATA, "access.log")
-FAILS = {}                       # ip -> [misses in a row, locked until]
+COLORS = ("#8b95ff", "#3dd68c", "#f5a524", "#f472b6", "#38bdf8", "#a78bfa", "#fb923c", "#2dd4bf")  # new accounts, in turn
+AUTH_SCHEMA = """
+CREATE TABLE IF NOT EXISTS accounts(id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, display_name TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'member', hidden INTEGER NOT NULL DEFAULT 0, color TEXT, password TEXT, created REAL, last_login REAL);
+CREATE TABLE IF NOT EXISTS logins(hash TEXT PRIMARY KEY, account INTEGER NOT NULL REFERENCES accounts ON DELETE CASCADE,
+  created REAL, expires REAL);
+CREATE TABLE IF NOT EXISTS tokens(id INTEGER PRIMARY KEY, account INTEGER NOT NULL REFERENCES accounts ON DELETE CASCADE, name TEXT,
+  kind TEXT, scope TEXT, hash TEXT UNIQUE, created REAL, last_used REAL, revoked REAL);
+CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT);
+"""  # AUTOINCREMENT: an account id is never reused, so no cache, folder or log keyed by it can reach a newer account
+ACCOUNT = ("id", "username", "display_name", "role", "hidden", "color", "created", "last_login")
+AUTH = None                      # auth.db (open_data): used under LOCK only
+GRAPHS = {}                      # account id -> its Graph, opened on first use
+NAMING = False                   # only the running server asks the AI for topic names (never tests or the benchmark)
+FAILS = {}                       # ip, or "u:<username>" -> [misses in a row, locked until]
 ATTEMPTS = deque()               # every password / setup-code attempt in the last minute, all IPs
 PAIR_HITS = defaultdict(deque)   # ip -> pairing requests in the last minute
 CONN_HITS = defaultdict(deque)   # connector token id -> requests in the last hour
-PAIRS = {}  # code -> {poll (sha256), name, kind, created, status}. In memory: after a restart a device just pairs again.
+PAIRS = {}  # code -> {poll (sha256), name, kind, ip, created, status, account}. In memory: after a restart a device pairs again.
 sha = lambda s: hashlib.sha256(s.encode()).hexdigest()
 
 
-def owner(db):
-    r = db.execute("SELECT v FROM meta WHERE k='owner'").fetchone()
+def open_data(path):
+    """Use a data dir: auth.db (accounts, sessions, tokens, settings) + accounts/<id>/memory.db, one per account.
+    The first start after the upgrade turns a single-owner database into the first admin's memory."""
+    global DATA, AUTH
+    for g in GRAPHS.values():
+        g.db.close()
+    GRAPHS.clear()
+    if AUTH:
+        AUTH.close()
+    DATA, ai.KEYS = path, os.path.join(path, "ai_keys")
+    os.makedirs(path, mode=0o700, exist_ok=True)
+    AUTH = sqlite3.connect(os.path.join(path, "auth.db"), isolation_level=None, check_same_thread=False)
+    AUTH.executescript("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;" + AUTH_SCHEMA)
+    return migrate_accounts()
+
+
+def migrate_accounts():
+    """Runs while there are no accounts (so it is idempotent): an existing mindbaton.db (one owner: memory, password,
+    sessions and tokens in one file) or an old memgraph.db becomes the first admin's memory, username "admin". The owner's
+    password, browsers and devices keep working; without a password the next visit is first-run and claims that account.
+    The original stays next to it as <name>.pre-accounts.bak."""
+    old = next((p for p in (os.path.join(DATA, n) for n in LEGACY) if os.path.exists(p)), None)
+    if not old or AUTH.execute("SELECT 1 FROM accounts").fetchone():
+        return None
+    src = sqlite3.connect(old)
+    tables = {r[0] for r in src.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    meta = dict(src.execute("SELECT k, v FROM meta").fetchall()) if "meta" in tables else {}
+    tokens = src.execute("SELECT id, name, kind, scope, hash, created, last_used, revoked FROM tokens").fetchall() if "tokens" in tables else []
+    logins = src.execute("SELECT hash, created, expires FROM logins").fetchall() if "logins" in tables else []
+    AUTH.execute("BEGIN")
+    try:
+        aid = create_account("admin", meta.get("owner"), "Admin", role="admin")
+        os.makedirs(acct_dir(aid), mode=0o700, exist_ok=True)
+        dst = sqlite3.connect(os.path.join(acct_dir(aid), "memory.db"))
+        src.backup(dst)  # a consistent copy, WAL included
+        dst.executescript("DROP TABLE IF EXISTS tokens; DROP TABLE IF EXISTS logins;" +
+                          ("DELETE FROM meta WHERE k IN ('owner', 'setup_code');" if "meta" in tables else ""))
+        dst.close()
+        AUTH.executemany("INSERT INTO tokens(id, account, name, kind, scope, hash, created, last_used, revoked) VALUES(?,?,?,?,?,?,?,?,?)",
+                         [(t[0], aid, *t[1:]) for t in tokens])
+        AUTH.executemany("INSERT INTO logins(hash, account, created, expires) VALUES(?,?,?,?)", [(h, aid, c, e) for h, c, e in logins])
+        AUTH.execute("COMMIT")
+    except BaseException:
+        AUTH.execute("ROLLBACK")
+        raise
+    src.close()
+    for suffix in ("", "-wal", "-shm"):
+        if os.path.exists(old + suffix):
+            os.replace(old + suffix, old + ".pre-accounts.bak" + suffix)
+    return aid
+
+
+def acct_dir(aid):
+    return os.path.join(DATA, "accounts", str(int(aid)))
+
+
+def graph(aid):
+    """An account's memory: its own database, opened on first use and kept open. Only that account's requests reach it."""
+    with LOCK:
+        g = GRAPHS.get(aid)
+        if g is None:
+            os.makedirs(acct_dir(aid), mode=0o700, exist_ok=True)
+            g = GRAPHS[aid] = Graph(os.path.join(acct_dir(aid), "memory.db"), aid)
+            g.naming = NAMING
+        return g
+
+
+def local_account():
+    """What this machine itself collects (Claude Code's transcripts, import_memories.py) goes to the first admin."""
+    r = AUTH.execute("SELECT id FROM accounts WHERE role='admin' ORDER BY id LIMIT 1").fetchone()
     return r and r[0]
+
+
+def account(aid):
+    r = AUTH.execute(f"SELECT {', '.join(ACCOUNT)} FROM accounts WHERE id=?", (aid,)).fetchone()
+    return r and {**dict(zip(ACCOUNT, r)), "hidden": bool(r[4])}
+
+
+def create_account(username, password, display_name=None, role="member", hidden=False, color=None):
+    """password: already hashed, or None (nobody can sign in to it until one is set). A taken username raises
+    sqlite3.IntegrityError."""
+    n = AUTH.execute("SELECT count(*) FROM accounts").fetchone()[0]
+    return AUTH.execute("INSERT INTO accounts(username, display_name, role, hidden, color, password, created) VALUES(?,?,?,?,?,?,?)",
+                        (username, display_name or username.capitalize(), role, int(hidden), color or COLORS[n % len(COLORS)],
+                         password, time.time())).lastrowid
+
+
+def delete_account(aid):
+    """The account, its sessions and tokens (cascade) and its whole memory folder."""
+    g = GRAPHS.pop(aid, None)
+    if g:
+        g.db.close()
+    AUTH.execute("DELETE FROM accounts WHERE id=?", (aid,))
+    shutil.rmtree(acct_dir(aid), ignore_errors=True)
+    for d in (PAIRS, MCP_SESSIONS):
+        for k in [k for k, x in d.items() if x.get("account") == aid]:
+            del d[k]
+
+
+def fields(b, allowed):
+    """The account fields of a request body this caller may set (only those present), validated. A password comes back
+    hashed: call it outside LOCK (~50 ms of scrypt)."""
+    out = {}
+    for k in (k for k in allowed if k in b):
+        v = b[k]
+        if k == "username":
+            v = str(v or "").strip().lower()
+            if not re.fullmatch(r"[a-z0-9._-]{2,32}", v):
+                raise ValueError("a username is 2–32 characters: a–z, 0–9, dot, dash or underscore")
+        elif k == "display_name":
+            v = re.sub(r"\s+", " ", str(v or "")).strip()[:40]
+            if not v:
+                raise ValueError("the display name can't be empty")
+        elif k == "color" and not re.fullmatch(r"#[0-9a-fA-F]{6}", str(v)):
+            raise ValueError("color must look like #8b95ff")
+        elif k == "role" and v not in ("admin", "member"):
+            raise ValueError("role must be admin or member")
+        elif k == "hidden" and not isinstance(v, bool):
+            raise ValueError("hidden must be true or false")
+        elif k == "password":
+            if not isinstance(v, str) or not 8 <= len(v) <= 1024:
+                raise ValueError("the password needs at least 8 characters")
+            v = hash_password(v)
+        out[k] = int(v) if k == "hidden" else v
+    return out
+
+
+def admins():
+    return AUTH.execute("SELECT count(*) FROM accounts WHERE role='admin'").fetchone()[0]
 
 
 def hash_password(pw, salt=None):
@@ -1431,42 +1570,51 @@ def check_password(pw, stored):
         return False
 
 
-def setup_code(db):
-    """The one-time code that claims a fresh install (None once it has an owner). Made on first need, kept in meta."""
-    if owner(db):
+def setup_needed():
+    """First run: nobody can sign in yet (no accounts, or only a migrated admin that has no password yet)."""
+    return not AUTH.execute("SELECT 1 FROM accounts WHERE password IS NOT NULL").fetchone()
+
+
+def setup_code():
+    """The one-time code that claims a fresh install (None once someone can sign in). Made on first need, kept in meta."""
+    if not setup_needed():
         return None
-    r = db.execute("SELECT v FROM meta WHERE k='setup_code'").fetchone()
+    r = AUTH.execute("SELECT v FROM meta WHERE k='setup_code'").fetchone()
     if r:
         return r[0]
     n = f"{secrets.randbelow(10 ** 8):08d}"
-    db.execute("INSERT OR REPLACE INTO meta VALUES('setup_code', ?)", (n[:4] + "-" + n[4:],))
+    AUTH.execute("INSERT OR REPLACE INTO meta VALUES('setup_code', ?)", (n[:4] + "-" + n[4:],))
     return n[:4] + "-" + n[4:]
 
 
-def set_password(db, hashed, keep=None):
-    """The owner's password (hashed by the caller, outside LOCK). Every browser session but `keep` is signed out."""
-    db.execute("INSERT OR REPLACE INTO meta VALUES('owner', ?)", (hashed,))
-    db.execute("DELETE FROM meta WHERE k='setup_code'")
-    db.execute("DELETE FROM logins WHERE hash IS NOT ?", (keep,))
+def set_password(aid, hashed, keep=None):
+    """An account's password (hashed by the caller, outside LOCK). Its browser sessions but `keep` are signed out."""
+    AUTH.execute("UPDATE accounts SET password=? WHERE id=?", (hashed, aid))
+    AUTH.execute("DELETE FROM logins WHERE account=? AND hash IS NOT ?", (aid, keep))
 
 
-def reset_password(db):
-    """`--reset-password`: whoever has this machine's shell is the owner. Device tokens keep working; the next visit
-    to the app is first-run again (with a new setup code)."""
-    db.execute("DELETE FROM meta WHERE k IN ('owner', 'setup_code')")
-    db.execute("DELETE FROM logins")
-    return setup_code(db)
+def reset_password(username=None):
+    """`--reset-password [username]`: whoever has this machine's shell may. The account (default: the first admin) gets
+    a new random password, printed once; its browsers are signed out, its devices keep working. -> (username, password)"""
+    r = AUTH.execute("SELECT id, username FROM accounts WHERE username=?", (username.lower(),)).fetchone() if username else \
+        AUTH.execute("SELECT id, username FROM accounts WHERE role='admin' ORDER BY id LIMIT 1").fetchone()
+    if not r:
+        return None
+    pw = secrets.token_urlsafe(9)
+    set_password(r[0], hash_password(pw))
+    return r[1], pw
 
 
-def new_login(db):
+def new_login(aid):
     s, now = secrets.token_urlsafe(32), time.time()
-    db.execute("DELETE FROM logins WHERE expires < ?", (now,))
-    db.execute("INSERT INTO logins VALUES(?,?,?)", (sha(s), now, now + SESSION_S))
+    AUTH.execute("DELETE FROM logins WHERE expires < ?", (now,))
+    AUTH.execute("INSERT INTO logins(hash, account, created, expires) VALUES(?,?,?,?)", (sha(s), aid, now, now + SESSION_S))
+    AUTH.execute("UPDATE accounts SET last_login=? WHERE id=?", (now, aid))
     return s
 
 
-def issue_token(db, name, kind, scope=None):
-    """A device token: returned once, stored only as its sha256."""
+def issue_token(db, aid, name, kind, scope=None):
+    """A device token for account `aid`: returned once, stored only as its sha256."""
     if kind not in KINDS:
         raise ValueError("kind must be one of " + ", ".join(KINDS))
     scope = scope or ("connector" if kind == "connector" else "full")
@@ -1474,8 +1622,8 @@ def issue_token(db, name, kind, scope=None):
         raise ValueError("scope must be full or connector")
     name = re.sub(r"\s+", " ", str(name or "")).strip()[:60] or kind
     tok = "mb_" + secrets.token_urlsafe(32)
-    i = db.execute("INSERT INTO tokens(name, kind, scope, hash, created) VALUES(?,?,?,?,?)",
-                   (name, kind, scope, sha(tok), time.time())).lastrowid
+    i = db.execute("INSERT INTO tokens(account, name, kind, scope, hash, created) VALUES(?,?,?,?,?,?)",
+                   (aid, name, kind, scope, sha(tok), time.time())).lastrowid
     return {"id": i, "token": tok, "name": name, "kind": kind, "scope": scope}
 
 
@@ -1485,27 +1633,28 @@ def recent(q, now, window=60):
     return len(q)
 
 
-def wait_for(ip):
-    """Seconds this IP must wait before another password or setup-code attempt; 0 = go ahead (the attempt counts)."""
+def wait_for(*keys):
+    """Seconds before another password or setup-code attempt from this IP / for this username; 0 = go ahead (it counts)."""
     now = time.time()
     if recent(ATTEMPTS, now) >= 30:
         return 60
-    f = FAILS.get(ip)
-    if f and f[1] > now:
-        return math.ceil(f[1] - now)
+    wait = max((FAILS[k][1] - now for k in keys if k in FAILS), default=0)
+    if wait > 0:
+        return math.ceil(wait)
     ATTEMPTS.append(now)
     return 0
 
 
-def failed(ip):
-    """5 misses in a row lock the IP out for 60 s, doubling with each further miss up to 15 minutes."""
-    if len(FAILS) > 10000:  # ponytail: forget IPs not locked right now; a real store if this ever faces a botnet
+def failed(*keys):
+    """5 misses in a row lock the IP (or the username) out for 60 s, doubling with each further miss up to 15 minutes."""
+    if len(FAILS) > 10000:  # ponytail: forget keys not locked right now; a real store if this ever faces a botnet
         for k in [k for k, f in FAILS.items() if f[1] < time.time()]:
             del FAILS[k]
-    f = FAILS.setdefault(ip, [0, 0])
-    f[0] += 1
-    if f[0] >= 5:
-        f[1] = time.time() + min(60 * 2 ** min(f[0] - 5, 10), 900)
+    for k in keys:
+        f = FAILS.setdefault(k, [0, 0])
+        f[0] += 1
+        if f[0] >= 5:
+            f[1] = time.time() + min(60 * 2 ** min(f[0] - 5, 10), 900)
 
 
 def pair_code():
@@ -1518,12 +1667,14 @@ def norm_code(c):
     return c[:4] + "-" + c[4:] if len(c) == 8 else None
 
 
-def access_log(entry):
-    """One line per MCP message sent with a connector token: when, from where, which token and client, which tool."""
+def access_log(aid, entry):
+    """One line per MCP message sent with a connector token, in that account's folder: when, from where, which token and
+    client, which tool."""
+    path = os.path.join(acct_dir(aid), "access.log")
     try:
-        if os.path.exists(ACCESS_LOG) and os.path.getsize(ACCESS_LOG) > 2_000_000:
-            os.replace(ACCESS_LOG, ACCESS_LOG + ".1")
-        fd = os.open(ACCESS_LOG, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+        if os.path.exists(path) and os.path.getsize(path) > 2_000_000:
+            os.replace(path, path + ".1")
+        fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
         with os.fdopen(fd, "a") as f:
             f.write(json.dumps(entry) + "\n")
     except OSError:
@@ -1553,7 +1704,8 @@ def setup_status(g, base):
     q = lambda sql, *a: g.db.execute(sql, a).fetchone()
     week = time.time() - 7 * 86400
     dev = {k: {"tokens": 0, "last": None, "recent": False} for k in KINDS}
-    for kind, n, last in g.db.execute("SELECT kind, count(*), max(last_used) FROM tokens WHERE revoked IS NULL GROUP BY kind"):
+    for kind, n, last in AUTH.execute("SELECT kind, count(*), max(last_used) FROM tokens WHERE account=? AND revoked IS NULL GROUP BY kind",
+                                      (g.account,)):
         if kind in dev:
             dev[kind] = {"tokens": n, "last": last, "recent": bool(last and last > week)}
     web = q("SELECT max(ts), count(*) FROM captures WHERE site LIKE '%.%' AND ts > ?", week)
@@ -1562,14 +1714,14 @@ def setup_status(g, base):
     cc = q("SELECT max(updated), count(*) FROM sessions WHERE site='claude-code'")
     apps = {}
     for c in list(MCP_SESSIONS.values()):
-        if c.get("name"):
+        if c.get("name") and c.get("account") == g.account:
             apps[ai_of(c["name"])] = max(apps.get(ai_of(c["name"]), 0), c.get("seen", 0))
     for s, t in g.db.execute("SELECT site, max(updated) FROM sessions WHERE key LIKE 'mcp/%' OR site LIKE 'antigravity%' GROUP BY site"):
         apps[ai_of(s)] = max(apps.get(ai_of(s), 0), t or 0)
     phone = q("SELECT max(ts) FROM captures WHERE site='phone'")[0] or q("SELECT max(updated) FROM sessions WHERE key LIKE '%/share-%'")[0]
     last = lambda *xs: max(x or 0 for x in xs) or None
     return {"server": {"ok": True, "base": base, "mcp": base + "/mcp", "public_url": PUBLIC_URL, "https": base.startswith("https://"),
-                       "version": VERSION},
+                       "version": VERSION, "local_sources": g.account == local_account()},  # this machine's Claude Code feeds it
             "devices": dev,
             "extension": {"ok": bool(web[0] or live_web or dev["extension"]["recent"]), "last": last(web[0], live_web, dev["extension"]["last"]),
                           "ais": sorted(set(web_ai)), "live": bool(live_web)},
@@ -1609,8 +1761,9 @@ def save_ai_key(provider, key):
 
 FILES = {"/", "/index.html", "/manifest.webmanifest", "/sw.js", "/share.html", "/mcp_stdio.py"}  # public, served as files
 ASSETS = os.path.join(HERE, "assets") + os.sep
-OWNER_ONLY = {"/api/auth/logout", "/api/auth/logout-all", "/api/auth/password", "/api/tokens", "/api/pair/pending",
-              "/api/pair/approve", "/api/pair/deny"}  # and /api/tokens/<id>: the signed-in owner, never a device token
+SESSION_ONLY = {"/api/auth/logout", "/api/auth/logout-all", "/api/auth/password", "/api/tokens", "/api/pair/pending",
+                "/api/pair/approve", "/api/pair/deny", "/api/me", "/api/accounts"}  # and /api/tokens/<id>, /api/accounts/<id>:
+# a person signed in to the app, never a device token. /api/accounts* and /settings/ai-key: admins only.
 CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
        "font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
 SECURITY = (("Content-Security-Policy", CSP), ("X-Content-Type-Options", "nosniff"), ("Referrer-Policy", "no-referrer"),
@@ -1736,25 +1889,28 @@ class Handler(SimpleHTTPRequestHandler):
                                          + ("; Secure" if self.https() else "")))
 
     def who(self, tok):
-        """{"via": "token", id, name, kind, scope} | {"via": "session", "login": hash} | None. A token, when one is
-        sent, is the only credential looked at."""
+        """{"via": "token", id, name, kind, scope, account, username, role} | {"via": "session", login (hash), account,
+        username, role} | None. A token, when one is sent, is the only credential looked at. Every request then reaches
+        only its account's memory."""
         now = time.time()
         with LOCK:
             if tok:
-                r = G.db.execute("SELECT id, name, kind, scope, last_used FROM tokens WHERE hash=? AND revoked IS NULL", (sha(tok),)).fetchone()
+                r = AUTH.execute("""SELECT t.id, t.name, t.kind, t.scope, t.last_used, a.id, a.username, a.role FROM tokens t
+                                    JOIN accounts a ON a.id = t.account WHERE t.hash=? AND t.revoked IS NULL""", (sha(tok),)).fetchone()
                 if not r:
                     return None
                 if (r[4] or 0) < now - 60:  # the Setup page's ticks; written at most once a minute
-                    G.db.execute("UPDATE tokens SET last_used=? WHERE id=?", (now, r[0]))
-                return {"via": "token", "id": r[0], "name": r[1], "kind": r[2], "scope": r[3]}
+                    AUTH.execute("UPDATE tokens SET last_used=? WHERE id=?", (now, r[0]))
+                return {"via": "token", "id": r[0], "name": r[1], "kind": r[2], "scope": r[3], "account": r[5], "username": r[6], "role": r[7]}
             s = self.cookie()
-            r = s and G.db.execute("SELECT expires FROM logins WHERE hash=?", (sha(s),)).fetchone()
+            r = s and AUTH.execute("""SELECT l.expires, a.id, a.username, a.role FROM logins l JOIN accounts a ON a.id = l.account
+                                      WHERE l.hash=?""", (sha(s),)).fetchone()
             if not r or r[0] < now:
                 return None
             if r[0] < now + SESSION_S - 3600:  # sliding: a session in use keeps going (refreshed at most hourly)
-                G.db.execute("UPDATE logins SET expires=? WHERE hash=?", (now + SESSION_S, sha(s)))
+                AUTH.execute("UPDATE logins SET expires=? WHERE hash=?", (now + SESSION_S, sha(s)))
                 self.set_cookie(s)
-            return {"via": "session", "login": sha(s)}
+            return {"via": "session", "login": sha(s), "account": r[1], "username": r[2], "role": r[3]}
 
     # ---- routing -------------------------------------------------------------------------------------------------
     def do_GET(self):
@@ -1765,6 +1921,9 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_DELETE(self):
         self.route("DELETE")
+
+    def do_PATCH(self):
+        self.route("PATCH")
 
     def do_HEAD(self):
         if self.static(urlparse(self.path).path):
@@ -1789,7 +1948,7 @@ class Handler(SimpleHTTPRequestHandler):
             return self.reply(200, extension_zip(), "application/zip",
                               {"Content-Disposition": 'attachment; filename="mindbaton-extension.zip"'})
         b = {}
-        if method == "POST":  # read the body before any lock, so a slow sender holds up nobody
+        if method in ("POST", "PATCH"):  # read the body before any lock, so a slow sender holds up nobody
             try:
                 b = self.body()
                 if p != "/mcp" and not isinstance(b, dict):
@@ -1819,38 +1978,47 @@ class Handler(SimpleHTTPRequestHandler):
                     q.append(now)
             if over:
                 return self.too_many(60)
-        if p in OWNER_ONLY or p.startswith("/api/tokens/"):
+        if p in SESSION_ONLY or p.startswith(("/api/tokens/", "/api/accounts/")):
             if who["via"] != "session":
-                return self.reply(403, {"error": "only the owner, signed in to the app, can do this"})
-            return self.owner_route(method, p, b, who)
+                return self.reply(403, {"error": "only someone signed in to the app can do this"})
+            if p.startswith("/api/accounts") and who["role"] != "admin":
+                return self.reply(403, {"error": "only an admin can manage accounts"})
+            return self.session_route(method, p, qs, b, who)
+        self.me, self.g = who, graph(who["account"])  # from here on: this account's memory, nothing else
         if method == "GET":
             return self.get(p, qs)
         if method == "POST":
             return self.mcp(b, who) if p == "/mcp" else self.post(p, b)
         m = re.fullmatch(r"/node/(\d+)", p)
         if method == "DELETE" and m:
-            return self.api(lambda: {"deleted": G.forget(int(m[1]))})
+            return self.api(lambda: {"deleted": self.g.forget(int(m[1]))})
         self.reply(404, {"error": "not found"})
 
     def open_route(self, method, p, qs, b, who):
         """Routes anyone may call: health, sign-in state, first-run setup, login, pairing. False = not one of them."""
         if (method, p) == ("GET", "/health"):  # liveness for anyone; counts for the signed-in
             with LOCK:
-                out = {"ok": True, "name": "mindbaton", "version": VERSION, "setup_needed": not owner(G.db), "authed": bool(who)}
+                out = {"ok": True, "name": "mindbaton", "version": VERSION, "setup_needed": setup_needed(), "authed": bool(who)}
                 if who:
-                    n, last = G.db.execute("SELECT count(*), max(ts) FROM captures").fetchone()
-                    src = G.db.execute("SELECT site FROM captures ORDER BY ts DESC LIMIT 1").fetchone()
+                    g = graph(who["account"])
+                    n, last = g.db.execute("SELECT count(*), max(ts) FROM captures").fetchone()
+                    src = g.db.execute("SELECT site FROM captures ORDER BY ts DESC LIMIT 1").fetchone()
                     out.update(captures=n, last=last, last_ai=ai_of(src[0]) if src else None)
             return self.reply(200, out)
-        if (method, p) == ("GET", "/api/auth/state"):
+        if (method, p) == ("GET", "/api/auth/state"):  # the login page: who can sign in here (hidden accounts aren't listed)
             with LOCK:
-                need = not owner(G.db)
-            return self.reply(200, {"setup_needed": need, "authed": bool(who), "code_required": need and not self.local()})
-        if (method, p) == ("POST", "/api/auth/setup"):
+                need = setup_needed()
+                out = {"setup_needed": need, "authed": bool(who), "code_required": need and not self.local(),
+                       "profiles": [] if need else [dict(zip(("username", "display_name", "color"), r)) for r in AUTH.execute(
+                           "SELECT username, display_name, color FROM accounts WHERE hidden=0 AND password IS NOT NULL ORDER BY id")]}
+                if who:
+                    out["account"] = account(who["account"])
+            return self.reply(200, out)
+        if (method, p) == ("POST", "/api/auth/setup"):  # the first admin; claims a migrated admin that has no password yet
             ip = self.ip()
             with LOCK:
-                done = bool(owner(G.db))
-                code, wait = (None, 0) if done else (setup_code(G.db), wait_for(ip))
+                done = not setup_needed()
+                code, wait = (None, 0) if done else (setup_code(), wait_for(ip))
             if done:
                 return self.reply(409, {"error": "already set up — sign in instead"})
             if wait:
@@ -1859,37 +2027,61 @@ class Handler(SimpleHTTPRequestHandler):
                 with LOCK:
                     failed(ip)
                 return self.reply(403, {"error": "wrong or missing setup code — the server prints it when it starts"})
-            pw = b.get("password")
-            if not isinstance(pw, str) or not 8 <= len(pw) <= 1024:
-                return self.reply(400, {"error": "the password needs at least 8 characters"})
-            h = hash_password(pw)  # ~50 ms of scrypt, outside the lock
+            try:
+                f = fields({"username": None, "password": None, **b}, ("username", "display_name", "password"))
+            except ValueError as e:
+                return self.reply(400, {"error": str(e)})
+            f.setdefault("display_name", f["username"].capitalize())
             with LOCK:
-                s = None if owner(G.db) else (set_password(G.db, h), FAILS.pop(ip, None), new_login(G.db))[2]
+                s = out = None
+                if setup_needed():
+                    claim = AUTH.execute("SELECT id FROM accounts WHERE role='admin' AND password IS NULL ORDER BY id").fetchone()
+                    try:
+                        if claim:
+                            aid = claim[0]
+                            AUTH.execute("UPDATE accounts SET username=?, display_name=?, password=? WHERE id=?",
+                                         (f["username"], f["display_name"], f["password"], aid))
+                        else:
+                            aid = create_account(role="admin", **f)
+                        AUTH.execute("DELETE FROM meta WHERE k='setup_code'")
+                        FAILS.pop(ip, None)
+                        s, out = new_login(aid), account(aid)
+                    except sqlite3.IntegrityError:
+                        out = {"error": "that username is taken"}
             if not s:
-                return self.reply(409, {"error": "already set up — sign in instead"})
+                return self.reply(409, out or {"error": "already set up — sign in instead"})
             self.set_cookie(s)
-            return self.reply(200, {"ok": True})
+            return self.reply(200, {"ok": True, "account": out})
         if (method, p) == ("POST", "/api/auth/login"):
-            ip = self.ip()
+            ip, user = self.ip(), str(b.get("username") or "").strip().lower()[:64]
             with LOCK:
-                stored = owner(G.db)
-                wait = wait_for(ip) if stored else 0
-            if not stored:
+                need = setup_needed()
+                if not user:  # one person on this install: the password alone will do
+                    only = AUTH.execute("SELECT username FROM accounts WHERE password IS NOT NULL").fetchall()
+                    user = only[0][0] if len(only) == 1 else ""
+                r = AUTH.execute("SELECT id, password FROM accounts WHERE username=?", (user,)).fetchone()
+                wait = 0 if need else wait_for(ip, "u:" + user)
+            if need:
                 return self.reply(409, {"error": "not set up yet", "setup_needed": True})
             if wait:
                 return self.too_many(wait)
             pw = b.get("password")
-            ok = isinstance(pw, str) and len(pw) <= 1024 and check_password(pw, stored)
+            pw = pw if isinstance(pw, str) and len(pw) <= 1024 else ""
+            if r and r[1]:
+                ok = check_password(pw, r[1])
+            else:
+                ok = hash_password(pw) and False  # the same work for an unknown name: timing doesn't tell which exist
             with LOCK:
                 if not ok:
-                    failed(ip)
+                    failed(ip, "u:" + user)
                 else:
                     FAILS.pop(ip, None)
-                    s = new_login(G.db)
+                    FAILS.pop("u:" + user, None)
+                    s, out = new_login(r[0]), account(r[0])
             if not ok:
-                return self.reply(401, {"error": "wrong password"})
+                return self.reply(401, {"error": "wrong username or password"})
             self.set_cookie(s)
-            return self.reply(200, {"ok": True})
+            return self.reply(200, {"ok": True, "account": out})
         if (method, p) == ("POST", "/api/pair/start"):
             name, kind = b.get("name"), b.get("kind")
             if kind not in KINDS or not isinstance(name, str) or not name.strip():
@@ -1906,8 +2098,8 @@ class Handler(SimpleHTTPRequestHandler):
                     code, poll = pair_code(), secrets.token_urlsafe(24)
                     while code in PAIRS:
                         code = pair_code()
-                    PAIRS[code] = {"poll": sha(poll), "name": re.sub(r"\s+", " ", name).strip()[:60], "kind": kind,
-                                   "created": now, "status": "pending"}
+                    PAIRS[code] = {"poll": sha(poll), "name": re.sub(r"\s+", " ", name).strip()[:60], "kind": kind, "ip": ip,
+                                   "created": now, "status": "pending", "account": None}
             if busy:
                 return self.too_many(60)
             return self.reply(200, {"code": code, "poll": poll, "expires_in": PAIR_S, "approve_url": f"{self.base()}/#pair/{code}"})
@@ -1924,16 +2116,20 @@ class Handler(SimpleHTTPRequestHandler):
                 else:  # answered: told once, then forgotten (so the token is handed out exactly once)
                     del PAIRS[code]
                     out = {"status": x["status"]}
-                    if x["status"] == "approved":
-                        t = issue_token(G.db, x["name"], x["kind"])
+                    if x["status"] == "approved":  # the token belongs to whoever approved it
+                        t = issue_token(AUTH, x["account"], x["name"], x["kind"])
                         out.update(token=t["token"], id=t["id"], name=t["name"], kind=t["kind"], scope=t["scope"])
             return self.reply(200, out)
         return False
 
-    def owner_route(self, method, p, b, who):
+    def session_route(self, method, p, qs, b, who):
+        """A person signed in to the app: their own sessions, password, devices, pairings, profile — and for admins,
+        everyone's accounts (never anyone's memory)."""
+        me = who["account"]
         if (method, p) in (("POST", "/api/auth/logout"), ("POST", "/api/auth/logout-all")):
             with LOCK:
-                G.db.execute("DELETE FROM logins" + ("" if p.endswith("-all") else " WHERE hash=?"), () if p.endswith("-all") else (who["login"],))
+                AUTH.execute("DELETE FROM logins WHERE account=?" + ("" if p.endswith("-all") else " AND hash=?"),
+                             (me,) if p.endswith("-all") else (me, who["login"]))
             self.set_cookie("", 0)
             return self.reply(200, {"ok": True})
         if (method, p) == ("POST", "/api/auth/password"):
@@ -1942,63 +2138,122 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.reply(400, {"error": "the new password needs at least 8 characters"})
             ip = self.ip()
             with LOCK:
-                wait, stored = wait_for(ip), owner(G.db)
+                wait = wait_for(ip, "u:" + who["username"])
+                stored = AUTH.execute("SELECT password FROM accounts WHERE id=?", (me,)).fetchone()[0]
             if wait:
                 return self.too_many(wait)
             if not (isinstance(b.get("current"), str) and check_password(b["current"], stored)):
                 with LOCK:
-                    failed(ip)
+                    failed(ip, "u:" + who["username"])
                 return self.reply(403, {"error": "the current password is wrong"})
             h = hash_password(new)
             with LOCK:
                 FAILS.pop(ip, None)
-                set_password(G.db, h, keep=who["login"])
+                set_password(me, h, keep=who["login"])
             return self.reply(200, {"ok": True})
+        if (method, p) == ("PATCH", "/api/me"):  # your own name and colour
+            try:
+                f = fields(b, ("display_name", "color"))
+            except ValueError as e:
+                return self.reply(400, {"error": str(e)})
+            with LOCK:
+                if f:
+                    AUTH.execute(f"UPDATE accounts SET {', '.join(k + '=?' for k in f)} WHERE id=?", (*f.values(), me))
+                out = account(me)
+            return self.reply(200, out)
         if (method, p) == ("GET", "/api/tokens"):
             with LOCK:
-                rows = G.db.execute("SELECT id, name, kind, scope, created, last_used FROM tokens WHERE revoked IS NULL ORDER BY id").fetchall()
+                rows = AUTH.execute("SELECT id, name, kind, scope, created, last_used FROM tokens WHERE account=? AND revoked IS NULL "
+                                    "ORDER BY id", (me,)).fetchall()
             return self.reply(200, [dict(zip(("id", "name", "kind", "scope", "created", "last_used"), r)) for r in rows])
         if (method, p) == ("POST", "/api/tokens"):
-            return self.api(lambda: issue_token(G.db, b.get("name"), b.get("kind"), b.get("scope")))
+            return self.api(lambda: issue_token(AUTH, me, b.get("name"), b.get("kind"), b.get("scope")))
         m = re.fullmatch(r"/api/tokens/(\d+)", p)
         if method == "DELETE" and m:
             with LOCK:
-                n = G.db.execute("UPDATE tokens SET revoked=? WHERE id=? AND revoked IS NULL", (time.time(), int(m[1]))).rowcount
+                n = AUTH.execute("UPDATE tokens SET revoked=? WHERE id=? AND account=? AND revoked IS NULL",
+                                 (time.time(), int(m[1]), me)).rowcount
             return self.reply(200, {"revoked": n}) if n else self.reply(404, {"error": "no such token"})
         if (method, p) == ("GET", "/api/pair/pending"):
-            now = time.time()
+            # ?code= from the approve link, else the requests made from this same address (the pairing device is usually
+            # the one you're on): a code is the right to take a device, so nobody sees another person's codes
+            now, code, ip = time.time(), norm_code(qs.get("code")), self.ip()
             with LOCK:
                 out = [{"code": c, "name": x["name"], "kind": x["kind"], "created": x["created"], "expires_in": int(x["created"] + PAIR_S - now)}
-                       for c, x in PAIRS.items() if x["status"] == "pending" and now - x["created"] < PAIR_S]
+                       for c, x in PAIRS.items() if x["status"] == "pending" and now - x["created"] < PAIR_S
+                       and (c == code if code else x["ip"] == ip)]
             return self.reply(200, out)
         if method == "POST" and p in ("/api/pair/approve", "/api/pair/deny"):
             with LOCK:
                 x = PAIRS.get(norm_code(b.get("code")))
                 ok = bool(x) and x["status"] == "pending" and time.time() - x["created"] < PAIR_S
                 if ok:
-                    x["status"] = "approved" if p.endswith("approve") else "denied"
+                    x["status"], x["account"] = ("approved", me) if p.endswith("approve") else ("denied", None)
             if not ok:
                 return self.reply(404, {"error": "no such pairing request — it may have expired"})
             return self.reply(200, {"ok": True, "status": x["status"], "name": x["name"], "kind": x["kind"]})
-        self.reply(404, {"error": "not found"})
+        # ---- admins: people on this install ----
+        if (method, p) == ("GET", "/api/accounts"):
+            with LOCK:
+                out = [account(i) for (i,) in AUTH.execute("SELECT id FROM accounts ORDER BY id").fetchall()]
+            return self.reply(200, out)
+        m = re.fullmatch(r"/api/accounts(?:/(\d+))?", p)
+        if not m or (method, bool(m[1])) not in (("POST", False), ("PATCH", True), ("DELETE", True)):
+            return self.reply(404, {"error": "not found"})
+        if method in ("POST", "PATCH"):
+            try:
+                f = fields(b, ("username", "display_name", "color", "role", "hidden", "password"))
+                if method == "POST" and not {"username", "password"} <= set(f):
+                    raise ValueError("need username and password (at least 8 characters)")
+            except ValueError as e:
+                return self.reply(400, {"error": str(e)})
+        with LOCK:
+            aid = int(m[1] or 0)
+            cur = account(aid) if aid else None
+            if method == "POST":
+                try:
+                    code, out = 200, account(create_account(**f))
+                except sqlite3.IntegrityError:
+                    code, out = 409, {"error": "that username is taken"}
+            elif not cur:
+                code, out = 404, {"error": "no such account"}
+            elif cur["role"] == "admin" and admins() == 1 and (method == "DELETE" or f.get("role") == "member"):
+                code, out = 409, {"error": "this is the last admin — make someone else an admin first"}
+            elif method == "DELETE" and str(qs.get("confirm", "")).lower() != cur["username"]:
+                code, out = 400, {"error": "deleting an account deletes its memory: send ?confirm=<its username>"}
+            elif method == "DELETE":
+                delete_account(aid)
+                code, out = 200, {"deleted": True, "id": aid}
+            else:
+                try:
+                    if f:
+                        AUTH.execute(f"UPDATE accounts SET {', '.join(k + '=?' for k in f)} WHERE id=?", (*f.values(), aid))
+                    if "password" in f:  # reset by an admin: that account's browsers are signed out (not this one)
+                        AUTH.execute("DELETE FROM logins WHERE account=? AND hash IS NOT ?", (aid, who["login"]))
+                    code, out = 200, account(aid)
+                except sqlite3.IntegrityError:
+                    code, out = 409, {"error": "that username is taken"}
+        if method == "DELETE" and code == 200 and aid == me:
+            self.set_cookie("", 0)
+        return self.reply(code, out)
 
     def get(self, p, qs):
         num = lambda k, d: int(qs.get(k, d)) if str(qs.get(k, d)).lstrip("-").isdigit() else d
         if p == "/export":
             try:
                 with LOCK:
-                    body, ctype, name = live.export(G, qs.get("format", "json"))
+                    body, ctype, name = live.export(self.g, qs.get("format", "json"))
             except ValueError as e:
                 return self.reply(400, {"error": str(e)})
             return self.reply(200, body, ctype, {"Content-Disposition": f'attachment; filename="{name}"'})
         if p == "/handoff" and qs.get("ai") != "0":
-            ai.prepare(G, LOCK, qs.get("session"))  # the AI summary is made outside the lock
+            ai.prepare(self.g, LOCK, qs.get("session"))  # the AI summary is made outside the lock
         if p == "/ask":  # the rules find what matters (under the lock); the AI words the answer (outside it)
             q = qs.get("q", "").strip()[:300]
             if not q:
                 return self.reply(400, {"error": "need q"})
             with LOCK:
-                r = G.recall(q, 10)
+                r = self.g.recall(q, 10)
                 notes = [{"id": m["id"], "text": m["text"], "where": " · ".join(x for x in [(m.get("srcs") or [{}])[0].get("ai"),
                           (m.get("srcs") or [{}])[0].get("chat"), datetime.fromtimestamp(m["updated"]).strftime("%-d %b %Y")] if x)}
                          for m in r["memories"]]
@@ -2008,31 +2263,31 @@ class Handler(SimpleHTTPRequestHandler):
             return self.reply(200, {"answer": got, "rules": r.get("answer"), "enabled": ai.enabled()})
         if p == "/session/summary":  # a chat's AI summary if it's ready; otherwise start making it
             with LOCK:
-                sid = live.find(G, qs.get("id"))
-                m = live.transcript(G, sid) if sid else None
+                sid = live.find(self.g, qs.get("id"))
+                m = live.transcript(self.g, sid) if sid else None
             if not m:
                 return self.reply(404, {"error": "no such chat"})
             turns = [{"role": t["role"], "text": t["text"]} for t in m["messages"]]
-            got = ai.cached(sid, turns)
+            got = ai.cached(self.g, sid, turns)
             if not got:
                 if ai.enabled() and len(turns) >= 2:
-                    ai.warm(G, LOCK, sid)
+                    ai.warm(self.g, LOCK, sid)
                 return self.reply(200, {"pending": ai.enabled() and len(turns) >= 2, "enabled": ai.enabled()})
             sec = ai.sections(got["text"])
             return self.reply(200, {"summary": sec.get("Summary"), "next": sec.get("Next step"), "by": got["by"], "sections": sec})
         routes = {
             "/ai": ai.status,
-            "/status": lambda: setup_status(G, self.base()),
-            "/sessions": lambda: live.sessions(G, num("limit", 40)),
-            "/session": lambda: live.transcript(G, live.find(G, qs.get("id"))) or {},
-            "/handoff": lambda: live.make_handoff(G, qs.get("session"), max(200, min(num("budget", 1500), 12000)), qs.get("to")),
-            "/handoff/pending": lambda: live.take_pending(G, qs.get("host", "")),
-            "/timeline": lambda: G.timeline(qs.get("subject", "me")),
-            "/neighbors": lambda: (G.ensure(), live.neighbors(G, num("id", 0), num("depth", 1)))[1],
-            "/path": lambda: live.path(G, num("from", 0), num("to", 0)),
-            "/recall": lambda: G.recall(qs.get("q", ""), max(1, min(num("k", 8), 50)), qs.get("all") == "1"),
-            "/context": lambda: G.context(qs.get("q") or None, max(300, min(num("budget", 1800), 8000))),
-            "/graph": G.graph, "/profile": G.profile,
+            "/status": lambda: setup_status(self.g, self.base()),
+            "/sessions": lambda: live.sessions(self.g, num("limit", 40)),
+            "/session": lambda: live.transcript(self.g, live.find(self.g, qs.get("id"))) or {},
+            "/handoff": lambda: live.make_handoff(self.g, qs.get("session"), max(200, min(num("budget", 1500), 12000)), qs.get("to")),
+            "/handoff/pending": lambda: live.take_pending(self.g, qs.get("host", "")),
+            "/timeline": lambda: self.g.timeline(qs.get("subject", "me")),
+            "/neighbors": lambda: (self.g.ensure(), live.neighbors(self.g, num("id", 0), num("depth", 1)))[1],
+            "/path": lambda: live.path(self.g, num("from", 0), num("to", 0)),
+            "/recall": lambda: self.g.recall(qs.get("q", ""), max(1, min(num("k", 8), 50)), qs.get("all") == "1"),
+            "/context": lambda: self.g.context(qs.get("q") or None, max(300, min(num("budget", 1800), 8000))),
+            "/graph": self.g.graph, "/profile": self.g.profile,
         }
         if p in routes:
             return self.api(routes[p])
@@ -2053,7 +2308,7 @@ class Handler(SimpleHTTPRequestHandler):
             need_text(b)
             ts = b.get("ts")  # queued offline: keep when it was really said
             ts = float(ts) if isinstance(ts, (int, float)) and 1.5e9 < ts <= time.time() + 60 else None
-            return {"ids": G.ingest(b["text"][:20000], s("site", 100), s("chat", 300), s("url", 500), ts)}
+            return {"ids": self.g.ingest(b["text"][:20000], s("site", 100), s("chat", 300), s("url", 500), ts)}
 
         def remember():
             need_text(b)
@@ -2061,20 +2316,22 @@ class Handler(SimpleHTTPRequestHandler):
             if not (isinstance(ents, list) and all(isinstance(e, str) for e in ents) and isinstance(rels, list)
                     and all(isinstance(r, list) and len(r) == 3 and all(isinstance(x, str) for x in r) for r in rels)):
                 raise ValueError("need entities:[str] and relations:[[a, rel, b], ...]")
-            return {"ids": G.ingest(b["text"][:2000], "agent", entities=ents, relations=rels)}
+            return {"ids": self.g.ingest(b["text"][:2000], "agent", entities=ents, relations=rels)}
 
         def session():
             turns = b.get("turns")
             if not isinstance(turns, list) or not all(isinstance(t, dict) for t in turns):
                 raise ValueError("need turns: [{role, text}, ...]")
-            m = live.sync(G, s("url", 500), s("site", 100), s("chat", 300) or s("title", 300), turns, s("limit", 400), s("model", 80),
+            m = live.sync(self.g, s("url", 500), s("site", 100), s("chat", 300) or s("title", 300), turns, s("limit", 400), s("model", 80),
                           cwd=s("cwd", 300), conv_id=s("id", 120)) or {}
             if m and (m["limit"] or (m["pct"] or 0) >= 60):
-                ai.warm(G, LOCK, m["id"])  # a hand-off is coming: have its summary ready
+                ai.warm(self.g, LOCK, m["id"])  # a hand-off is coming: have its summary ready
             return m
 
-        routes = {"/capture": capture, "/remember": remember, "/rebuild": G.rebuild, "/session": session}
-        if p == "/settings/ai-key":  # tests the key with the provider: a network call, so never under the lock
+        routes = {"/capture": capture, "/remember": remember, "/rebuild": self.g.rebuild, "/session": session}
+        if p == "/settings/ai-key":  # install-wide, so admins only; tests the key with the provider: never under the lock
+            if self.me["role"] != "admin":
+                return self.reply(403, {"error": "only an admin can set the AI key"})
             return self.api(lambda: save_ai_key(b.get("provider"), b.get("key")), lock=False)
         if p not in routes:
             return self.reply(404, {"error": "not found"})
@@ -2087,25 +2344,28 @@ class Handler(SimpleHTTPRequestHandler):
             prm = m.get("params") if isinstance(m, dict) else None
             prm = prm if isinstance(prm, dict) else {}
             if m and isinstance(m, dict) and m.get("method") == "tools/call" and prm.get("name") == "handoff":
-                ai.prepare(G, LOCK, (prm.get("arguments") or {}).get("session"))
+                ai.prepare(self.g, LOCK, (prm.get("arguments") or {}).get("session"))
             if connector and isinstance(m, dict):  # every connector request, without the token
-                access_log({"ts": round(time.time()), "from": self.ip(), "token": who["name"],
-                            "client": (prm.get("clientInfo") or {}).get("name") or (MCP_SESSIONS.get(self.headers.get("Mcp-Session-Id") or "") or {}).get("name"),
+                known = MCP_SESSIONS.get(self.headers.get("Mcp-Session-Id") or "") or {}
+                access_log(who["account"], {"ts": round(time.time()), "from": self.ip(), "token": who["name"],
+                            "client": (prm.get("clientInfo") or {}).get("name") or (known.get("account") == who["account"] and known.get("name")) or None,
                             "method": m["method"], "tool": prm.get("name"), "args": json.dumps(prm.get("arguments") or {})[:200] or None})
         sid = self.headers.get("Mcp-Session-Id")
         if any(isinstance(m, dict) and m.get("method") == "initialize" for m in batch):
             sid = uuid.uuid4().hex
-            MCP_SESSIONS[sid] = {}
+            MCP_SESSIONS[sid] = {"account": who["account"]}
             while len(MCP_SESSIONS) > 500:  # ponytail: oldest sessions forgotten first; clients re-initialise
                 MCP_SESSIONS.pop(next(iter(MCP_SESSIONS)))
         client = MCP_SESSIONS.get(sid) if sid else None
-        if client is not None:
+        if client is not None and client.get("account") != who["account"]:
+            client = {}  # another account's MCP session: credit nobody, touch nothing of theirs
+        elif client is not None:
             client["seen"] = time.time()  # the Setup page shows which apps are connected
         if sid and client is None and sid not in MCP_SESSIONS:
             client = {}  # a session from before a restart: credit nobody rather than whoever connected last
         with LOCK:
-            out = [r for r in (mcp_handle(G, m, connector, client if client is not None else dict(MCP_CLIENT)) for m in batch) if r]
-        extra = {"Mcp-Session-Id": sid} if sid and sid in MCP_SESSIONS else {}
+            out = [r for r in (mcp_handle(self.g, m, connector, client if client is not None else dict(self.g.mcp_client)) for m in batch) if r]
+        extra = {"Mcp-Session-Id": sid} if sid and MCP_SESSIONS.get(sid, {}).get("account") == who["account"] else {}
         if not out:
             self.send_response(202)
             for k, v in extra.items():
@@ -2198,10 +2458,12 @@ def selfcheck():
 
 
 def authcheck():
-    """The auth contract end to end, over real HTTP against a throwaway in-memory server on a free port."""
+    """The auth and accounts contract end to end, over real HTTP against a throwaway server on a free port and a temp
+    data dir: first run, sessions, tokens, pairing, admin rules, two accounts that never see each other's memory, and
+    the migration of both older database formats."""
     import tempfile, urllib.request, urllib.error
-    global G, ACCESS_LOG
-    G, ACCESS_LOG = Graph(":memory:"), os.path.join(tempfile.mkdtemp(), "access.log")
+    tmp = tempfile.mkdtemp()
+    open_data(os.path.join(tmp, "data"))
     srv = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     url = f"http://127.0.0.1:{srv.server_address[1]}"
@@ -2221,44 +2483,54 @@ def authcheck():
         except ValueError:
             return r.status, r.headers, raw
     st = lambda *a, **k: call(*a, **k)[0]
+    txt = lambda *a, **k: (lambda d: d.decode() if isinstance(d, bytes) else json.dumps(d))(call(*a, **k)[2]).lower()
     sess = lambda h: re.search(r"mb_session=([^;]*)", h["Set-Cookie"])[1]
+    login = lambda user, pw, **k: sess(call("POST", "/api/auth/login", {"username": user, "password": pw}, **k)[1])
+    rpc = lambda tool, args, **k: call("POST", "/mcp", {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                                                        "params": {"name": tool, "arguments": args}}, **k)[2]
     # first run: the setup code is needed unless the request is typed on this machine
-    assert call("GET", "/api/auth/state")[2] == {"setup_needed": True, "authed": False, "code_required": False}
+    assert call("GET", "/api/auth/state")[2] == {"setup_needed": True, "authed": False, "code_required": False, "profiles": []}
     assert call("GET", "/api/auth/state", X_Forwarded_For="203.0.113.9")[2]["code_required"]
-    code = setup_code(G.db)
+    code = setup_code()
     assert re.fullmatch(r"\d{4}-\d{4}", code)
-    assert st("POST", "/api/auth/setup", {"password": "correct horse"}, Host="192.0.2.7") == 403            # off-loopback, no code
-    assert st("POST", "/api/auth/setup", {"password": "correct horse", "code": "0000-0000"}, Host="192.0.2.7") == 403
-    assert st("POST", "/api/auth/setup", {"password": "short", "code": code}, Host="192.0.2.7") == 400
-    s, h, _ = call("POST", "/api/auth/setup", {"password": "correct horse", "code": code.replace("-", "")}, Host="192.0.2.7")
+    first = {"username": "Maya", "display_name": "Maya", "password": "correct horse"}
+    assert st("POST", "/api/auth/setup", first, Host="192.0.2.7") == 403                                   # off-loopback, no code
+    assert st("POST", "/api/auth/setup", {**first, "code": "0000-0000"}, Host="192.0.2.7") == 403
+    assert st("POST", "/api/auth/setup", {**first, "password": "short", "code": code}, Host="192.0.2.7") == 400
+    assert st("POST", "/api/auth/setup", {**first, "username": "no spaces!", "code": code}, Host="192.0.2.7") == 400
+    s, h, d = call("POST", "/api/auth/setup", {**first, "code": code.replace("-", "")}, Host="192.0.2.7")
     c = h["Set-Cookie"]
-    assert s == 200 and setup_code(G.db) is None and all(f in c for f in ("HttpOnly", "SameSite=Lax", "Path=/")) and "Secure" not in c, c
-    a = sess(h)
-    assert st("POST", "/api/auth/setup", {"password": "someone else", "code": code}) == 409
-    assert call("GET", "/api/auth/state", cookie=a)[2] == {"setup_needed": False, "authed": True, "code_required": False}
-    # login: wrong passwords lock the IP out, even for the right one
+    assert s == 200 and setup_code() is None and all(f in c for f in ("HttpOnly", "SameSite=Lax", "Path=/")) and "Secure" not in c, c
+    assert d["account"]["username"] == "maya" and d["account"]["role"] == "admin" and d["account"]["color"] == COLORS[0], d
+    a, maya = sess(h), d["account"]["id"]
+    assert st("POST", "/api/auth/setup", {**first, "username": "someone"}) == 409
+    state = call("GET", "/api/auth/state", cookie=a)[2]
+    assert state["authed"] and state["account"]["username"] == "maya" and not state["setup_needed"], state
+    assert state["profiles"] == [{"username": "maya", "display_name": "Maya", "color": COLORS[0]}], state
+    # login: wrong passwords lock the IP out, even for the right one; one account needs no username
     FAILS.clear()
     for _ in range(5):
         assert st("POST", "/api/auth/login", {"password": "wrong password"}) == 401
     s, h, _ = call("POST", "/api/auth/login", {"password": "correct horse"})
     assert s == 429 and 0 < int(h["Retry-After"]) <= 60, s
     FAILS.clear()
-    s, h, _ = call("POST", "/api/auth/login", {"password": "correct horse"}, X_Forwarded_Proto="https")
-    assert s == 200 and "Secure" in h["Set-Cookie"]
+    s, h, d = call("POST", "/api/auth/login", {"password": "correct horse"}, X_Forwarded_Proto="https")
+    assert s == 200 and "Secure" in h["Set-Cookie"] and d["account"]["id"] == maya
     b = sess(h)
     # nothing without a session or a token; the app's files, health, login and pairing are open
     for m, path in [("GET", "/graph"), ("GET", "/recall?q=x"), ("GET", "/context"), ("GET", "/profile"), ("GET", "/status"),
                     ("GET", "/export"), ("GET", "/sessions"), ("GET", "/handoff"), ("GET", "/ask?q=x"), ("GET", "/tools.json"),
                     ("GET", "/share"), ("GET", "/timeline"), ("GET", "/ai"), ("GET", "/api/tokens"), ("GET", "/api/pair/pending"),
-                    ("POST", "/capture"), ("POST", "/remember"), ("POST", "/mcp"), ("POST", "/rebuild"), ("POST", "/session"),
-                    ("POST", "/settings/ai-key"), ("POST", "/api/tokens"), ("POST", "/api/auth/logout"), ("POST", "/api/auth/password"),
-                    ("POST", "/api/pair/approve"), ("DELETE", "/node/1"), ("DELETE", "/api/tokens/1")]:
-        body = {} if m == "POST" else None
+                    ("GET", "/api/accounts"), ("POST", "/capture"), ("POST", "/remember"), ("POST", "/mcp"), ("POST", "/rebuild"),
+                    ("POST", "/session"), ("POST", "/settings/ai-key"), ("POST", "/api/tokens"), ("POST", "/api/auth/logout"),
+                    ("POST", "/api/auth/password"), ("POST", "/api/pair/approve"), ("POST", "/api/accounts"), ("PATCH", "/api/me"),
+                    ("PATCH", "/api/accounts/1"), ("DELETE", "/api/accounts/1"), ("DELETE", "/node/1"), ("DELETE", "/api/tokens/1")]:
+        body = {} if m in ("POST", "PATCH") else None
         assert st(m, path, body) == 401 and st(m, path, body, token="mb_nope") == 401, path
         assert call(m, path, body)[2] == {"error": "login required"}, path
     for path in ("/", "/index.html", "/health", "/api/auth/state", "/manifest.webmanifest", "/mcp_stdio.py"):
         assert st("GET", path) == 200, path
-    assert st("GET", "/assets/%2e%2e/server.py") == 401 and st("GET", "/data/mindbaton.db") == 401     # no way out of assets/
+    assert st("GET", "/assets/%2e%2e/server.py") == 401 and st("GET", "/data/auth.db") == 401            # no way out of assets/
     _, h, _ = call("GET", "/")
     assert "frame-ancestors 'none'" in h["Content-Security-Policy"] and h["Referrer-Policy"] == "no-referrer" \
         and h["X-Content-Type-Options"] == "nosniff" and h["X-Frame-Options"] == "DENY", dict(h)
@@ -2268,9 +2540,9 @@ def authcheck():
     assert health["name"] == "mindbaton" and not health["authed"] and "captures" not in health, health
     # the session works, sliding; a cookie never works cross-site
     assert st("GET", "/graph", cookie=a) == 200 and st("GET", "/graph", cookie="forged") == 401
-    G.db.execute("UPDATE logins SET expires=?", (time.time() + 86400,))
+    AUTH.execute("UPDATE logins SET expires=?", (time.time() + 86400,))
     _, h, _ = call("GET", "/profile", cookie=a)
-    assert sess(h) == a and G.db.execute("SELECT expires FROM logins WHERE hash=?", (sha(a),)).fetchone()[0] > time.time() + 29 * 86400
+    assert sess(h) == a and AUTH.execute("SELECT expires FROM logins WHERE hash=?", (sha(a),)).fetchone()[0] > time.time() + 29 * 86400
     assert st("POST", "/capture", {"text": "I prefer dark mode everywhere"}, cookie=a, Origin="https://evil.example") == 403
     assert st("POST", "/capture", {"text": "I prefer dark mode everywhere"}, cookie=a, Origin=url) == 200
     # device tokens: full can export, connector reaches /mcp only (no forget), rate-limited, logged
@@ -2279,13 +2551,14 @@ def authcheck():
     conn = call("POST", "/api/tokens", {"name": "Claude.ai", "kind": "connector"}, cookie=a)[2]
     assert conn["scope"] == "connector" and st("POST", "/api/tokens", {"name": "x", "kind": "toaster"}, cookie=a) == 400
     assert st("GET", "/api/tokens", token=full["token"]) == 403 and st("POST", "/api/pair/approve", {"code": "x"}, token=full["token"]) == 403
+    assert st("GET", "/api/accounts", token=full["token"]) == 403 and st("PATCH", "/api/me", {}, token=full["token"]) == 403
     assert st("GET", "/export", token=full["token"]) == 200 and st("GET", "/recall?q=dark", token=full["token"]) == 200
     assert st("GET", "/export", token=conn["token"]) == 403 and st("DELETE", "/node/1", token=conn["token"]) == 403
     listed = call("POST", "/mcp", {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}, token=conn["token"])[2]
     assert "forget" not in {t["name"] for t in listed["result"]["tools"]}
-    forget = {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "forget", "arguments": {"id": 1}}}
-    assert call("POST", "/mcp", forget, token=conn["token"])[2]["result"]["isError"]
-    assert "forget" in open(ACCESS_LOG).read() and conn["token"] not in open(ACCESS_LOG).read()
+    assert rpc("forget", {"id": 1}, token=conn["token"])["result"]["isError"]
+    log = open(os.path.join(acct_dir(maya), "access.log")).read()
+    assert "forget" in log and conn["token"] not in log
     s, _, d = call("POST", f"/t/{conn['token']}/mcp", {"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
     assert s == 200 and d["result"]["tools"]
     assert st("GET", f"/t/{conn['token']}/graph") == 404 and st("GET", f"/t/{conn['token']}/health") == 200
@@ -2300,7 +2573,7 @@ def authcheck():
     assert dev["connector"]["recent"] and dev["mcp"]["recent"] and not dev["phone"]["recent"] and dev["extension"]["tokens"] == 0, dev
     assert st("DELETE", f"/api/tokens/{full['id']}", cookie=a) == 200 and st("GET", "/export", token=full["token"]) == 401
     assert st("DELETE", f"/api/tokens/{full['id']}", cookie=a) == 404
-    # pairing: approve -> the token is handed out once; deny; expiry
+    # pairing: approve -> the token is handed out once, to the approver's account; deny; expiry
     s, _, pr = call("POST", "/api/pair/start", {"name": "Chrome on laptop", "kind": "extension"})
     assert s == 200 and re.fullmatch(r"[A-Z]{4}-[A-Z]{4}", pr["code"]) and pr["expires_in"] == 600 and pr["approve_url"] == f"{url}/#pair/{pr['code']}", pr
     poll = lambda: call("GET", "/api/pair/poll?poll=" + pr["poll"])[2]
@@ -2318,25 +2591,187 @@ def authcheck():
     assert poll() == {"status": "expired"} and st("POST", "/api/pair/approve", {"code": pr["code"]}, cookie=a) == 404
     assert st("POST", "/api/pair/start", {"name": "x", "kind": "toaster"}) == 400 and not call("GET", "/api/pair/pending", cookie=a)[2]
     # password change keeps this session and signs out the others; logout-all ends every session, tokens stay
+    ATTEMPTS.clear()
     assert st("POST", "/api/auth/password", {"current": "wrong one!", "new": "battery staple"}, cookie=a) == 403
     assert st("POST", "/api/auth/password", {"current": "correct horse", "new": "short"}, cookie=a) == 400
     assert st("POST", "/api/auth/password", {"current": "correct horse", "new": "battery staple"}, cookie=a) == 200
     assert st("GET", "/graph", cookie=a) == 200 and st("GET", "/graph", cookie=b) == 401
-    assert st("POST", "/api/auth/login", {"password": "correct horse"}) == 401
-    s, h, _ = call("POST", "/api/auth/login", {"password": "battery staple"})
-    b = sess(h)
+    assert st("POST", "/api/auth/login", {"username": "maya", "password": "correct horse"}) == 401
+    b = login("maya", "battery staple")
     _, h, _ = call("POST", "/api/auth/logout", cookie=b)
     assert "Max-Age=0" in h["Set-Cookie"] and st("GET", "/graph", cookie=b) == 401 and st("GET", "/graph", cookie=a) == 200
-    b = sess(call("POST", "/api/auth/login", {"password": "battery staple"})[1])
+    b = login("maya", "battery staple")
     assert st("POST", "/api/auth/logout-all", cookie=a) == 200 and st("GET", "/graph", cookie=a) == 401 and st("GET", "/graph", cookie=b) == 401
     assert call("GET", "/health", token=got["token"])[2]["authed"]
-    # the owner's shell resets the password: first run again, device tokens keep working
-    assert re.fullmatch(r"\d{4}-\d{4}", reset_password(G.db)) and call("GET", "/api/auth/state")[2]["setup_needed"]
+    # this machine's shell resets a password: a new one, printed once; browsers signed out, devices keep working
+    who_, pw = reset_password()
+    assert who_ == "maya" and st("POST", "/api/auth/login", {"username": "maya", "password": "battery staple"}) == 401
+    a = login("maya", pw)
     assert call("GET", "/health", token=got["token"])[2]["authed"] and check_password("x" * 8, hash_password("x" * 8))
+
+    # ---- accounts: an admin adds people; each one's memory is theirs alone ----------------------------------------------
+    ATTEMPTS.clear()
+    s, _, sam = call("POST", "/api/accounts", {"username": "Sam", "password": "sam's secret", "display_name": "Sam"}, cookie=a)
+    assert s == 200 and sam["username"] == "sam" and sam["role"] == "member" and not sam["hidden"] and sam["color"] == COLORS[1], sam
+    assert st("POST", "/api/accounts", {"username": "sam", "password": "another one"}, cookie=a) == 409
+    assert st("POST", "/api/accounts", {"username": "x", "password": "another one"}, cookie=a) == 400
+    assert st("POST", "/api/accounts", {"username": "kim"}, cookie=a) == 400
+    assert st("POST", "/api/auth/login", {"password": "sam's secret"}) == 401          # two people: say who you are
+    b = login("SAM", "sam's secret")
+    assert call("GET", "/api/auth/state", cookie=b)[2]["account"]["username"] == "sam"
+    # both use every way in; Quillbeam is Maya's, Brassmoth is Sam's
+    for who_c, word in ((a, "Quillbeam"), (b, "Brassmoth")):
+        assert st("POST", "/capture", {"text": f"I keep bees and my hive is called {word}", "site": "chatgpt.com"}, cookie=who_c) == 200
+        assert st("POST", "/remember", {"text": f"The user named their bike {word}"}, cookie=who_c) == 200
+        assert st("POST", "/session", {"site": "claude.ai", "url": f"https://claude.ai/chat/{word}", "title": f"{word} plans",
+                                       "turns": [{"role": "user", "text": f"help me plan {word} for spring"},
+                                                 {"role": "assistant", "text": f"Sure, {word} needs a plan."}]}, cookie=who_c) == 200
+        assert "saved" in rpc("save_conversation", {"title": f"{word} notes", "summary": f"all about {word}"},
+                              cookie=who_c)["result"]["content"][0]["text"].lower()
+    assert "quillbeam" in txt("GET", "/handoff?session=quillbeam&to=chatgpt", cookie=a)   # waits for Maya's next ChatGPT chat
+    # AI caches are per account: the very same chat in two memories never shares a summary
+    same = {"site": "claude.ai", "url": "https://claude.ai/chat/garden", "title": "Garden", "turns": [
+        {"role": "user", "text": "plan my garden beds"}, {"role": "assistant", "text": "Start with the sunniest bed."}]}
+    ma, sa = call("POST", "/session", same, cookie=a)[2]["id"], call("POST", "/session", same, cookie=b)[2]["id"]
+    assert ma == sa, "same chat id in both memories, or this proves nothing"
+    ai._cache[ai.signature(graph(maya), ma, same["turns"])] = {"text": "## Summary\nMaya's Quillbeam plan", "by": "test"}
+    assert "quillbeam" in txt("GET", f"/session/summary?id={ma}", cookie=a) and "quillbeam" in txt("GET", f"/handoff?session={ma}", cookie=a)
+    assert "quillbeam" not in txt("GET", f"/session/summary?id={sa}", cookie=b) + txt("GET", f"/handoff?session={sa}", cookie=b)
+    mine = call("GET", "/recall?q=quillbeam", cookie=a)[2]["memories"]
+    assert mine and "Quillbeam" in mine[0]["text"], mine
+    sam_full, sam_conn = call("POST", "/api/tokens", {"name": "Sam's laptop", "kind": "mcp"}, cookie=b)[2]["token"], call("POST", "/api/tokens", {"name": "Sam's Claude", "kind": "connector"}, cookie=b)[2]["token"]
+    init = {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18", "clientInfo": {"name": "cursor"}}}
+    sam_mcp = call("POST", "/mcp", init, token=sam_full)[1]["Mcp-Session-Id"]
+    for cred in ({"cookie": b}, {"token": sam_full}):   # Sam, every route: never a trace of Maya
+        for path in ("/graph", "/profile", "/recall?q=quillbeam", "/recall?q=quillbeam&all=1", "/context", "/context?q=quillbeam",
+                     "/timeline", "/sessions", "/session", "/session?id=1", "/session?id=2", "/session?id=quillbeam", "/handoff",
+                     "/handoff?session=quillbeam", "/handoff/pending?host=chatgpt.com", "/neighbors?id=1&depth=3",
+                     "/neighbors?id=5&depth=3", "/path?from=1&to=9", "/export", "/export?format=cypher", "/export?format=graphml",
+                     "/ask?q=quillbeam", "/session/summary?id=1", "/status", "/health", "/ai", "/api/auth/state"):
+            out = txt("GET", path, **cred)
+            assert "quillbeam" not in out and "dark mode" not in out, (path, out[:300])
+        assert "brassmoth" in txt("GET", "/export", **cred) and "brassmoth" in txt("GET", "/recall?q=brassmoth", **cred)
+    assert "quillbeam" not in txt("GET", "/api/auth/state", cookie=b)                    # profiles: names only, no memory
+    for tool, args in (("context", {}), ("context", {"topic": "quillbeam"}), ("recall", {"query": "quillbeam"}), ("profile", {}),
+                       ("handoff", {}), ("handoff", {"session": "quillbeam"}), ("sessions", {}),
+                       ("remember", {"fact": "I have a cat named Pixel"}), ("forget", {"id": mine[0]["id"]})):
+        for cred in ({"token": sam_full}, {"cookie": b}):
+            assert "quillbeam" not in json.dumps(rpc(tool, args, **cred)).lower(), tool
+        if tool != "forget":
+            assert "quillbeam" not in json.dumps(call("POST", f"/t/{sam_conn}/mcp", {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                                                      "params": {"name": tool, "arguments": args}})[2]).lower(), tool
+    assert st("DELETE", f"/node/{mine[0]['id']}", cookie=b) == 200 and st("POST", "/rebuild", {}, cookie=b) == 200
+    assert "Quillbeam" in call("GET", "/recall?q=quillbeam", cookie=a)[2]["memories"][0]["text"], "Sam can't forget Maya's memories"
+    assert "quillbeam" in txt("GET", "/handoff/pending?host=chatgpt.com", cookie=a), "Sam didn't take Maya's hand-off"
+    assert "brassmoth" not in txt("GET", "/export", cookie=a) and "pixel" not in txt("GET", "/export?format=cypher", cookie=a)
+    assert "quillbeam" in txt("GET", "/export?format=graphml", cookie=a)
+    # MCP sessions: Maya can't ride Sam's, and Setup shows each person only their own apps
+    assert "Mcp-Session-Id" not in call("POST", "/mcp", {"jsonrpc": "2.0", "id": 2, "method": "ping"}, cookie=a, Mcp_Session_Id=sam_mcp)[1]
+    assert "Cursor" in call("GET", "/status", cookie=b)[2]["agents"]["apps"] and "Cursor" not in call("GET", "/status", cookie=a)[2]["agents"]["apps"]
+    assert call("GET", "/status", cookie=a)[2]["server"]["local_sources"] and not call("GET", "/status", cookie=b)[2]["server"]["local_sources"]
+    # tokens are per account: Sam's list and revocations never touch Maya's devices
+    sam_rows = call("GET", "/api/tokens", cookie=b)[2]
+    assert [r["name"] for r in sam_rows] == ["Sam's laptop", "Sam's Claude"], sam_rows
+    maya_tok = call("POST", "/api/tokens", {"name": "Maya's phone", "kind": "phone"}, cookie=a)[2]
+    assert st("DELETE", f"/api/tokens/{maya_tok['id']}", cookie=b) == 404 and "quillbeam" in txt("GET", "/export", token=maya_tok["token"])
+    # pairing binds the device to whoever approves it; nobody sees codes started elsewhere
+    pr = call("POST", "/api/pair/start", {"name": "Sam's Firefox", "kind": "extension"}, X_Forwarded_For="203.0.113.50")[2]
+    assert call("GET", "/api/pair/pending", cookie=a)[2] == [] and call("GET", "/api/pair/pending", cookie=b)[2] == []
+    assert [x["name"] for x in call("GET", f"/api/pair/pending?code={pr['code']}", cookie=b)[2]] == ["Sam's Firefox"]
+    assert st("POST", "/api/pair/approve", {"code": pr["code"]}, cookie=b) == 200
+    assert st("POST", "/api/pair/approve", {"code": pr["code"]}, cookie=a) == 404, "approved once, by Sam"
+    paired = call("GET", "/api/pair/poll?poll=" + pr["poll"])[2]["token"]
+    assert "quillbeam" not in txt("GET", "/export", token=paired)
+    assert st("POST", "/capture", {"text": "I bought a unicycle called Wobblefin"}, token=paired) == 200
+    assert "wobblefin" not in txt("GET", "/export", cookie=a) and "wobblefin" in txt("GET", "/export", cookie=b)
+    # admins only: people, roles and the install-wide AI key
+    for m, path, body in (("GET", "/api/accounts", None), ("POST", "/api/accounts", {"username": "eve", "password": "12345678"}),
+                          ("PATCH", f"/api/accounts/{maya}", {"role": "member"}), ("PATCH", f"/api/accounts/{sam['id']}", {"role": "admin"}),
+                          ("DELETE", f"/api/accounts/{maya}?confirm=maya", None), ("POST", "/settings/ai-key", {"provider": "groq", "key": "x"})):
+        assert call(m, path, body, cookie=b)[0] == 403, path
+    assert st("POST", "/settings/ai-key", {"provider": "groq", "key": "x"}, cookie=a) == 400
+    listed = call("GET", "/api/accounts", cookie=a)[2]
+    assert [x["username"] for x in listed] == ["maya", "sam"] and set(listed[0]) == set(ACCOUNT), listed
+    # everyone edits their own name and colour (nothing else); admins hide, promote, reset
+    s, _, d = call("PATCH", "/api/me", {"display_name": "  Sam   K ", "color": "#38bdf8", "role": "admin"}, cookie=b)
+    assert s == 200 and d["display_name"] == "Sam K" and d["color"] == "#38bdf8" and d["role"] == "member", d
+    assert st("PATCH", "/api/me", {"color": "blue"}, cookie=b) == 400 and st("PATCH", "/api/me", {"display_name": " "}, cookie=b) == 400
+    assert st("PATCH", f"/api/accounts/{sam['id']}", {"hidden": True}, cookie=a) == 200
+    assert [p_["username"] for p_ in call("GET", "/api/auth/state")[2]["profiles"]] == ["maya"], "hidden: not on the login screen"
+    assert st("GET", "/graph", cookie=login("sam", "sam's secret")) == 200, "hidden, but can still sign in by name"
+    assert st("PATCH", f"/api/accounts/{sam['id']}", {"hidden": "yes"}, cookie=a) == 400
+    assert st("PATCH", f"/api/accounts/{sam['id']}", {"username": "maya"}, cookie=a) == 409
+    assert st("PATCH", "/api/accounts/999", {"hidden": False}, cookie=a) == 404 and st("GET", "/api/accounts/1", cookie=a) == 404
+    assert st("PATCH", f"/api/accounts/{sam['id']}", {"password": "sam new pass"}, cookie=a) == 200
+    assert st("GET", "/graph", cookie=b) == 401 and st("GET", "/export", token=sam_full) == 200, "reset: signed out, devices stay"
+    b = login("sam", "sam new pass")
+    # the last admin can't be demoted or deleted
+    assert st("PATCH", f"/api/accounts/{maya}", {"role": "member"}, cookie=a) == 409
+    assert st("DELETE", f"/api/accounts/{maya}?confirm=maya", cookie=a) == 409
+    assert st("PATCH", f"/api/accounts/{sam['id']}", {"role": "admin"}, cookie=a) == 200
+    assert st("PATCH", f"/api/accounts/{maya}", {"role": "member"}, cookie=a) == 200 and st("GET", "/api/accounts", cookie=a) == 403
+    assert st("DELETE", f"/api/accounts/{sam['id']}?confirm=sam", cookie=b) == 409 and st("PATCH", f"/api/accounts/{sam['id']}", {"role": "member"}, cookie=b) == 409
+    assert st("PATCH", f"/api/accounts/{maya}", {"role": "admin"}, cookie=b) == 200 and st("GET", "/api/accounts", cookie=a) == 200
+    # deleting an account deletes its memory, sessions and devices (after an explicit confirm)
+    kim = call("POST", "/api/accounts", {"username": "kim", "password": "kim password"}, cookie=a)[2]
+    k = login("kim", "kim password")
+    kim_tok = call("POST", "/api/tokens", {"name": "Kim's phone", "kind": "phone"}, cookie=k)[2]["token"]
+    assert st("POST", "/capture", {"text": "I collect vintage typewriters"}, cookie=k) == 200 and os.path.exists(acct_dir(kim["id"]))
+    assert st("DELETE", f"/api/accounts/{kim['id']}", cookie=a) == 400 and st("DELETE", f"/api/accounts/{kim['id']}?confirm=sam", cookie=a) == 400
+    assert call("DELETE", f"/api/accounts/{kim['id']}?confirm=kim", cookie=a)[2] == {"deleted": True, "id": kim["id"]}
+    assert not os.path.exists(acct_dir(kim["id"])) and kim["id"] not in GRAPHS
+    assert st("GET", "/graph", cookie=k) == 401 and st("GET", "/graph", token=kim_tok) == 401 and st("DELETE", f"/api/accounts/{kim['id']}?confirm=kim", cookie=a) == 404
+    new = call("POST", "/api/accounts", {"username": "kim", "password": "kim password"}, cookie=a)[2]
+    assert new["id"] > kim["id"] and "typewriter" not in txt("GET", "/export", cookie=login("kim", "kim password")), "ids never reused"
+    # throttling per username: misses spread over many addresses still lock that name, and only that name
+    FAILS.clear()
+    ATTEMPTS.clear()
+    for i in range(5):
+        assert st("POST", "/api/auth/login", {"username": "sam", "password": "nope nope"}, X_Forwarded_For=f"198.51.100.{i}") == 401
+    assert st("POST", "/api/auth/login", {"username": "sam", "password": "sam new pass"}, X_Forwarded_For="198.51.100.99") == 429
+    assert st("POST", "/api/auth/login", {"username": "maya", "password": pw}, X_Forwarded_For="198.51.100.98") == 200
+    FAILS.clear()
+    ATTEMPTS.clear()
+
+    # ---- migration: a single-owner mindbaton.db, and an old memgraph.db without auth, become the admin's memory ----------
+    old = os.path.join(tmp, "owner")
+    os.makedirs(old)
+    g = Graph(os.path.join(old, "mindbaton.db"))
+    g.ingest("I keep a bonsai named Pebblewick", "chatgpt.com")
+    g.db.executescript("""CREATE TABLE tokens(id INTEGER PRIMARY KEY, name TEXT, kind TEXT, scope TEXT, hash TEXT UNIQUE, created REAL,
+        last_used REAL, revoked REAL); CREATE TABLE logins(hash TEXT PRIMARY KEY, created REAL, expires REAL);""")
+    g.meta("owner", hash_password("old owner pw"))
+    g.db.execute("INSERT INTO tokens(id, name, kind, scope, hash, created) VALUES(7, 'Old laptop', 'mcp', 'full', ?, ?)", (sha("mb_legacy"), time.time()))
+    g.db.execute("INSERT INTO logins VALUES(?,?,?)", (sha("old-session"), time.time(), time.time() + 86400))
+    g.db.close()
+    aid = open_data(old)
+    assert aid and account(aid)["username"] == "admin" and account(aid)["role"] == "admin" and not setup_needed()
+    assert os.path.exists(os.path.join(old, "mindbaton.db.pre-accounts.bak")) and not os.path.exists(os.path.join(old, "mindbaton.db"))
+    mem = sqlite3.connect(os.path.join(acct_dir(aid), "memory.db"))
+    assert not mem.execute("SELECT 1 FROM sqlite_master WHERE name IN ('tokens', 'logins')").fetchone()
+    assert not mem.execute("SELECT 1 FROM meta WHERE k='owner'").fetchone()
+    mem.close()
+    assert "pebblewick" in txt("GET", "/export", cookie="old-session") and "pebblewick" in txt("GET", "/export", token="mb_legacy")
+    assert call("GET", "/api/tokens", cookie="old-session")[2][0]["id"] == 7
+    assert st("GET", "/graph", cookie=login("admin", "old owner pw")) == 200 and st("POST", "/api/auth/login", {"password": "old owner pw"}) == 200
+    assert open_data(old) is None and AUTH.execute("SELECT count(*) FROM accounts").fetchone()[0] == 1           # idempotent
+    older = os.path.join(tmp, "memgraph")
+    os.makedirs(older)
+    g = Graph(os.path.join(older, "memgraph.db"))
+    g.ingest("My kayak is called Driftwren", "claude.ai")
+    g.db.close()
+    aid = open_data(older)
+    assert aid and setup_needed() and call("GET", "/api/auth/state")[2]["profiles"] == [] and os.path.exists(older + "/memgraph.db.pre-accounts.bak")
+    s, h, d = call("POST", "/api/auth/setup", {"username": "rui", "password": "rui password"})
+    assert s == 200 and d["account"]["id"] == aid and d["account"]["username"] == "rui" and "driftwren" in txt("GET", "/export", cookie=sess(h))
+    assert open_data(older) is None and AUTH.execute("SELECT count(*) FROM accounts").fetchone()[0] == 1
     srv.shutdown()
     srv.server_close()
-    os.remove(ACCESS_LOG)
-    os.rmdir(os.path.dirname(ACCESS_LOG))
+    for g in GRAPHS.values():
+        g.db.close()
+    GRAPHS.clear()
+    AUTH.close()
+    shutil.rmtree(tmp)
     print("auth ok")
 
 
@@ -2349,26 +2784,28 @@ if __name__ == "__main__":
         selfcheck()
         authcheck()
         sys.exit()
-    os.makedirs(DATA, mode=0o700, exist_ok=True)
     link = lambda code: f"{PUBLIC_URL or f'http://{HOST if HOST not in ('0.0.0.0', '::', '') else 'localhost'}:{PORT}'}/?code={code}"
-    if "--setup-code" in sys.argv or "--reset-password" in sys.argv:  # the owner's shell, no server needed
-        db = sqlite3.connect(DB, isolation_level=None)
-        db.executescript(SCHEMA)
+    if open_data(DATA):
+        print("Moved the single-owner database into the first admin account (username: admin); the original is kept "
+              "next to it as *.pre-accounts.bak", flush=True)
+    if "--setup-code" in sys.argv or "--reset-password" in sys.argv:  # this machine's shell, no server needed
         if "--reset-password" in sys.argv:
-            print("Password removed and every browser signed out (device tokens still work).")
-        code = reset_password(db) if "--reset-password" in sys.argv else setup_code(db)
-        print(f"Setup code: {code} — open {link(code)}" if code else "Mindbaton already has an owner. Forgot the password? "
-              "Run: python3 server.py --reset-password")
-        sys.exit()
-    G = Graph()
-    G.naming = True  # only the running server asks the AI for topic names (never tests or the benchmark)
-    G.dirty = True
-    code = setup_code(G.db)
+            i = sys.argv.index("--reset-password") + 1
+            got = reset_password(sys.argv[i] if i < len(sys.argv) and not sys.argv[i].startswith("-") else None)
+            if got:
+                sys.exit(print(f"New password for {got[0]}: {got[1]}\nSign in with it, then change it in Settings → Account. "
+                               "That account's browsers were signed out; its devices keep working."))
+            if not setup_needed():
+                sys.exit(f"No account named {sys.argv[i]!r}.")
+        code = setup_code()
+        sys.exit(print(f"Setup code: {code} — open {link(code)}" if code else "Mindbaton already has accounts. Forgot a "
+                       "password? Run: python3 server.py --reset-password [username]"))
+    NAMING = True  # only the running server asks the AI for topic names (never tests or the benchmark)
+    code = setup_code()
     if code:
         print(f"Setup code: {code} — open {link(code)}", flush=True)
-    if os.environ.get("MINDBATON_WATCH_CLAUDE", "1") != "0" and not G.meta("demo"):  # a demo never picks up real transcripts
-        live.watch_claude_code(G, LOCK)
+    if os.environ.get("MINDBATON_WATCH_CLAUDE", "1") != "0":  # this machine's Claude Code transcripts feed the first admin
+        live.watch_claude_code(lambda: (a := local_account()) and graph(a), LOCK)
     print(f"Mindbaton {VERSION} on http://{HOST}:{PORT} · data in {DATA}", flush=True)
-    # ponytail: one lock around the graph; per-thread connections + WAL readers if concurrent load ever matters
     ThreadingHTTPServer.daemon_threads = True
     ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()

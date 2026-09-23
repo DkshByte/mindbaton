@@ -9,7 +9,8 @@
     MINDBATON_URL=http://host:3004 MINDBATON_TOKEN=mb_... python3 import_memories.py   # a server elsewhere
 
 It talks to the running server over HTTP, like any device. Next to the server (same data dir) it needs no setup: it makes
-itself a temporary token in the local database and revokes it when done. Elsewhere, pass a token from Settings → Devices.
+itself a temporary token for the first admin account (this machine's own memories are theirs, like its Claude Code
+transcripts) and revokes it when done. For another account, or a server elsewhere, pass a token from Settings → Devices.
 
 Each note becomes short standalone statements ("the user prefers X" -> "I prefer X"), filed under the note's name so
 they sort into one topic. Safe to re-run: statements already sent are remembered in <data dir>/imported.json and skipped.
@@ -69,11 +70,15 @@ def post(body):
 
 
 def local_token():
-    """A token for this run only, written straight into the local database (this shell can read the data = owner)."""
-    if not os.path.exists(server.DB):
-        sys.exit(f"No Mindbaton database at {server.DB}: set MINDBATON_TOKEN (Settings → Devices) and MINDBATON_URL")
-    db = sqlite3.connect(server.DB, isolation_level=None, timeout=10)
-    t = server.issue_token(db, "import_memories.py (temporary)", "agent")
+    """A token for this run only, for the first admin, written straight into the local auth database (this shell can
+    read the data dir, so it may)."""
+    path = os.path.join(server.DATA, "auth.db")
+    db = sqlite3.connect(path, isolation_level=None, timeout=10) if os.path.exists(path) else None
+    admin = db and db.execute("SELECT id FROM accounts WHERE role='admin' ORDER BY id LIMIT 1").fetchone()
+    if not admin:
+        sys.exit(f"No Mindbaton accounts in {server.DATA} (start the server and set it up first), or set MINDBATON_TOKEN "
+                 "(Settings → Devices) and MINDBATON_URL")
+    t = server.issue_token(db, admin[0], "import_memories.py (temporary)", "agent")
     return lambda: db.execute("UPDATE tokens SET revoked=? WHERE id=?", (time.time(), t["id"])), t["token"]
 
 
