@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Mindbaton placeholder mark: a relay baton handing forward into three linked memory nodes.
+       Replace this file with the final logo, then run make-icons.mjs; every icon is derived from it.
+       Newest node takes --mb-accent when set, else currentColor. -->
+  <path fill="none" stroke-width="5" d="M3.5 20.5 8.75 15.25"/>
+  <path fill="none" stroke-width="2" d="M8.75 15.25 12.25 11.75H20V4"/>
+  <g stroke="none">
+    <circle cx="12.25" cy="11.75" r="2.4"/>
+    <circle cx="20" cy="11.75" r="2.4"/>
+    <circle cx="20" cy="4" r="2.4" style="fill:var(--mb-accent,currentColor)"/>
+  </g>
+</svg>

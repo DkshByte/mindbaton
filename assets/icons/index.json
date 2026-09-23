@@ -1,0 +1,1367 @@
+{
+ "1password": {
+  "hex": "#145FE4",
+  "mono": true,
+  "src": "si/1password.svg"
+ },
+ "ChatGPT": {
+  "hex": null,
+  "mono": true,
+  "src": "lh/openai.svg"
+ },
+ "Claude": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/claude-color.svg"
+ },
+ "Claude Code": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/claudecode-color.svg"
+ },
+ "Codex": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/codex-color.svg"
+ },
+ "Copilot": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/copilot-color.svg"
+ },
+ "Cursor": {
+  "hex": null,
+  "mono": true,
+  "src": "lh/cursor.svg"
+ },
+ "DeepSeek": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/deepseek-color.svg"
+ },
+ "Gemini": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/gemini-color.svg"
+ },
+ "Grok": {
+  "hex": null,
+  "mono": true,
+  "src": "lh/grok.svg"
+ },
+ "Mistral": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/mistral-color.svg"
+ },
+ "Perplexity": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/perplexity-color.svg"
+ },
+ "Poe": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/poe-color.svg"
+ },
+ "_models": [
+  [
+   "^(rtx|gtx|quadro)",
+   "nvidia"
+  ],
+  [
+   "^arc ",
+   "intel"
+  ],
+  [
+   "^rx ",
+   "amd"
+  ],
+  [
+   "^ryzen",
+   "amd"
+  ],
+  [
+   "^intel",
+   "intel"
+  ],
+  [
+   "^thinkpad",
+   "lenovo"
+  ],
+  [
+   "^(macbook|iphone|ipad|imac|mac mini)",
+   "apple"
+  ],
+  [
+   "^dell",
+   "dell"
+  ],
+  [
+   "^raspberry pi",
+   "raspberrypi"
+  ],
+  [
+   "^pixel",
+   "google"
+  ],
+  [
+   "^galaxy",
+   "samsung"
+  ],
+  [
+   "^oneplus",
+   "oneplus"
+  ]
+ ],
+ "adguardhome": {
+  "hex": "#68BC71",
+  "mono": true,
+  "src": "si/adguard.svg"
+ },
+ "aftereffects": {
+  "hex": null,
+  "mono": false,
+  "src": "dv/aftereffects.svg"
+ },
+ "amd": {
+  "hex": "#ED1C24",
+  "mono": true,
+  "src": "si/amd.svg"
+ },
+ "android": {
+  "hex": "#3DDC84",
+  "mono": true,
+  "src": "si/android.svg"
+ },
+ "angular": {
+  "hex": null,
+  "mono": true,
+  "src": "si/angular.svg"
+ },
+ "ansible": {
+  "hex": "#EE0000",
+  "mono": true,
+  "src": "si/ansible.svg"
+ },
+ "anthropic": {
+  "hex": null,
+  "mono": true,
+  "src": "lh/anthropic.svg"
+ },
+ "apache": {
+  "hex": "#D22128",
+  "mono": true,
+  "src": "si/apache.svg"
+ },
+ "apple": {
+  "hex": null,
+  "mono": true,
+  "src": "si/apple.svg"
+ },
+ "arch": {
+  "hex": "#1793D1",
+  "mono": true,
+  "src": "si/archlinux.svg"
+ },
+ "arduino": {
+  "hex": "#00878F",
+  "mono": true,
+  "src": "si/arduino.svg"
+ },
+ "astro": {
+  "hex": "#BC52EE",
+  "mono": true,
+  "src": "si/astro.svg"
+ },
+ "aws": {
+  "hex": null,
+  "mono": false,
+  "src": "dv/aws.svg"
+ },
+ "azure": {
+  "hex": null,
+  "mono": false,
+  "src": "dv/azure.svg"
+ },
+ "bash": {
+  "hex": "#4EAA25",
+  "mono": true,
+  "src": "si/gnubash.svg"
+ },
+ "bitbucket": {
+  "hex": null,
+  "mono": true,
+  "src": "si/bitbucket.svg"
+ },
+ "bitwarden": {
+  "hex": "#175DDC",
+  "mono": true,
+  "src": "si/bitwarden.svg"
+ },
+ "blender": {
+  "hex": "#E87D0D",
+  "mono": true,
+  "src": "si/blender.svg"
+ },
+ "bootstrap": {
+  "hex": "#7952B3",
+  "mono": true,
+  "src": "si/bootstrap.svg"
+ },
+ "brave": {
+  "hex": "#FB542B",
+  "mono": true,
+  "src": "si/brave.svg"
+ },
+ "bun": {
+  "hex": null,
+  "mono": true,
+  "src": "si/bun.svg"
+ },
+ "c#": {
+  "hex": null,
+  "mono": false,
+  "src": "dv/c#.svg"
+ },
+ "c++": {
+  "hex": null,
+  "mono": false,
+  "src": "dv/c++.svg"
+ },
+ "caddy": {
+  "hex": "#1F88C0",
+  "mono": true,
+  "src": "si/caddy.svg"
+ },
+ "canva": {
+  "hex": null,
+  "mono": false,
+  "src": "dv/canva.svg"
+ },
+ "chatgpt": {
+  "hex": null,
+  "mono": true,
+  "src": "lh/openai.svg"
+ },
+ "chrome": {
+  "hex": "#4285F4",
+  "mono": true,
+  "src": "si/googlechrome.svg"
+ },
+ "claude": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/claude-color.svg"
+ },
+ "claude code": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/claudecode-color.svg"
+ },
+ "cloudflare": {
+  "hex": "#F38020",
+  "mono": true,
+  "src": "si/cloudflare.svg"
+ },
+ "codex": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/codex-color.svg"
+ },
+ "comfyui": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/comfyui-color.svg"
+ },
+ "copilot": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/copilot-color.svg"
+ },
+ "css": {
+  "hex": null,
+  "mono": true,
+  "src": "si/css.svg"
+ },
+ "cursor": {
+  "hex": null,
+  "mono": true,
+  "src": "lh/cursor.svg"
+ },
+ "cursoride": {
+  "hex": null,
+  "mono": true,
+  "src": "lh/cursor.svg"
+ },
+ "d3js": {
+  "hex": "#F9A03C",
+  "mono": true,
+  "src": "si/d3.svg"
+ },
+ "dart": {
+  "hex": "#0175C2",
+  "mono": true,
+  "src": "si/dart.svg"
+ },
+ "davinciresolve": {
+  "hex": null,
+  "mono": true,
+  "src": "si/davinciresolve.svg"
+ },
+ "debian": {
+  "hex": null,
+  "mono": true,
+  "src": "si/debian.svg"
+ },
+ "deepseek": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/deepseek-color.svg"
+ },
+ "dell": {
+  "hex": "#007DB8",
+  "mono": true,
+  "src": "si/dell.svg"
+ },
+ "deno": {
+  "hex": null,
+  "mono": true,
+  "src": "si/deno.svg"
+ },
+ "digitalocean": {
+  "hex": "#0080FF",
+  "mono": true,
+  "src": "si/digitalocean.svg"
+ },
+ "discord": {
+  "hex": "#5865F2",
+  "mono": true,
+  "src": "si/discord.svg"
+ },
+ "django": {
+  "hex": null,
+  "mono": true,
+  "src": "si/django.svg"
+ },
+ "docker": {
+  "hex": "#2496ED",
+  "mono": true,
+  "src": "si/docker.svg"
+ },
+ "dockercompose": {
+  "hex": "#2496ED",
+  "mono": true,
+  "src": "si/docker.svg"
+ },
+ "elasticsearch": {
+  "hex": null,
+  "mono": true,
+  "src": "si/elasticsearch.svg"
+ },
+ "electron": {
+  "hex": "#47848F",
+  "mono": true,
+  "src": "si/electron.svg"
+ },
+ "elixir": {
+  "hex": null,
+  "mono": true,
+  "src": "si/elixir.svg"
+ },
+ "emacs": {
+  "hex": "#7F5AB6",
+  "mono": true,
+  "src": "si/gnuemacs.svg"
+ },
+ "emby": {
+  "hex": "#52B54B",
+  "mono": true,
+  "src": "si/emby.svg"
+ },
+ "eslint": {
+  "hex": null,
+  "mono": true,
+  "src": "si/eslint.svg"
+ },
+ "esp32": {
+  "hex": "#E7352C",
+  "mono": true,
+  "src": "si/espressif.svg"
+ },
+ "esp8266": {
+  "hex": "#E7352C",
+  "mono": true,
+  "src": "si/espressif.svg"
+ },
+ "express": {
+  "hex": null,
+  "mono": true,
+  "src": "si/express.svg"
+ },
+ "fastapi": {
+  "hex": "#009688",
+  "mono": true,
+  "src": "si/fastapi.svg"
+ },
+ "fedora": {
+  "hex": "#51A2DA",
+  "mono": true,
+  "src": "si/fedora.svg"
+ },
+ "ffmpeg": {
+  "hex": "#007808",
+  "mono": true,
+  "src": "si/ffmpeg.svg"
+ },
+ "figma": {
+  "hex": "#F24E1E",
+  "mono": true,
+  "src": "si/figma.svg"
+ },
+ "firebase": {
+  "hex": "#DD2C00",
+  "mono": true,
+  "src": "si/firebase.svg"
+ },
+ "firefox": {
+  "hex": "#FF7139",
+  "mono": true,
+  "src": "si/firefoxbrowser.svg"
+ },
+ "flask": {
+  "hex": "#3BABC3",
+  "mono": true,
+  "src": "si/flask.svg"
+ },
+ "flutter": {
+  "hex": null,
+  "mono": true,
+  "src": "si/flutter.svg"
+ },
+ "framer": {
+  "hex": "#0055FF",
+  "mono": true,
+  "src": "si/framer.svg"
+ },
+ "gcp": {
+  "hex": "#4285F4",
+  "mono": true,
+  "src": "si/googlecloud.svg"
+ },
+ "gemini": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/gemini-color.svg"
+ },
+ "gemma": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/gemma-color.svg"
+ },
+ "git": {
+  "hex": "#F03C2E",
+  "mono": true,
+  "src": "si/git.svg"
+ },
+ "github": {
+  "hex": null,
+  "mono": true,
+  "src": "si/github.svg"
+ },
+ "githubactions": {
+  "hex": "#2088FF",
+  "mono": true,
+  "src": "si/githubactions.svg"
+ },
+ "githubcopilot": {
+  "hex": null,
+  "mono": true,
+  "src": "lh/githubcopilot.svg"
+ },
+ "gitlab": {
+  "hex": "#FC6D26",
+  "mono": true,
+  "src": "si/gitlab.svg"
+ },
+ "gmail": {
+  "hex": "#EA4335",
+  "mono": true,
+  "src": "si/gmail.svg"
+ },
+ "godot": {
+  "hex": "#478CBF",
+  "mono": true,
+  "src": "si/godotengine.svg"
+ },
+ "golang": {
+  "hex": "#00ADD8",
+  "mono": true,
+  "src": "si/go.svg"
+ },
+ "google": {
+  "hex": "#4285F4",
+  "mono": true,
+  "src": "si/google.svg"
+ },
+ "grafana": {
+  "hex": "#F46800",
+  "mono": true,
+  "src": "si/grafana.svg"
+ },
+ "graphql": {
+  "hex": "#E10098",
+  "mono": true,
+  "src": "si/graphql.svg"
+ },
+ "grok": {
+  "hex": null,
+  "mono": true,
+  "src": "lh/grok.svg"
+ },
+ "haskell": {
+  "hex": null,
+  "mono": true,
+  "src": "si/haskell.svg"
+ },
+ "heroku": {
+  "hex": null,
+  "mono": false,
+  "src": "dv/heroku.svg"
+ },
+ "hetzner": {
+  "hex": "#D50C2D",
+  "mono": true,
+  "src": "si/hetzner.svg"
+ },
+ "homeassistant": {
+  "hex": "#18BCF2",
+  "mono": true,
+  "src": "si/homeassistant.svg"
+ },
+ "homebrew": {
+  "hex": "#FBB040",
+  "mono": true,
+  "src": "si/homebrew.svg"
+ },
+ "html": {
+  "hex": "#E34F26",
+  "mono": true,
+  "src": "si/html5.svg"
+ },
+ "huggingface": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/huggingface-color.svg"
+ },
+ "illustrator": {
+  "hex": null,
+  "mono": false,
+  "src": "dv/illustrator.svg"
+ },
+ "immich": {
+  "hex": null,
+  "mono": true,
+  "src": "si/immich.svg"
+ },
+ "influxdb": {
+  "hex": "#22ADF6",
+  "mono": true,
+  "src": "si/influxdb.svg"
+ },
+ "infosys": {
+  "hex": "#007CC3",
+  "mono": true,
+  "src": "si/infosys.svg"
+ },
+ "instagram": {
+  "hex": "#FF0069",
+  "mono": true,
+  "src": "si/instagram.svg"
+ },
+ "intel": {
+  "hex": "#0071C5",
+  "mono": true,
+  "src": "si/intel.svg"
+ },
+ "intellij": {
+  "hex": null,
+  "mono": true,
+  "src": "si/intellijidea.svg"
+ },
+ "ios": {
+  "hex": null,
+  "mono": true,
+  "src": "si/ios.svg"
+ },
+ "ipad": {
+  "hex": null,
+  "mono": true,
+  "src": "si/apple.svg"
+ },
+ "iphone": {
+  "hex": null,
+  "mono": true,
+  "src": "si/apple.svg"
+ },
+ "java": {
+  "hex": null,
+  "mono": false,
+  "src": "dv/java.svg"
+ },
+ "javascript": {
+  "hex": "#F7DF1E",
+  "mono": true,
+  "src": "si/javascript.svg"
+ },
+ "jellyfin": {
+  "hex": "#00A4DC",
+  "mono": true,
+  "src": "si/jellyfin.svg"
+ },
+ "jenkins": {
+  "hex": "#D24939",
+  "mono": true,
+  "src": "si/jenkins.svg"
+ },
+ "jest": {
+  "hex": null,
+  "mono": true,
+  "src": "si/jest.svg"
+ },
+ "jquery": {
+  "hex": "#0769AD",
+  "mono": true,
+  "src": "si/jquery.svg"
+ },
+ "jupyter": {
+  "hex": "#F37626",
+  "mono": true,
+  "src": "si/jupyter.svg"
+ },
+ "kafka": {
+  "hex": null,
+  "mono": true,
+  "src": "si/apachekafka.svg"
+ },
+ "kotlin": {
+  "hex": "#7F52FF",
+  "mono": true,
+  "src": "si/kotlin.svg"
+ },
+ "kubernetes": {
+  "hex": "#326CE5",
+  "mono": true,
+  "src": "si/kubernetes.svg"
+ },
+ "langchain": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/langchain-color.svg"
+ },
+ "laravel": {
+  "hex": "#FF2D20",
+  "mono": true,
+  "src": "si/laravel.svg"
+ },
+ "lenovo": {
+  "hex": "#E2231A",
+  "mono": true,
+  "src": "si/lenovo.svg"
+ },
+ "linkedin": {
+  "hex": null,
+  "mono": false,
+  "src": "dv/linkedin.svg"
+ },
+ "linux": {
+  "hex": "#FCC624",
+  "mono": true,
+  "src": "si/linux.svg"
+ },
+ "llama": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/meta-color.svg"
+ },
+ "lua": {
+  "hex": null,
+  "mono": true,
+  "src": "si/lua.svg"
+ },
+ "macbook": {
+  "hex": null,
+  "mono": true,
+  "src": "si/apple.svg"
+ },
+ "macos": {
+  "hex": null,
+  "mono": true,
+  "src": "si/macos.svg"
+ },
+ "manjaro": {
+  "hex": "#35BFA4",
+  "mono": true,
+  "src": "si/manjaro.svg"
+ },
+ "mariadb": {
+  "hex": null,
+  "mono": true,
+  "src": "si/mariadb.svg"
+ },
+ "microsoft": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/microsoft-color.svg"
+ },
+ "midjourney": {
+  "hex": null,
+  "mono": true,
+  "src": "lh/midjourney.svg"
+ },
+ "mint": {
+  "hex": "#86BE43",
+  "mono": true,
+  "src": "si/linuxmint.svg"
+ },
+ "mistral": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/mistral-color.svg"
+ },
+ "mongodb": {
+  "hex": "#47A248",
+  "mono": true,
+  "src": "si/mongodb.svg"
+ },
+ "mqtt": {
+  "hex": null,
+  "mono": true,
+  "src": "si/mqtt.svg"
+ },
+ "mysql": {
+  "hex": "#4479A1",
+  "mono": true,
+  "src": "si/mysql.svg"
+ },
+ "n8n": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/n8n-color.svg"
+ },
+ "neovim": {
+  "hex": "#57A143",
+  "mono": true,
+  "src": "si/neovim.svg"
+ },
+ "netdata": {
+  "hex": "#00AB44",
+  "mono": true,
+  "src": "si/netdata.svg"
+ },
+ "netflix": {
+  "hex": "#E50914",
+  "mono": true,
+  "src": "si/netflix.svg"
+ },
+ "netlify": {
+  "hex": "#00C7B7",
+  "mono": true,
+  "src": "si/netlify.svg"
+ },
+ "nextcloud": {
+  "hex": "#0082C9",
+  "mono": true,
+  "src": "si/nextcloud.svg"
+ },
+ "nextdns": {
+  "hex": "#007BFF",
+  "mono": true,
+  "src": "si/nextdns.svg"
+ },
+ "nextjs": {
+  "hex": null,
+  "mono": true,
+  "src": "si/nextdotjs.svg"
+ },
+ "nginx": {
+  "hex": "#009639",
+  "mono": true,
+  "src": "si/nginx.svg"
+ },
+ "nix": {
+  "hex": "#5277C3",
+  "mono": true,
+  "src": "si/nixos.svg"
+ },
+ "nixos": {
+  "hex": "#5277C3",
+  "mono": true,
+  "src": "si/nixos.svg"
+ },
+ "nodejs": {
+  "hex": "#5FA04E",
+  "mono": true,
+  "src": "si/nodedotjs.svg"
+ },
+ "notion": {
+  "hex": null,
+  "mono": true,
+  "src": "si/notion.svg"
+ },
+ "npm": {
+  "hex": "#CB3837",
+  "mono": true,
+  "src": "si/npm.svg"
+ },
+ "numpy": {
+  "hex": null,
+  "mono": true,
+  "src": "si/numpy.svg"
+ },
+ "nuxt": {
+  "hex": "#00DC82",
+  "mono": true,
+  "src": "si/nuxt.svg"
+ },
+ "nvidia": {
+  "hex": "#76B900",
+  "mono": true,
+  "src": "si/nvidia.svg"
+ },
+ "obsidian": {
+  "hex": "#7C3AED",
+  "mono": true,
+  "src": "si/obsidian.svg"
+ },
+ "ollama": {
+  "hex": null,
+  "mono": true,
+  "src": "lh/ollama.svg"
+ },
+ "oneplus": {
+  "hex": "#F5010C",
+  "mono": true,
+  "src": "si/oneplus.svg"
+ },
+ "openai": {
+  "hex": null,
+  "mono": true,
+  "src": "lh/openai.svg"
+ },
+ "opencv": {
+  "hex": null,
+  "mono": true,
+  "src": "si/opencv.svg"
+ },
+ "openvpn": {
+  "hex": "#EA7E20",
+  "mono": true,
+  "src": "si/openvpn.svg"
+ },
+ "opera": {
+  "hex": "#FF1B2D",
+  "mono": true,
+  "src": "si/opera.svg"
+ },
+ "pandas": {
+  "hex": null,
+  "mono": true,
+  "src": "si/pandas.svg"
+ },
+ "penpot": {
+  "hex": null,
+  "mono": true,
+  "src": "si/penpot.svg"
+ },
+ "perplexity": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/perplexity-color.svg"
+ },
+ "photoshop": {
+  "hex": null,
+  "mono": false,
+  "src": "dv/photoshop.svg"
+ },
+ "php": {
+  "hex": "#777BB4",
+  "mono": true,
+  "src": "si/php.svg"
+ },
+ "pihole": {
+  "hex": null,
+  "mono": true,
+  "src": "si/pihole.svg"
+ },
+ "pip": {
+  "hex": "#3775A9",
+  "mono": true,
+  "src": "si/pypi.svg"
+ },
+ "playwright": {
+  "hex": null,
+  "mono": false,
+  "src": "dv/playwright.svg"
+ },
+ "plex": {
+  "hex": "#EBAF00",
+  "mono": true,
+  "src": "si/plex.svg"
+ },
+ "podman": {
+  "hex": null,
+  "mono": true,
+  "src": "si/podman.svg"
+ },
+ "poe": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/poe-color.svg"
+ },
+ "popos": {
+  "hex": "#48B9C7",
+  "mono": true,
+  "src": "si/popos.svg"
+ },
+ "portainer": {
+  "hex": "#13BEF9",
+  "mono": true,
+  "src": "si/portainer.svg"
+ },
+ "postgresql": {
+  "hex": "#4169E1",
+  "mono": true,
+  "src": "si/postgresql.svg"
+ },
+ "postman": {
+  "hex": "#FF6C37",
+  "mono": true,
+  "src": "si/postman.svg"
+ },
+ "powershell": {
+  "hex": null,
+  "mono": false,
+  "src": "dv/powershell.svg"
+ },
+ "premiere": {
+  "hex": null,
+  "mono": false,
+  "src": "dv/premiere.svg"
+ },
+ "prettier": {
+  "hex": "#F7B93E",
+  "mono": true,
+  "src": "si/prettier.svg"
+ },
+ "prometheus": {
+  "hex": "#E6522C",
+  "mono": true,
+  "src": "si/prometheus.svg"
+ },
+ "proxmox": {
+  "hex": "#E57000",
+  "mono": true,
+  "src": "si/proxmox.svg"
+ },
+ "puppeteer": {
+  "hex": "#40B5A4",
+  "mono": true,
+  "src": "si/puppeteer.svg"
+ },
+ "pycharm": {
+  "hex": null,
+  "mono": true,
+  "src": "si/pycharm.svg"
+ },
+ "pytest": {
+  "hex": "#0A9EDC",
+  "mono": true,
+  "src": "si/pytest.svg"
+ },
+ "python": {
+  "hex": "#3776AB",
+  "mono": true,
+  "src": "si/python.svg"
+ },
+ "pytorch": {
+  "hex": "#EE4C2C",
+  "mono": true,
+  "src": "si/pytorch.svg"
+ },
+ "qbittorrent": {
+  "hex": "#2F67BA",
+  "mono": true,
+  "src": "si/qbittorrent.svg"
+ },
+ "qwen": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/qwen-color.svg"
+ },
+ "rabbitmq": {
+  "hex": "#FF6600",
+  "mono": true,
+  "src": "si/rabbitmq.svg"
+ },
+ "radarr": {
+  "hex": "#FFCB3D",
+  "mono": true,
+  "src": "si/radarr.svg"
+ },
+ "rails": {
+  "hex": "#D30001",
+  "mono": true,
+  "src": "si/rubyonrails.svg"
+ },
+ "raspberrypi": {
+  "hex": null,
+  "mono": true,
+  "src": "si/raspberrypi.svg"
+ },
+ "razorpay": {
+  "hex": null,
+  "mono": true,
+  "src": "si/razorpay.svg"
+ },
+ "react": {
+  "hex": "#61DAFB",
+  "mono": true,
+  "src": "si/react.svg"
+ },
+ "reddit": {
+  "hex": "#FF4500",
+  "mono": true,
+  "src": "si/reddit.svg"
+ },
+ "redis": {
+  "hex": "#FF4438",
+  "mono": true,
+  "src": "si/redis.svg"
+ },
+ "remix": {
+  "hex": null,
+  "mono": true,
+  "src": "si/remix.svg"
+ },
+ "ruby": {
+  "hex": "#CC342D",
+  "mono": true,
+  "src": "si/ruby.svg"
+ },
+ "rust": {
+  "hex": null,
+  "mono": true,
+  "src": "si/rust.svg"
+ },
+ "safari": {
+  "hex": "#006CFF",
+  "mono": true,
+  "src": "si/safari.svg"
+ },
+ "samsung": {
+  "hex": null,
+  "mono": true,
+  "src": "si/samsung.svg"
+ },
+ "scala": {
+  "hex": "#DC322F",
+  "mono": true,
+  "src": "si/scala.svg"
+ },
+ "selenium": {
+  "hex": "#43B02A",
+  "mono": true,
+  "src": "si/selenium.svg"
+ },
+ "signal": {
+  "hex": null,
+  "mono": true,
+  "src": "si/signal.svg"
+ },
+ "sketch": {
+  "hex": "#F7B500",
+  "mono": true,
+  "src": "si/sketch.svg"
+ },
+ "slack": {
+  "hex": null,
+  "mono": false,
+  "src": "dv/slack.svg"
+ },
+ "sonarr": {
+  "hex": "#2596BE",
+  "mono": true,
+  "src": "si/sonarr.svg"
+ },
+ "spotify": {
+  "hex": "#1ED760",
+  "mono": true,
+  "src": "si/spotify.svg"
+ },
+ "spring": {
+  "hex": "#6DB33F",
+  "mono": true,
+  "src": "si/spring.svg"
+ },
+ "sqlite": {
+  "hex": null,
+  "mono": true,
+  "src": "si/sqlite.svg"
+ },
+ "stablediffusion": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/stability-color.svg"
+ },
+ "steam": {
+  "hex": null,
+  "mono": true,
+  "src": "si/steam.svg"
+ },
+ "stripe": {
+  "hex": "#635BFF",
+  "mono": true,
+  "src": "si/stripe.svg"
+ },
+ "sublimetext": {
+  "hex": "#FF9800",
+  "mono": true,
+  "src": "si/sublimetext.svg"
+ },
+ "supabase": {
+  "hex": "#3FCF8E",
+  "mono": true,
+  "src": "si/supabase.svg"
+ },
+ "svelte": {
+  "hex": "#FF3E00",
+  "mono": true,
+  "src": "si/svelte.svg"
+ },
+ "swift": {
+  "hex": "#F05138",
+  "mono": true,
+  "src": "si/swift.svg"
+ },
+ "syncthing": {
+  "hex": "#0891D1",
+  "mono": true,
+  "src": "si/syncthing.svg"
+ },
+ "tailscale": {
+  "hex": null,
+  "mono": true,
+  "src": "si/tailscale.svg"
+ },
+ "tailwind": {
+  "hex": "#06B6D4",
+  "mono": true,
+  "src": "si/tailwindcss.svg"
+ },
+ "telegram": {
+  "hex": "#26A5E4",
+  "mono": true,
+  "src": "si/telegram.svg"
+ },
+ "tensorflow": {
+  "hex": "#FF6F00",
+  "mono": true,
+  "src": "si/tensorflow.svg"
+ },
+ "terraform": {
+  "hex": "#844FBA",
+  "mono": true,
+  "src": "si/terraform.svg"
+ },
+ "tesla": {
+  "hex": "#CC0000",
+  "mono": true,
+  "src": "si/tesla.svg"
+ },
+ "threejs": {
+  "hex": null,
+  "mono": true,
+  "src": "si/threedotjs.svg"
+ },
+ "tiktok": {
+  "hex": null,
+  "mono": true,
+  "src": "si/tiktok.svg"
+ },
+ "traefik": {
+  "hex": "#24A1C1",
+  "mono": true,
+  "src": "si/traefikproxy.svg"
+ },
+ "transmission": {
+  "hex": "#D70008",
+  "mono": true,
+  "src": "si/transmission.svg"
+ },
+ "truenas": {
+  "hex": "#0095D5",
+  "mono": true,
+  "src": "si/truenas.svg"
+ },
+ "twitter": {
+  "hex": null,
+  "mono": true,
+  "src": "si/x.svg"
+ },
+ "typescript": {
+  "hex": "#3178C6",
+  "mono": true,
+  "src": "si/typescript.svg"
+ },
+ "ubuntu": {
+  "hex": "#E95420",
+  "mono": true,
+  "src": "si/ubuntu.svg"
+ },
+ "unity": {
+  "hex": "#FFFFFF",
+  "mono": true,
+  "src": "si/unity.svg"
+ },
+ "unraid": {
+  "hex": "#F15A2C",
+  "mono": true,
+  "src": "si/unraid.svg"
+ },
+ "unreal": {
+  "hex": null,
+  "mono": true,
+  "src": "si/unrealengine.svg"
+ },
+ "uptimekuma": {
+  "hex": "#5CDD8B",
+  "mono": true,
+  "src": "si/uptimekuma.svg"
+ },
+ "vaultwarden": {
+  "hex": null,
+  "mono": true,
+  "src": "si/vaultwarden.svg"
+ },
+ "vercel": {
+  "hex": null,
+  "mono": true,
+  "src": "si/vercel.svg"
+ },
+ "vim": {
+  "hex": "#019733",
+  "mono": true,
+  "src": "si/vim.svg"
+ },
+ "vite": {
+  "hex": "#9135FF",
+  "mono": true,
+  "src": "si/vite.svg"
+ },
+ "vivaldi": {
+  "hex": "#EF3939",
+  "mono": true,
+  "src": "si/vivaldi.svg"
+ },
+ "vscode": {
+  "hex": null,
+  "mono": false,
+  "src": "dv/vscode.svg"
+ },
+ "vue": {
+  "hex": "#4FC08D",
+  "mono": true,
+  "src": "si/vuedotjs.svg"
+ },
+ "webpack": {
+  "hex": "#8DD6F9",
+  "mono": true,
+  "src": "si/webpack.svg"
+ },
+ "webstorm": {
+  "hex": null,
+  "mono": true,
+  "src": "si/webstorm.svg"
+ },
+ "whatsapp": {
+  "hex": "#25D366",
+  "mono": true,
+  "src": "si/whatsapp.svg"
+ },
+ "whisper": {
+  "hex": null,
+  "mono": true,
+  "src": "lh/openai.svg"
+ },
+ "windows": {
+  "hex": null,
+  "mono": false,
+  "src": "dv/windows.svg"
+ },
+ "windsurf": {
+  "hex": null,
+  "mono": true,
+  "src": "lh/windsurf.svg"
+ },
+ "wireguard": {
+  "hex": null,
+  "mono": true,
+  "src": "si/wireguard.svg"
+ },
+ "xai": {
+  "hex": null,
+  "mono": true,
+  "src": "lh/xai.svg"
+ },
+ "xiaomi": {
+  "hex": "#FF6900",
+  "mono": true,
+  "src": "si/xiaomi.svg"
+ },
+ "youtube": {
+  "hex": "#FF0000",
+  "mono": true,
+  "src": "si/youtube.svg"
+ },
+ "zapier": {
+  "hex": "#FF4F00",
+  "mono": true,
+  "src": "si/zapier.svg"
+ },
+ "zed": {
+  "hex": null,
+  "mono": true,
+  "src": "si/zedindustries.svg"
+ },
+ "zerotier": {
+  "hex": "#FFB441",
+  "mono": true,
+  "src": "si/zerotier.svg"
+ },
+ "zig": {
+  "hex": "#F7A41D",
+  "mono": true,
+  "src": "si/zig.svg"
+ },
+ "zigbee": {
+  "hex": "#EB0443",
+  "mono": true,
+  "src": "si/zigbee.svg"
+ },
+ "zsh": {
+  "hex": "#F15A24",
+  "mono": true,
+  "src": "si/zsh.svg"
+ },
+ "Antigravity": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/antigravity-color.svg"
+ },
+ "antigravity": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/antigravity-color.svg"
+ }
+}

@@ -1,0 +1,26 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.9", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Word list (brain.py reads /usr/share/dict)
+        run: test -f /usr/share/dict/american-english || { sudo apt-get update -qq && sudo apt-get install -y -qq wamerican; }
+      - run: python3 server.py --check
+      - run: python3 bench.py
+      - name: Lint install.sh
+        run: if command -v shellcheck >/dev/null; then shellcheck install.sh; else sh -n install.sh; fi
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker build -t mindbaton .

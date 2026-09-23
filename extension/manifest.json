@@ -1,0 +1,85 @@
+{
+  "manifest_version": 3,
+  "name": "memgraph",
+  "version": "4.4",
+  "description": "Remembers what you tell every AI, keeps whole chats in Live mode, and hands a full chat to another AI",
+  "permissions": [
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://192.168.1.20:3004/*",
+    "http://100.64.0.1:3004/*",
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://claude.ai/*",
+    "https://gemini.google.com/*",
+    "https://www.perplexity.ai/*",
+    "https://chat.deepseek.com/*",
+    "https://grok.com/*",
+    "https://copilot.microsoft.com/*",
+    "https://poe.com/*",
+    "https://chat.mistral.ai/*",
+    "https://aistudio.google.com/*",
+    "https://copilot.com/*",
+    "https://www.copilot.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "memgraph"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://www.perplexity.ai/*",
+        "https://chat.deepseek.com/*",
+        "https://grok.com/*",
+        "https://copilot.microsoft.com/*",
+        "https://poe.com/*",
+        "https://chat.mistral.ai/*",
+        "https://aistudio.google.com/*",
+        "https://copilot.com/*",
+        "https://www.copilot.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "logos/*.svg"
+      ],
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://www.perplexity.ai/*",
+        "https://chat.deepseek.com/*",
+        "https://grok.com/*",
+        "https://copilot.microsoft.com/*",
+        "https://poe.com/*",
+        "https://chat.mistral.ai/*",
+        "https://aistudio.google.com/*",
+        "https://copilot.com/*",
+        "https://www.copilot.com/*"
+      ]
+    }
+  ]
+}

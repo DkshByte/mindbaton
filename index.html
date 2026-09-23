@@ -1,0 +1,1691 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>memgraph</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#09090b">
+<link rel="apple-touch-icon" href="/assets/app-192.png">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2309090b'/%3E%3Cpath d='M9 22V11l7 7 7-7v11' fill='none' stroke='%23a5b0ff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+@font-face { font-family: "Geist"; src: url("/assets/fonts/Geist-Variable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Geist Mono"; src: url("/assets/fonts/GeistMono-Variable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+:root {
+  --bg: #09090b; --side: #0c0c0e; --panel: #111113; --panel-2: #17171a; --panel-3: #1d1d21;
+  --line: rgba(255, 255, 255, .07); --line-2: rgba(255, 255, 255, .11); --line-3: rgba(255, 255, 255, .18);
+  --fg: #ededef; --fg-2: #a1a1aa; --fg-3: #71717a;
+  --accent: #8b95ff; --accent-strong: #a5b0ff; --accent-soft: rgba(139, 149, 255, .13); --accent-line: rgba(139, 149, 255, .35);
+  --ok: #3dd68c; --danger: #ff6369; --danger-soft: rgba(255, 99, 105, .12);
+  /* colour codes: kinds of fact and topic identity (map, dots, chips) */
+  --c-who: #f5c451; --c-place: #f59e6b; --c-project: #5fd9a8; --c-tool: #6cb8ff; --c-own: #e59df5; --c-learn: #a99bff;
+  --c-like: #f78fb3; --c-dislike: #ff6b7f; --c-people: #52d6c7; --c-want: #c9e77e; --c-other: #9ca3af;
+  --t1: #f5c451; --t2: #6cb8ff; --t3: #5fd9a8; --t4: #f78fb3; --t5: #a99bff; --t6: #f59e6b; --t7: #52d6c7; --t8: #c9e77e;
+  --t9: #e59df5; --t10: #ffb899; --t11: #5ed6ec; --t12: #d8c79a;
+  --ai-chatgpt: #d4d4d8; --ai-claude: #e08a60; --ai-gemini: #8ab4ff; --ai-perplexity: #22b8cd; --ai-deepseek: #6b8cff;
+  --ai-grok: #e4e4e7; --ai-copilot: #6cc3f5; --ai-poe: #b087ff; --ai-mistral: #fa8a3c; --ai-agent: #a1a1aa;
+  --sans: "Geist", ui-sans-serif, system-ui, sans-serif; --mono: "Geist Mono", ui-monospace, monospace;
+  --r: 10px; --r-sm: 7px; --ease: cubic-bezier(.2, .8, .2, 1);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 400 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased; overflow: hidden; }
+::selection { background: rgba(139, 149, 255, .35); color: #fff; }
+* { scrollbar-width: thin; scrollbar-color: var(--line-3) transparent; }
+input { caret-color: var(--accent-strong); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
+a { color: inherit; }
+.mono, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* brand logos: one-colour marks are masks tinted with the brand colour, full-colour marks are images */
+.lg { width: 16px; height: 16px; flex: none; display: inline-block; vertical-align: -3px; }
+span.lg { background: var(--c); -webkit-mask: var(--src) center / contain no-repeat; mask: var(--src) center / contain no-repeat; }
+img.lg { object-fit: contain; }
+.lg.sm { width: 14px; height: 14px; }
+.lg.lg-lg { width: 20px; height: 20px; }
+.letter.round { border-radius: 50%; }
+.letter { width: 16px; height: 16px; flex: none; border-radius: 5px; display: inline-grid; place-items: center; font: 600 10px var(--sans);
+  background: color-mix(in srgb, var(--c) 22%, transparent); color: var(--c); }
+.stack { display: inline-flex; align-items: center; }
+.stack > * { margin-left: -4px; border-radius: 50%; background-color: var(--panel-2); box-shadow: 0 0 0 2px var(--bg); padding: 2px; width: 20px; height: 20px; }
+.stack > span.lg { background: var(--c); }
+.stack > :first-child { margin-left: 0; }
+
+/* ---- shell ---- */
+.app { display: grid; grid-template-columns: 248px minmax(0, 1fr); height: 100vh; }
+.side { background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 16px 16px 12px; }
+.brand-mark { width: 26px; height: 26px; border-radius: 7px; background: linear-gradient(145deg, #2a2f5c, #14162a); border: 1px solid var(--accent-line);
+  display: grid; place-items: center; }
+.brand-mark svg { width: 16px; height: 16px; stroke: var(--accent-strong); fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.brand b { font-weight: 600; font-size: 15px; letter-spacing: -.01em; }
+.brand .live { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--fg-3); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--fg-3)); flex: none; }
+.dot.on { background: var(--ok); box-shadow: 0 0 0 3px rgba(61, 214, 140, .15); }
+.dot.off { background: var(--danger); }
+.nav { padding: 4px 8px; display: grid; gap: 1px; }
+.nav button { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--r-sm); color: var(--fg-2); font-weight: 500;
+  transition: background .15s, color .15s; }
+.nav button:hover { background: var(--panel-2); color: var(--fg); }
+.nav button[aria-current="page"] { background: var(--panel-3); color: var(--fg); }
+.nav kbd { margin-left: auto; font: 10.5px var(--mono); color: var(--fg-3); border: 1px solid var(--line-2); border-radius: 4px; padding: 0 5px;
+  opacity: 0; transition: opacity .15s; }
+.nav button:hover kbd, .nav button:focus-visible kbd { opacity: 1; }
+.search input:not(:placeholder-shown) ~ kbd { display: none; }
+.side-scroll { overflow-y: auto; flex: 1; padding: 6px 8px 12px; min-height: 0; }
+.side-h { display: flex; justify-content: space-between; padding: 14px 10px 6px; font-size: 11.5px; font-weight: 500; color: var(--fg-3); }
+.side-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.side-list button { width: 100%; display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: var(--r-sm); color: var(--fg-2);
+  transition: background .15s, color .15s; }
+.side-list button:hover { background: var(--panel-2); color: var(--fg); }
+.side-list .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-list .n { font: 11.5px var(--mono); color: var(--fg-3); }
+.side-foot { border-top: 1px solid var(--line); padding: 10px 16px 12px; display: grid; gap: 8px; font-size: 12px; color: var(--fg-3); }
+.side-foot .row-s { display: flex; justify-content: space-between; align-items: center; }
+.side-foot b { color: var(--fg-2); font: 500 12px var(--mono); }
+.btn-quiet { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-3); font-size: 12px; padding: 3px 6px; margin: -3px -6px; border-radius: 6px; }
+.btn-quiet:hover { color: var(--fg); background: var(--panel-2); }
+.btn-quiet:disabled { opacity: .5; cursor: progress; }
+
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; }
+.top { height: 56px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 20px 0 28px; border-bottom: 1px solid var(--line); }
+.top h1 { margin: 0; font-size: 14px; font-weight: 500; color: var(--fg-2); display: flex; align-items: center; gap: 8px; }
+.top h1 b { color: var(--fg); font-weight: 500; }
+.search { margin-left: auto; position: relative; width: min(440px, 44vw); }
+.search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--fg-3); pointer-events: none; }
+.search input { width: 100%; height: 34px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--panel); color: var(--fg);
+  font: 400 13.5px var(--sans); padding: 0 40px 0 34px; transition: border-color .15s, background .15s; }
+.search input::placeholder { color: var(--fg-3); }
+.search input:hover { border-color: var(--line-3); }
+.search input:focus { outline: none; border-color: var(--accent-line); background: var(--panel-2); box-shadow: 0 0 0 3px var(--accent-soft); }
+.search kbd { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font: 11px var(--mono); color: var(--fg-3);
+  border: 1px solid var(--line-2); border-radius: 5px; padding: 1px 6px; }
+.btn { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 13px; border-radius: 8px; font-weight: 500; font-size: 13px;
+  border: 1px solid var(--line-2); background: var(--panel); color: var(--fg); transition: background .15s, border-color .15s; white-space: nowrap; }
+.btn:hover { background: var(--panel-3); border-color: var(--line-3); }
+.btn.primary { background: var(--fg); color: #0b0b0d; border-color: var(--fg); }
+.btn.primary:hover { background: #fff; }
+.btn.danger { color: var(--danger); border-color: rgba(255, 99, 105, .35); background: transparent; }
+.btn.danger:hover, .btn.danger.armed { background: var(--danger-soft); border-color: var(--danger); }
+.btn.sm { height: 28px; padding: 0 10px; font-size: 12.5px; }
+
+.view { flex: 1; overflow-y: auto; min-height: 0; }
+.view[hidden] { display: none; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 36px 40px 64px; }
+.hello { margin: 0; font-size: 30px; line-height: 1.15; font-weight: 600; letter-spacing: -.025em; }
+.hello-sub { margin: 10px 0 0; color: var(--fg-2); font-size: 15px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.hello-sub .stack { margin-right: 2px; }
+.sep-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--fg-3); }
+.grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr); gap: 20px; margin-top: 30px; align-items: stretch; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); display: flex; flex-direction: column;
+  max-height: calc(100vh - 200px); /* ponytail: 200px ~= topbar + wrap padding + hello block, retune if that block's height changes */ }
+.card-h { display: flex; align-items: center; gap: 10px; padding: 14px 16px 12px; border-bottom: 1px solid var(--line); flex: none; }
+.card-h h2 { margin: 0; font-size: 13.5px; font-weight: 600; }
+.card-h p { margin: 0; color: var(--fg-3); font-size: 12.5px; }
+.card-h .spacer { flex: 1; }
+.card-b { padding: 6px 8px 8px; flex: 1; min-height: 0; overflow-y: auto; }
+
+/* profile: one row per kind of fact */
+.kind { display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 12px; padding: 9px 8px; border-radius: var(--r-sm); align-items: start; }
+.kind + .kind { border-top: 1px solid var(--line); border-radius: 0; }
+.kind-name { display: flex; align-items: center; gap: 8px; color: var(--fg-2); font-size: 13px; padding-top: 3px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 11px 0 9px; border-radius: 999px; background: var(--panel-2);
+  border: 1px solid var(--line); font-size: 13px; color: var(--fg); transition: background .15s, border-color .15s; max-width: 100%; }
+.chip:hover { background: var(--panel-3); border-color: var(--line-3); }
+.chip .desc { color: var(--fg-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip[aria-pressed="true"] { border-color: var(--accent-line); background: var(--accent-soft); }
+
+/* entries */
+.rows { display: grid; }
+.row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px 10px; border-radius: var(--r-sm);
+  width: 100%; transition: background .12s; }
+.row:hover { background: var(--panel-2); }
+.row[aria-current="true"] { background: var(--accent-soft); }
+.row .src { padding-top: 2px; display: flex; }
+.row .txt { color: var(--fg); overflow-wrap: anywhere; }
+.row .txt.dim { color: var(--fg-2); }
+.row .meta { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 3px; font-size: 12.5px; color: var(--fg-3); }
+.row .meta .kindtag { color: var(--fg-2); }
+.row .when { font: 12px var(--mono); color: var(--fg-3); padding-top: 2px; white-space: nowrap; }
+.row .rank { font: 12px var(--mono); color: var(--fg-3); padding-top: 2px; text-align: center; }
+.tag { display: inline-flex; align-items: center; gap: 5px; }
+
+.section-h { display: flex; align-items: baseline; gap: 6px 10px; margin: 36px 0 10px; flex-wrap: wrap; }
+.section-h h2 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; }
+.section-h p { margin: 0; color: var(--fg-3); font-size: 13px; }
+.segs { display: inline-flex; gap: 2px; padding: 2px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; margin-left: auto; }
+.segs { flex-wrap: wrap; }
+.segs button { padding: 4px 10px; border-radius: 6px; font-size: 12.5px; color: var(--fg-2); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.segs button:hover { color: var(--fg); }
+.segs button[aria-pressed="true"] { background: var(--panel-3); color: var(--fg); }
+.segs .n { font: 11px var(--mono); color: var(--fg-3); }
+
+.connect { display: grid; gap: 2px; }
+.conn { display: grid; grid-template-columns: minmax(24px, max-content) minmax(0, 1fr); gap: 10px; padding: 9px 8px; align-items: start; }
+.conn b { font-weight: 500; font-size: 13px; }
+.conn p { margin: 2px 0 0; color: var(--fg-3); font-size: 12.5px; }
+code { font: 12px var(--mono); color: var(--fg); background: var(--panel-3); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px;
+  overflow-wrap: anywhere; user-select: all; }
+
+/* chats: which AI, which model, how full */
+.model { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 6px; background: var(--panel-2); border: 1px solid var(--line);
+  font: 11.5px var(--mono); color: var(--fg-2); white-space: nowrap; }
+.meter { display: inline-flex; align-items: center; gap: 8px; font: 11.5px var(--mono); color: var(--fg-3); padding-top: 3px; white-space: nowrap; }
+.meter i { width: 64px; height: 4px; border-radius: 2px; background: var(--panel-3); overflow: hidden; }
+.meter i b { display: block; height: 100%; width: var(--p); background: var(--fg-2); border-radius: 2px; }
+.meter.hot i b { background: var(--danger); }
+.meter.wide { white-space: normal; flex-wrap: wrap; }
+.meter.wide i { width: 110px; }
+.row.chat { grid-template-columns: 22px minmax(0, 1fr) 112px auto; }
+.row.chat .txt { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .snip { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--fg-2); font-size: 13px; margin-top: 4px; }
+.said { display: inline-flex; gap: 5px; align-items: center; color: var(--fg-2); min-width: 0; }
+.said svg.i { width: 12px; height: 12px; }
+.props dd.srcs { flex-direction: column; align-items: stretch; gap: 4px; }
+.props dd.srcs .tag { justify-content: flex-start; flex-wrap: wrap; gap: 6px; padding: 5px 8px; margin: 0 -8px; border-radius: var(--r-sm); text-align: left; }
+.props dd.srcs button.tag:hover { background: var(--panel-2); }
+.props dd.srcs .when { font: 11.5px var(--mono); color: var(--fg-3); margin-left: auto; }
+.chat-strip { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 10px; }
+.chat-strip .chip { height: 26px; font-size: 12.5px; }
+.msgs { display: grid; gap: 10px; margin-top: 4px; }
+.msg { display: grid; gap: 3px; }
+.msg .who { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg-3); }
+.msg .body { color: var(--fg); font-size: 13px; overflow-wrap: anywhere; white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.msg.all .body { -webkit-line-clamp: unset; display: block; }
+
+/* AI: summaries, answers, hand-off (the AI words things; the rules decide) */
+.ai-card { display: grid; gap: 8px; padding: 14px 16px; border-radius: var(--r); border: 1px solid var(--line-2); background: var(--panel); margin: 12px 0 8px; }
+.ai-card .ai-h { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--fg-3); }
+.ai-card .ai-h svg.i { width: 14px; height: 14px; color: var(--accent-strong); }
+.ai-card p { margin: 0; font-size: 15px; line-height: 1.55; }
+.ai-card .next { font-size: 13px; color: var(--fg-2); }
+.ai-card.loading p { color: var(--fg-3); }
+.cite { display: inline-flex; align-items: center; height: 18px; padding: 0 5px; margin: 0 1px; border-radius: 5px; vertical-align: 1px;
+  font: 11px var(--mono); color: var(--accent-strong); background: var(--accent-soft); }
+.cite:hover { background: var(--accent-line); color: var(--fg); }
+.handoff { display: flex; flex-wrap: wrap; gap: 6px; }
+.handoff button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px 0 8px; border-radius: 8px; border: 1px solid var(--line-2);
+  background: var(--panel-2); font-size: 12.5px; }
+.handoff button:hover { background: var(--panel-3); border-color: var(--line-3); }
+.handoff button:disabled { opacity: .55; cursor: progress; }
+.topic-sum { margin: -4px 10px 8px 27px; font-size: 13px; color: var(--fg-2); }
+
+/* setup: every piece, its tick, and the one thing to do */
+.progress { height: 6px; border-radius: 3px; background: var(--panel-3); overflow: hidden; margin-top: 14px; max-width: 420px; }
+.progress b { display: block; height: 100%; background: var(--ok); border-radius: 3px; transition: width .4s var(--ease); }
+.steps { display: grid; gap: 12px; margin-top: 12px; }
+.step { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; display: grid; gap: 10px; }
+.step.done { border-color: rgba(61, 214, 140, .28); }
+.step-h { display: flex; align-items: center; gap: 12px; }
+.step-h h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.step-h p { margin: 2px 0 0; color: var(--fg-3); font-size: 13px; }
+.tick { width: 26px; height: 26px; flex: none; border-radius: 50%; display: grid; place-items: center; border: 1.5px solid var(--line-3); color: var(--fg-3); font: 600 12px var(--mono); }
+.step.done .tick { background: rgba(61, 214, 140, .14); border-color: var(--ok); color: var(--ok); }
+.tick svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.step ol { margin: 0; padding-left: 20px; color: var(--fg-2); font-size: 13.5px; display: grid; gap: 4px; }
+.step ol b { color: var(--fg); font-weight: 500; }
+.cmd { display: flex; align-items: flex-start; gap: 8px; background: var(--bg); border: 1px solid var(--line-2); border-radius: 8px; padding: 8px 8px 8px 12px; }
+.cmd pre { margin: 0; flex: 1; min-width: 0; font: 12.5px/1.5 var(--mono); color: var(--fg); white-space: pre-wrap; overflow-wrap: anywhere; padding-top: 3px; }
+.cmd .btn { flex: none; }
+.agents { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+.agent > *, .step > *, .cmd { min-width: 0; }
+a.btn { text-decoration: none; }
+.agent { min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 10px; align-content: start; }
+.agent.done { border-color: rgba(61, 214, 140, .28); }
+.agent-h { display: flex; align-items: center; gap: 10px; }
+.agent-h .lg, .agent-h .letter { width: 22px; height: 22px; }
+.agent-h b { font-weight: 600; }
+.agent-h .ok { margin-left: auto; font-size: 12px; color: var(--ok); display: inline-flex; gap: 5px; align-items: center; }
+.agent-h .ok i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+.agent small { color: var(--fg-3); font-size: 12px; }
+.keyform { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.keyform select, .keyform input { height: 34px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg); color: var(--fg); padding: 0 10px; font: 13px var(--sans); }
+.keyform input { flex: 1; min-width: 220px; font-family: var(--mono); }
+.banner { display: flex; align-items: center; gap: 10px; padding: 9px 20px; background: var(--danger-soft); color: #ffb3b6; border-bottom: 1px solid rgba(255, 99, 105, .3); font-size: 13px; }
+.banner[hidden] { display: none; }
+dialog.help { background: var(--panel); color: var(--fg); border: 1px solid var(--line-2); border-radius: var(--r); padding: 20px 22px; max-width: 380px; width: 90vw; }
+dialog.help::backdrop { background: rgba(0, 0, 0, .55); }
+dialog.help h3 { margin: 0 0 12px; font-size: 16px; }
+dialog.help dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; margin: 0; font-size: 13.5px; }
+dialog.help dt kbd { font: 11.5px var(--mono); border: 1px solid var(--line-2); border-radius: 5px; padding: 1px 6px; }
+dialog.help dd { margin: 0; color: var(--fg-2); }
+
+/* topics */
+.topic { margin-top: 18px; }
+.topic-h { display: flex; align-items: center; gap: 10px; padding: 8px 10px; }
+.topic-h h3 { margin: 0; font-size: 14.5px; font-weight: 600; }
+.topic-h .n { font: 12px var(--mono); color: var(--fg-3); }
+.topic-h .by { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--fg-3); }
+.topic-h .by span { display: inline-flex; align-items: center; gap: 5px; }
+.more { color: var(--fg-3); font-size: 12.5px; padding: 6px 10px 2px 44px; }
+.more:hover { color: var(--fg); }
+
+/* look up */
+.answer { display: flex; gap: 14px; align-items: flex-start; padding: 18px 20px; border-radius: var(--r);
+  background: linear-gradient(135deg, rgba(139, 149, 255, .14), rgba(139, 149, 255, .04)); border: 1px solid var(--accent-line); margin: 22px 0 8px; }
+.answer svg.i { color: var(--accent-strong); width: 18px; height: 18px; margin-top: 4px; }
+.answer p { margin: 0; font-size: 19px; font-weight: 500; letter-spacing: -.01em; }
+.answer small { display: block; margin-top: 4px; color: var(--fg-2); font-size: 12.5px; }
+.answer small button { color: var(--accent-strong); font: 12px var(--mono); }
+.empty { padding: 48px 0; text-align: center; color: var(--fg-2); }
+.empty h3 { margin: 0 0 6px; color: var(--fg); font-size: 16px; font-weight: 600; }
+.empty p { margin: 0 auto; max-width: 440px; }
+
+/* detail panel */
+.panel { position: absolute; top: 0; right: 0; bottom: 0; width: min(420px, 100%); background: var(--panel); border-left: 1px solid var(--line-2);
+  box-shadow: -24px 0 48px rgba(0, 0, 0, .45); display: flex; flex-direction: column; transform: translateX(104%);
+  transition: transform .24s var(--ease); z-index: 5; }
+.panel.open { transform: none; }
+.panel-h { height: 56px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 20px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--fg-2); }
+.panel-h .spacer { flex: 1; }
+.icon-btn { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 7px; color: var(--fg-2); }
+.icon-btn:hover { background: var(--panel-3); color: var(--fg); }
+.panel-b { overflow-y: auto; padding: 20px 20px 28px; }
+.p-title { margin: 0; font-size: 19px; line-height: 1.35; font-weight: 500; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.p-title.old { text-decoration: line-through; text-decoration-color: var(--danger); color: var(--fg-2); }
+.p-entity { display: flex; align-items: center; gap: 12px; }
+.p-entity .lg, .p-entity .letter { width: 36px; height: 36px; border-radius: 9px; }
+.p-entity .letter { font-size: 16px; }
+.p-entity h2 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+.p-entity p { margin: 2px 0 0; color: var(--fg-3); font-size: 13px; }
+.props { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 9px 12px; margin: 20px 0 4px; font-size: 13px; }
+.props dt { color: var(--fg-3); }
+.props dd { margin: 0; color: var(--fg); min-width: 0; overflow-wrap: anywhere; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.p-sec { margin: 22px 0 6px; font-size: 12px; font-weight: 500; color: var(--fg-3); }
+.p-list { display: grid; margin: 0 -8px; }
+.p-list button { display: flex; gap: 10px; align-items: flex-start; padding: 7px 8px; border-radius: var(--r-sm); color: var(--fg-2); font-size: 13px; text-align: left; }
+.p-list button:hover { background: var(--panel-2); color: var(--fg); }
+.p-list .k { color: var(--fg-3); min-width: 76px; font-size: 12px; padding-top: 1px; }
+.p-list .old { text-decoration: line-through; text-decoration-color: var(--danger); }
+.danger-zone { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.danger-zone small { flex-basis: 100%; color: var(--fg-3); font-size: 12.5px; }
+
+/* map */
+#map { position: relative; overflow: hidden; }
+#canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+#canvas.dragging { cursor: grabbing; }
+.dg-head { position: absolute; left: 24px; top: 18px; right: 24px; pointer-events: none; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.dg-head > * { pointer-events: auto; }
+.dg-head .segs { margin-left: 0; }
+.dg-crumbs { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--fg-3); }
+.dg-crumbs button { color: var(--fg-2); }
+.dg-crumbs button:hover { color: var(--fg); }
+.dg-crumbs [aria-current] { color: var(--fg); font-weight: 500; }
+#dg-sub { flex-basis: 100%; margin: 0; color: var(--fg-3); font-size: 13px; }
+.dg-tools { position: absolute; left: 24px; bottom: 20px; display: flex; gap: 8px; }
+.dg-legend { position: absolute; right: 20px; bottom: 20px; background: rgba(17, 17, 19, .88); backdrop-filter: blur(12px); border: 1px solid var(--line-2);
+  border-radius: var(--r); padding: 10px 12px; display: grid; gap: 2px; font-size: 12.5px; color: var(--fg-2); max-width: 250px; }
+.dg-legend:empty { display: none; }
+.dg-legend .lg-h { font-size: 11.5px; color: var(--fg-3); margin-bottom: 4px; font-weight: 500; }
+.dg-legend button { display: flex; align-items: center; gap: 8px; color: var(--fg-2); padding: 3px 6px; margin: 0 -6px; border-radius: 6px; }
+.dg-legend button:hover { color: var(--fg); background: var(--panel-3); }
+.dg-legend button[aria-pressed="true"] { color: var(--fg); background: var(--panel-3); }
+.dg-legend button i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.dg-legend button .num { margin-left: auto; padding-left: 12px; color: var(--fg-3); font-size: 11.5px; }
+.dg-legend div { display: flex; align-items: center; gap: 8px; }
+.dg-legend .lg-note { color: var(--fg-3); font-size: 11.5px; margin-top: 4px; }
+.lg-bubble { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--t2); background: color-mix(in srgb, var(--t2) 20%, transparent); flex: none; }
+.lg-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--t3); margin: 0 2px; flex: none; }
+.lg-spark { width: 4px; height: 4px; border-radius: 50%; background: var(--fg); margin: 0 4px; flex: none; }
+.lg-line { width: 12px; height: 0; border-top: 1.5px solid var(--fg-3); flex: none; }
+.dg-tip { position: absolute; z-index: 3; max-width: 320px; pointer-events: none; background: rgba(23, 23, 26, .96); backdrop-filter: blur(10px);
+  border: 1px solid var(--line-2); border-radius: 9px; padding: 9px 12px 10px; box-shadow: 0 12px 32px rgba(0, 0, 0, .5); font-size: 13px; line-height: 1.45; }
+.dg-tip b { display: block; font-weight: 600; margin-bottom: 2px; }
+.dg-tip span { color: var(--fg-2); display: block; }
+.dg-tip em { color: var(--fg-3); font-style: normal; font-size: 12px; }
+
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--fg); color: #0b0b0d; padding: 8px 14px;
+  border-radius: 9px; font-size: 13px; font-weight: 500; box-shadow: 0 10px 30px rgba(0, 0, 0, .4); z-index: 9; }
+.toast[hidden] { display: none; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.fresh { animation: rise .4s var(--ease) both; }
+@media (prefers-reduced-motion: reduce) { .fresh { animation: none; } * { transition: none !important; } }
+
+@media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } .wrap { padding: 28px 24px 56px; } }
+@media (max-width: 820px) {
+  body { overflow: auto; }
+  .app { grid-template-columns: 1fr; height: auto; }
+  .side { border-right: 0; border-bottom: 1px solid var(--line); }
+  .side-scroll, .side-foot { display: none; }
+  .nav { grid-auto-flow: column; overflow-x: auto; }
+  .nav kbd { display: none; }
+  .top { padding: 0 16px; }
+  .top h1 { display: none; }
+  .search { width: 100%; margin-left: 0; }
+  #copy-brief span { display: none; }
+  .view { overflow: visible; }
+  #map { height: 75vh; }
+  .kind { grid-template-columns: 1fr; gap: 6px; }
+  .wrap { padding: 24px 16px 48px; }
+  .row.chat { grid-template-columns: 22px minmax(0, 1fr) auto; }
+  .row.chat .meter { display: none; }
+  .hello { font-size: 24px; }
+  .segs { margin-left: 0; flex-wrap: wrap; }
+  .section-h { flex-wrap: wrap; }
+  .panel { width: 100%; }
+}
+</style>
+</head>
+<body>
+<!--
+THESIS: memgraph as a calm, fast, precise dark app at the craft level of Linear and Vercel — your AI memory reads like a well-kept profile you can search in one keystroke. Refuses the blueprint costume and the neon dashboard.
+OWN-WORLD: charcoal #09090b surfaces stepped by hairline rgba borders; Geist + Geist Mono; one periwinkle accent (#8b95ff) for focus, selection and the answer; colour codes only for kinds of fact and topics; real brand logos (Simple Icons, LobeHub, Devicon) are the only imagery.
+STORY: open, see what every AI knows about you grouped by kind with real logos, what you said lately, search anything (answer first), explore the map, correct the record in the slide-over.
+FIRST VIEWPORT: 248px sidebar (mark, nav, topics with colour dots, sources with AI logos, live status) | 56px top bar (page, search with /, Copy briefing) | greeting + one status line with an AI logo stack | two columns: profile by kind (chips with logos) / recent entries + connect an AI.
+FORM: canon (standing exit, chosen by the owner) — Linear + Vercel craft bar. Seed b8503b2b.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+-->
+<div class="app">
+  <aside class="side" aria-label="Sidebar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.2 12.2V4.6L8 9.4l4.8-4.8v7.6"/></svg></span>
+      <b>memgraph</b>
+      <span class="live" id="live"><span class="dot"></span><span>—</span></span>
+    </div>
+    <nav class="nav" aria-label="Views">
+      <button data-view="overview" aria-current="page"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/></svg>You<kbd>1</kbd></button>
+      <button data-view="topics"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>Topics<kbd>2</kbd></button>
+      <button data-view="chats"><svg class="i" viewBox="0 0 24 24"><path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8.5a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17H5a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 5 5.5Z"/><path d="M8 10h8M8 13h5"/></svg>Chats<kbd>3</kbd></button>
+      <button data-view="setup"><svg class="i" viewBox="0 0 24 24"><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3M6 6l2.1 2.1M15.9 15.9 18 18M6 18l2.1-2.1M15.9 8.1 18 6"/><circle cx="12" cy="12" r="3"/></svg>Setup<kbd>5</kbd></button>
+      <button data-view="map"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.6"/><circle cx="5" cy="6" r="1.8"/><circle cx="19" cy="6" r="1.8"/><circle cx="6" cy="19" r="1.8"/><circle cx="18" cy="18" r="1.8"/><path d="M10 10.4 6.4 7.2M14 10.4l3.6-3.2M10.2 13.9 7.3 17.6M14 13.8l2.8 2.8"/></svg>Map<kbd>4</kbd></button>
+    </nav>
+    <div class="side-scroll">
+      <div class="side-h"><span>Topics</span><span class="num" id="n-topics"></span></div>
+      <ul class="side-list" id="side-topics"></ul>
+      <div class="side-h"><span>Sources</span><span class="num" id="n-sources"></span></div>
+      <ul class="side-list" id="side-sources"></ul>
+    </div>
+    <div class="side-foot" id="side-foot"></div>
+  </aside>
+
+  <div class="main">
+    <div class="banner" id="offline" role="alert" hidden><svg class="i" viewBox="0 0 24 24"><path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/></svg>
+      <span>Can't reach the memgraph server. It may be restarting — this page reconnects on its own.</span></div>
+    <header class="top">
+      <h1 id="page-title"><b>You</b></h1>
+      <form class="search" role="search" id="lookup">
+        <svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+        <input id="q" type="search" autocomplete="off" placeholder="Ask your memory — where do I live, jellyfin, my gpu…" aria-label="Search your memory">
+        <kbd aria-hidden="true">/</kbd>
+      </form>
+      <button class="btn primary" id="copy-brief" title="Copy what memgraph knows, ready to paste into any AI chat">
+        <svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8"/></svg><span>Copy briefing</span></button>
+    </header>
+
+    <section class="view" id="overview" aria-label="You"></section>
+    <section class="view" id="topics" aria-label="Topics" hidden></section>
+    <section class="view" id="chats" aria-label="Chats" hidden></section>
+    <section class="view" id="setup" aria-label="Setup" hidden></section>
+    <section class="view" id="map" aria-label="Map" hidden>
+      <canvas id="canvas" aria-label="Map of what memgraph knows about you"></canvas>
+      <div class="dg-head">
+        <div class="segs" role="group" aria-label="Map view"><button data-dg-view="you" aria-pressed="true">You</button><button data-dg-view="topics" aria-pressed="false">Topics</button></div>
+        <nav class="dg-crumbs" id="dg-crumbs" aria-label="Where you are"></nav>
+        <p id="dg-sub"></p>
+      </div>
+      <div class="dg-tools"><button id="dg-back" class="btn sm" hidden><svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Back</button><button id="dg-fit" class="btn sm">Fit</button></div>
+      <div class="dg-legend" id="dg-legend" aria-label="Legend"></div>
+      <div class="dg-tip" id="dg-tip" role="tooltip" hidden></div>
+    </section>
+    <section class="view" id="recall" aria-label="Search results" aria-live="polite" hidden></section>
+
+    <aside class="panel" id="panel" aria-label="Details">
+      <div class="panel-h"><span id="panel-kind">Details</span><span class="spacer"></span>
+        <button class="icon-btn" id="panel-close" aria-label="Close details"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+      <div class="panel-b" id="panel-body"></div>
+    </aside>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<dialog class="help" id="help" aria-label="Keyboard shortcuts"><h3>Shortcuts</h3><dl>
+  <dt><kbd>/</kbd></dt><dd>Search or ask your memory</dd><dt><kbd>Enter</kbd></dt><dd>Ask the AI to answer from your memory</dd>
+  <dt><kbd>1</kbd>–<kbd>5</kbd></dt><dd>You · Topics · Chats · Map · Setup</dd><dt><kbd>Esc</kbd></dt><dd>Close details or clear the search</dd>
+  <dt><kbd>?</kbd></dt><dd>This help</dd></dl><form method="dialog" style="margin-top:16px;text-align:right"><button class="btn sm">Close</button></form></dialog>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const AI_VAR = { ChatGPT: "chatgpt", Claude: "claude", Gemini: "gemini", Perplexity: "perplexity", DeepSeek: "deepseek", Grok: "grok",
+  Copilot: "copilot", Poe: "poe", Mistral: "mistral", agent: "agent", "Claude Code": "claude", Codex: "chatgpt", Antigravity: "gemini",
+  Cursor: "agent", Windsurf: "agent", "Gemini CLI": "gemini", "GitHub Copilot": "copilot", Phone: "agent" };
+const KIND = { fact: "Fact", preference: "Preference", goal: "Goal", event: "Event", question: "Asked", task: "Task", note: "Note" };
+const PERSONAL = new Set(["fact", "preference", "goal", "event"]);
+const ICON = {
+  spark: '<svg class="i" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.8 2.8M14.9 14.9l2.8 2.8M6.3 17.7l2.8-2.8M14.9 9.1l2.8-2.8"/></svg>',
+  plug: '<svg class="i" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M7 8h10v3a5 5 0 0 1-10 0V8ZM12 16v5"/></svg>',
+  refresh: '<svg class="i" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4"/></svg>',
+  globe: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.3 3.6 5.1 3.6 8.5s-1.2 6.2-3.6 8.5c-2.4-2.3-3.6-5.1-3.6-8.5S9.6 5.8 12 3.5Z"/></svg>',
+  chat: '<svg class="i" viewBox="0 0 24 24"><path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8.5a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17H5a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 5 5.5Z"/></svg>',
+  note: '<svg class="i" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10A1.5 1.5 0 0 1 6 19V5a1.5 1.5 0 0 1 1-1.5Z"/><path d="M14 3.5V8h4"/></svg>',
+};
+
+let G = { nodes: [], edges: [], topics: [], stats: {}, summary: [] }, byId = new Map(), me = null;
+let view = "overview", selected = null, lastSig = "", recallIds = null, seen = new Set(), online = true, kindFilter = "all", aiFilter = "all";
+
+// ---------- brand logos (downloaded once into /assets/icons by fetch_assets.py) ----------
+let LOGO = {};
+const logoReady = fetch("/assets/icons/index.json").then(r => r.json()).then(j => { LOGO = j; }).catch(() => {});
+function logoKey(x) {
+  if (!x) return null;
+  const cands = typeof x === "string" ? [x, x.toLowerCase()] : [x.key, (x.label || "").toLowerCase(), (x.label || "").toLowerCase().replace(/[\s.-]/g, "")];
+  for (const c of cands) if (c && LOGO[c]) return c;
+  const k = typeof x === "string" ? x.toLowerCase() : (x.key || x.label || "").toLowerCase();
+  for (const [rx, brand] of LOGO._models || []) if (new RegExp(rx).test(k)) return brand;
+  return null;
+}
+function logo(x, cls = "") {
+  const k = logoKey(x), e = k && LOGO[k];
+  if (!e) return "";
+  const src = "/assets/icons/" + e.src;
+  return e.mono ? `<span class="lg ${cls}" style="--src:url('${src}');--c:${e.hex || "var(--fg)"}" aria-hidden="true"></span>`
+    : `<img class="lg ${cls}" src="${src}" alt="" aria-hidden="true">`;
+}
+function badge(x, color, cls = "") {  // a logo if the brand has one, else a lettered tile in the thing's colour
+  const l = logo(x, cls);
+  if (l) return l;
+  const label = typeof x === "string" ? x : x?.label || "?";
+  return `<span class="letter ${cls}" style="--c:${color || "var(--fg-3)"}" aria-hidden="true">${esc(label.replace(/^your\s+/i, "").slice(0, 1).toUpperCase())}</span>`;
+}
+const aiLogo = (a, cls = "sm") => logo(a, cls) || `<span class="dot" style="--c:var(--ai-${AI_VAR[a] || "agent"})"></span>`;
+
+// ---------- data ----------
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
+  return r.json();
+}
+async function load(force) {
+  let g;
+  try { g = await api("/graph"); } catch (e) { online = false; $("#offline").hidden = false; return renderFoot(); }
+  online = true; $("#offline").hidden = true;
+  const chatSig = g.nodes.filter(n => n.kind === "session").reduce((a, n) => a + (n.turns || 0) + "." + (n.updated || 0) + ",", "");
+  const sig = [g.stats.captures, g.stats.memories, g.stats.entities, g.edges.length, chatSig].join("/");
+  if (!force && sig === lastSig) return renderFoot();
+  const first = !lastSig; lastSig = sig;
+  G = g; byId = new Map(g.nodes.map(n => [n.id, n]));
+  me = g.nodes.find(n => n.kind === "entity" && n.type === "self") || null;
+  G.out = new Map(); G.in = new Map();
+  for (const e of g.edges) {
+    (G.out.get(e.src) || G.out.set(e.src, []).get(e.src)).push(e);
+    (G.in.get(e.dst) || G.in.set(e.dst, []).get(e.dst)).push(e);
+  }
+  const fresh = new Set(g.nodes.filter(n => n.kind === "memory" && !seen.has(n.id)).map(n => n.id));
+  g.nodes.forEach(n => seen.add(n.id));
+  renderSide(); renderFoot(); renderOverview(first ? new Set() : fresh); renderTopics(first ? new Set() : fresh); renderChats();
+  diagram.sync();
+  if (selected != null && !byId.has(selected)) select(null); else renderPanel();
+}
+const memories = () => G.nodes.filter(n => n.kind === "memory" && n.status === "active");
+const chats = () => G.nodes.filter(n => n.kind === "session").sort((a, b) => (b.updated || 0) - (a.updated || 0));
+const chatAI = s => s.ai || s.type || "agent";
+const chatMems = s => (G.in.get(s.id) || []).filter(e => e.rel === "said in").map(e => byId.get(e.src)).filter(m => m && m.status === "active");
+const clip = (s, n) => (s = String(s || "")).length > n ? s.slice(0, n - 1).trimEnd() + "…" : s;
+const modelText = s => !s.model ? "" : s.models?.length > 1 && s.models[0] !== s.model ? `${s.models[0]} → ${s.model}` : s.model;
+const modelChip = s => modelText(s) ? `<span class="model">${esc(modelText(s))}</span>` : "";
+function meterHTML(s, wide) {
+  const pct = s.limit ? 100 : Math.min(100, s.pct || 0), hot = s.limit || pct >= 80;
+  const fmt = n => n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1000 ? Math.round(n / 1000) + "k" : String(n || 0);
+  return `<span class="meter${hot ? " hot" : ""}${wide ? " wide" : ""}" role="meter" aria-label="Context used" aria-valuemin="0" aria-valuemax="100"
+    aria-valuenow="${Math.round(pct)}" title="${fmt(s.tokens)} of ${fmt(s.window)} tokens"><i><b style="--p:${Math.max(pct, 2)}%"></b></i>${
+    s.limit ? "full" : pct > 0 && pct < 1 ? "<1%" : Math.round(pct) + "%"}${wide ? ` · ${fmt(s.tokens)} / ${fmt(s.window)} tokens` : ""}</span>`;
+}
+const HANDOFF_TO = [["chatgpt.com", "ChatGPT"], ["claude.ai", "Claude"], ["gemini.google.com", "Gemini"], ["www.perplexity.ai", "Perplexity"],
+  ["chat.deepseek.com", "DeepSeek"], ["grok.com", "Grok"]];
+function copyText(text) {  // plain http: no async clipboard API
+  const ta = Object.assign(document.createElement("textarea"), { value: text });
+  document.body.append(ta); ta.select();
+  const ok = document.execCommand("copy"); ta.remove();
+  return ok;
+}
+async function handoff(sid, to, btn) {  // the pack (with the AI summary) waits in that AI's new chat; the extension puts it in the box
+  const w = to ? window.open("about:blank", "_blank") : null;  // opened now, on the click, so the browser allows it
+  const label = btn.innerHTML;
+  btn.disabled = true; btn.lastChild.textContent = to ? " Preparing…" : "Preparing…";
+  try {
+    const r = await api(`/handoff?budget=2500&session=${sid}` + (to ? "&to=" + encodeURIComponent(to) : ""));
+    if (to) {
+      if (w) w.location = r.open || "about:blank";
+      toast(`Opening ${HANDOFF_TO.find(x => x[0] === to)?.[1] || to} — the conversation will be in its message box${r.summary_by ? ` · summarised by ${r.summary_by}` : ""}`);
+    } else {
+      toast(copyText(r.text) ? `Hand-off copied · ~${r.tokens} tokens${r.summary_by ? ` · summarised by ${r.summary_by}` : ""}` : "Copy blocked by the browser");
+    }
+  } catch (e) { if (w) w.close(); toast("Hand-off failed: " + e.message); }
+  finally { btn.disabled = false; btn.innerHTML = label; }
+}
+const citeHTML = (text, cites) => esc(text).replace(/\[(\d+)\]/g, (m, n) => cites?.[n] != null
+  ? `<button class="cite" data-id="${cites[n]}" title="Open memory #${cites[n]}">#${cites[n]}</button>` : cites && n in cites ? "" : m);
+function chatRow(s, opts = {}) {
+  const mems = chatMems(s).length;
+  return `<button class="row chat${opts.fresh ? " fresh" : ""}" data-id="${s.id}" aria-current="${selected === s.id}">
+    <span class="src">${aiLogo(chatAI(s), "")}</span>
+    <span><span class="txt">${esc(s.label)}</span>
+      <span class="meta">${modelChip(s)}<span>${esc(chatAI(s))}</span><span>${plural(s.turns || 0, "message")}</span>${
+        s.cluster != null ? `<span class="tag"><span class="dot" style="--c:${topicColor(s.cluster)}"></span>${esc(topicName(s.cluster))}</span>` : ""}${
+        mems ? `<span>${plural(mems, "memory").replace("memorys", "memories")}</span>` : ""}${s.limit ? `<span style="color:var(--danger)">hit its limit</span>` : ""}</span>
+      ${opts.snippet ? `<span class="snip">${esc(opts.snippet)}</span>` : ""}</span>
+    ${meterHTML(s)}
+    <span class="when">${day(s.updated)}</span></button>`;
+}
+const topicName = c => c == null || c === "loose" ? "Loose ends" : (G.topics.find(t => t.id === c)?.name || "Loose ends");
+const edgesOf = id => [...(G.out.get(id) || []), ...(G.in.get(id) || [])];
+const mentionsOf = id => (G.in.get(id) || []).filter(e => e.rel === "mentions" || e.rel === "context" || e.rel === "about").length;
+
+// ---------- formatting ----------
+function ago(ts) {
+  if (!ts) return "never";
+  const s = Date.now() / 1000 - ts;
+  if (s < 60) return "just now";
+  if (s < 3600) return Math.floor(s / 60) + "m ago";
+  if (s < 86400) return Math.floor(s / 3600) + "h ago";
+  if (s < 86400 * 30) return Math.floor(s / 86400) + "d ago";
+  return day(ts);
+}
+const day = ts => new Date(ts * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+function saidIn(n) {  // the newest source: which chat (or note), which model; more chats as a count with their logos
+  const srcs = n.srcs || [], s = srcs[0];
+  if (!s) return "";
+  const where = s.note ? `<span class="said">${ICON.note}note · ${esc(clip(s.chat || "", 32))}</span>`
+    : s.chat ? `<span class="said">${ICON.chat}“${esc(clip(s.chat, 48))}”</span>` : "";
+  const more = srcs.length - 1;
+  return where + (s.model ? `<span class="mono">${esc(s.model)}</span>` : "") +
+    (more > 0 ? `<span class="tag">+${more} ${more > 1 ? "chats" : "chat"} ${[...new Set(srcs.slice(1).map(x => x.ai))].map(a => aiLogo(a)).join("")}</span>` : "");
+}
+function entryRow(n, opts = {}) {
+  const ais = n.srcs?.length ? [n.srcs[0].ai, ...(n.ais || []).filter(a => a !== n.srcs[0].ai)] : n.ais?.length ? n.ais : ["agent"];
+  const see = edgesOf(n.id).filter(e => e.rel === "similar").length;
+  return `<button class="row${opts.fresh ? " fresh" : ""}" data-id="${n.id}" aria-current="${selected === n.id}">
+    <span class="${opts.rank ? "rank" : "src"}">${opts.rank ? opts.rank : aiLogo(ais[0])}</span>
+    <span><span class="txt${PERSONAL.has(n.type) ? "" : " dim"}">${esc(n.label)}</span>
+      <span class="meta"><span class="kindtag">${KIND[n.type] || "Note"}</span>${n.at ? `<span>${n.at * 1000 > Date.now() ? "due" : "on"} ${day(n.at)}</span>` : ""}${
+        n.count > 1 ? `<span>said ${n.count}×</span>` : ""}${opts.rank ? `<span class="tag">${ais.map(a => aiLogo(a)).join("")} ${esc(ais.join(", "))}</span>` : ""}${
+        saidIn(n)}${opts.topic && n.cluster != null ? `<span class="tag"><span class="dot" style="--c:${topicColor(n.cluster)}"></span>${esc(topicName(n.cluster))}</span>` : ""}${
+        see ? `<span>${see} related</span>` : ""}</span></span>
+    <span class="when">${day(n.updated)}</span></button>`;
+}
+
+// ---------- sidebar ----------
+function renderSide() {
+  const mems = memories(), loose = mems.filter(m => m.cluster == null).length;
+  const topics = [...G.topics].sort((a, b) => (a.id === 0 ? -1 : b.id === 0 ? 1 : b.size - a.size));
+  $("#side-topics").innerHTML = topics.map(t => `<li><button data-topic="${t.id}"><span class="dot" style="--c:${topicColor(t.id)}"></span><span class="name">${esc(t.name)}</span><span class="n">${t.size}</span></button></li>`).join("")
+    + (loose ? `<li><button data-topic="loose"><span class="dot" style="--c:${topicColor("loose")}"></span><span class="name">Loose ends</span><span class="n">${loose}</span></button></li>` : "")
+    || `<li class="side-h" style="padding-top:0">Topics appear as you chat.</li>`;
+  $("#n-topics").textContent = G.topics.length || "";
+  const ais = Object.entries(G.stats.ais || {}).sort((a, b) => b[1] - a[1]);
+  $("#side-sources").innerHTML = ais.map(([a, n]) => `<li><button data-source="${esc(a)}">${aiLogo(a, "")}<span class="name">${esc(a)}</span><span class="n">${n}</span></button></li>`).join("")
+    || `<li class="side-h" style="padding-top:0">No AI captured yet.</li>`;
+  $("#n-sources").textContent = ais.length || "";
+}
+function renderFoot() {
+  const s = G.stats, last = Math.max(0, ...G.nodes.filter(n => n.kind === "memory").map(n => n.updated || 0));
+  $("#live").innerHTML = `<span class="dot ${online ? "on" : "off"}"></span><span>${online ? "Live" : "Offline"}</span>`;
+  $("#side-foot").innerHTML = `
+    <div class="row-s"><span>Last capture</span><b>${last ? ago(last) : "—"}</b></div>
+    <div class="row-s"><span>${plural(s.memories ?? 0, "memory").replace("memorys", "memories")} · ${plural(s.entities ?? 0, "thing")}</span><b>${s.captures ?? 0} captured</b></div>
+    <div class="row-s"><button class="btn-quiet" id="rebuild" title="Re-read every capture with the current understanding">${ICON.refresh}Re-read all</button></div>`;
+}
+
+// ---------- overview: what every AI knows about you ----------
+const GROUPS = [
+  { key: "who", title: "Who you are", rels: ["named", "age", "is", "from"], c: "--c-who" },
+  { key: "place", title: "Where", rels: ["lives in", "works at"], c: "--c-place" },
+  { key: "project", title: "Building", rels: ["working on", "built"], c: "--c-project" },
+  { key: "tool", title: "Uses", rels: ["uses"], c: "--c-tool" },
+  { key: "own", title: "Has", rels: ["has"], c: "--c-own" },
+  { key: "learn", title: "Learning", rels: ["learning", "studies"], c: "--c-learn" },
+  { key: "like", title: "Likes", rels: ["likes", "plays", "does"], c: "--c-like" },
+  { key: "dislike", title: "Dislikes", rels: ["dislikes", "avoids", "allergic to"], c: "--c-dislike" },
+  { key: "people", title: "People", rels: [], c: "--c-people" },
+  { key: "want", title: "Wants", rels: ["wants", "wants to visit", "wants to try", "wants to switch to", "wants to build", "plans to move to"], c: "--c-want" },
+];
+const OTHER = { key: "other", title: "Related", rels: [], c: "--c-other" };
+const groupFor = (rel, other) => GROUPS.find(g => g.rels.includes(rel)) || (other?.type === "person" ? GROUPS[8] : OTHER);
+const TOPIC_TOKENS = Array.from({ length: 12 }, (_, i) => `--t${i + 1}`);
+function topicColor(id) {
+  if (id == null || id === "loose") return css("--c-other");
+  const order = G.topics.map(t => t.id).sort((a, b) => a - b);
+  return css(TOPIC_TOKENS[Math.max(0, order.indexOf(id)) % TOPIC_TOKENS.length]);
+}
+function greeting() {
+  const h = new Date().getHours();
+  return h < 5 ? "Up late" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+}
+function renderOverview(fresh) {
+  const el = $("#overview"), mems = memories();
+  const name = me && (G.out.get(me.id) || []).find(e => e.rel === "named");
+  const who = name ? byId.get(name.dst)?.label : "";
+  const ais = Object.entries(G.stats.ais || {}).sort((a, b) => b[1] - a[1]).map(([a]) => a);
+  const last = Math.max(0, ...mems.map(n => n.updated || 0));
+  if (!mems.length) {
+    el.innerHTML = `<div class="wrap"><h1 class="hello">${greeting()}.</h1><div class="empty"><h3>Nothing remembered yet</h3>
+      <p>Install the browser extension and chat with ChatGPT, Claude, Gemini or any AI. What you say about yourself shows up here within seconds.</p></div>${connectCard()}</div>`;
+    return;
+  }
+  // profile rows: things you're related to, grouped by kind, most-mentioned first
+  const buckets = new Map();
+  for (const e of me ? (G.out.get(me.id) || []) : []) {
+    const o = byId.get(e.dst);
+    if (!o || o.kind !== "entity" || ["mentions", "about", "context", "similar", "replaces", "updates"].includes(e.rel)) continue;
+    const grp = groupFor(e.rel, o);
+    (buckets.get(grp) || buckets.set(grp, []).get(grp)).push({ e, o });
+  }
+  const kinds = [...GROUPS, OTHER].filter(g => buckets.has(g)).map(g => {
+    const color = css(g.c);
+    const items = buckets.get(g).sort((a, b) => b.e.weight - a.e.weight || mentionsOf(b.o.id) - mentionsOf(a.o.id)).map(({ e, o }) => {
+      const desc = (G.out.get(o.id) || []).find(x => x.rel === "is" && byId.get(x.dst)?.kind === "entity");
+      const label = g.key === "people" ? `${o.label.replace(/^your /, "")}` : o.label;
+      const pre = g.key === "people" && !/^your /.test(o.label) ? `<span class="desc">${esc(e.rel)}</span>` : g.key === "who" && e.rel === "from" ? `<span class="desc">from</span>` : "";
+      const mark = logo(o, "sm") || (o.type === "person" || g.key === "people" ? `<span class="letter round" style="--c:${color}">${esc(label.slice(0, 1).toUpperCase())}</span>` : `<span class="dot" style="--c:${color}"></span>`);
+      return `<button class="chip" data-id="${o.id}" aria-pressed="${selected === o.id}">${mark}${pre}${esc(label)}${desc ? `<span class="desc">${esc(byId.get(desc.dst).label)}</span>` : ""}</button>`;
+    });
+    return `<div class="kind"><div class="kind-name"><span class="dot" style="--c:${color}"></span>${esc(g.title)}</div><div class="chips">${items.join("")}</div></div>`;
+  });
+  const recent = [...mems].sort((a, b) => b.updated - a.updated).slice(0, 7);
+  const mine = mems.filter(m => PERSONAL.has(m.type)).sort((a, b) => (b.importance * (1 + .1 * b.count)) - (a.importance * (1 + .1 * a.count)) || b.updated - a.updated);
+  const counts = { all: mine.length }; mine.forEach(m => counts[m.type] = (counts[m.type] || 0) + 1);
+  const shown = kindFilter === "all" ? mine : mine.filter(m => m.type === kindFilter);
+  el.innerHTML = `<div class="wrap">
+    <h1 class="hello">${greeting()}${who ? ", " + esc(who) : ""}.</h1>
+    <p class="hello-sub"><span class="stack">${ais.slice(0, 6).map(a => aiLogo(a, "")).join("")}</span>
+      <span>${plural(mems.length, "memory").replace("memorys", "memories")} from ${plural(ais.length, "AI")}</span><span class="sep-dot"></span>
+      <span>${plural(G.stats.entities || 0, "thing")}</span><span class="sep-dot"></span>${
+      chats().length ? `<button class="btn-quiet" data-view="chats">${plural(chats().length, "chat")}</button><span class="sep-dot"></span>` : ""}<span>last capture ${ago(last)}</span></p>
+    <div class="grid">
+      <div style="display:flex;flex-direction:column;gap:20px;min-height:0">
+        <section class="card" style="flex:none;max-height:260px" aria-labelledby="h-know"><div class="card-h"><h2 id="h-know">What they know about you</h2><span class="spacer"></span><p>click anything to see where it came from</p></div>
+          <div class="card-b">${kinds.join("") || `<div class="empty"><p>Say things like “I use Neovim” or “I live in Pune” in any AI chat and they collect here.</p></div>`}</div></section>
+        ${connectCard()}
+      </div>
+      <section class="card" aria-labelledby="h-recent"><div class="card-h"><h2 id="h-recent">Recently</h2><span class="spacer"></span><button class="btn-quiet" data-view="topics">All topics</button></div>
+        <div class="card-b rows">${recent.map(m => entryRow(m, { fresh: fresh.has(m.id) })).join("")}</div></section>
+    </div>
+    <div class="section-h"><h2>In your own words</h2><p>${mine.length} things you've said about yourself</p>
+      <div class="segs" role="group" aria-label="Filter">${[["all", "All"], ["fact", "Facts"], ["preference", "Preferences"], ["goal", "Goals"], ["event", "Events"]]
+        .filter(([k]) => k === "all" || counts[k]).map(([k, t]) => `<button data-kind="${k}" aria-pressed="${kindFilter === k}">${t}<span class="n">${counts[k] || 0}</span></button>`).join("")}</div></div>
+    <div class="card"><div class="card-b rows">${shown.map(m => entryRow(m, { fresh: fresh.has(m.id) })).join("") || `<div class="empty"><p>Nothing here yet.</p></div>`}</div></div>
+  </div>`;
+}
+function connectCard() {
+  const base = location.origin;
+  return `<section class="card" style="flex:1;min-height:0" aria-labelledby="h-connect"><div class="card-h">${ICON.plug}<h2 id="h-connect">Connect an AI</h2></div><div class="card-b connect">
+    <div class="conn">${logo("claude code", "lg-lg")}<div><b>Claude Code</b><p><code>claude mcp add --transport http memgraph ${esc(base)}/mcp</code></p></div></div>
+    <div class="conn">${logo("cursor", "lg-lg")}<div><b>Cursor, Windsurf, any MCP app</b><p>Server URL <code>${esc(base)}/mcp</code></p></div></div>
+    <div class="conn">${logo("claude", "lg-lg")}<div><b>Claude Desktop</b><p>Add <a href="/mcp_stdio.py" download>mcp_stdio.py</a> as a server, with <code>MEMGRAPH_URL=${esc(base)}</code></p></div></div>
+    <div class="conn"><span class="stack">${["ChatGPT", "Gemini", "Perplexity"].map(a => aiLogo(a, "")).join("")}</span><div><b>ChatGPT, Gemini & co. on the web</b><p>The extension saves what you send; <code>Alt+M</code> brings your memory into the chat. <a href="/memgraph-extension.zip" download>Get the extension</a></p></div></div>
+  </div></section>`;
+}
+
+// ---------- topics ----------
+let openTopics = new Set();
+function renderTopics(fresh) {
+  const el = $("#topics"), mems = memories(), groups = new Map();
+  mems.forEach(m => { const k = m.cluster ?? "loose"; (groups.get(k) || groups.set(k, []).get(k)).push(m); });
+  const order = [...G.topics].sort((a, b) => (a.id === 0 ? 1 : b.id === 0 ? -1 : b.size - a.size)).map(t => t.id);
+  if (groups.has("loose")) order.push("loose");
+  if (!mems.length) { el.innerHTML = `<div class="wrap"><h1 class="hello">Topics</h1><div class="empty"><p>No entries yet.</p></div></div>`; return; }
+  const convs = chats(), spans = new Set(mems.flatMap(m => m.ais || []));
+  el.innerHTML = `<div class="wrap"><h1 class="hello">Topics</h1><p class="hello-sub">${plural(mems.length, "entry").replace("entrys", "entries")}${
+    convs.length ? ` from ${plural(convs.length, "chat")}` : ""} across ${plural(spans.size, "AI")}, sorted into ${plural(G.topics.length, "topic")} — the same subject in different apps is one topic.</p>`
+    + order.filter(k => groups.has(k)).map(k => {
+      const list = groups.get(k).sort((a, b) => b.updated - a.updated), ais = {};
+      list.forEach(m => (m.ais || []).forEach(a => ais[a] = (ais[a] || 0) + 1));
+      const all = openTopics.has(String(k)), shown = all ? list : list.slice(0, 5);
+      const tc = convs.filter(s => (s.cluster ?? "loose") === k || chatMems(s).some(m => (m.cluster ?? "loose") === k));
+      const byAI = Object.entries(ais).sort((a, b) => b[1] - a[1]);
+      return `<section class="topic card" id="topic-${k}"><div class="topic-h"><span class="dot" style="--c:${topicColor(k)}"></span><h3>${esc(topicName(k))}</h3><span class="n">${list.length}</span>
+        <span class="by" title="${esc(byAI.map(([a, n]) => `${a} ${n}`).join(" · "))}"><span class="stack">${byAI.slice(0, 4).map(([a]) => aiLogo(a, "")).join("")}</span>${
+          tc.length ? `<span>${plural(tc.length, "chat")}</span>` : `<span>${byAI.map(([a, n]) => `${esc(a)} ${n}`).join(" · ")}</span>`}</span></div>
+        ${G.topics.find(t => t.id === k)?.by === "ai" && G.topics.find(t => t.id === k)?.summary ? `<p class="topic-sum">${esc(G.topics.find(t => t.id === k).summary)}</p>` : ""}
+        ${tc.length ? `<div class="chat-strip">${tc.slice(0, 6).map(s => `<button class="chip" data-id="${s.id}">${aiLogo(chatAI(s))}${esc(clip(s.label, 34))}${
+          s.model ? `<span class="desc mono">${esc(s.model)}</span>` : ""}</button>`).join("")}${tc.length > 6 ? `<span class="chip">+${tc.length - 6}</span>` : ""}</div>` : ""}
+        <div class="card-b rows" style="padding-top:0">${shown.map(m => entryRow(m, { fresh: fresh.has(m.id) })).join("")}</div>
+        ${list.length > 5 ? `<button class="more" data-more="${k}">${all ? "Show less" : `Show all ${list.length}`}</button>` : ""}</section>`;
+    }).join("") + `</div>`;
+}
+
+// ---------- chats: every conversation, which AI and model, how full, what it's about ----------
+function renderChats() {
+  const el = $("#chats"), all = chats(), mems = memories();
+  const byAI = {};
+  all.forEach(s => byAI[chatAI(s)] = (byAI[chatAI(s)] || 0) + 1);
+  mems.forEach(m => (m.ais || []).forEach(a => byAI[a] = byAI[a] || 0));
+  if (aiFilter !== "all" && !(aiFilter in byAI)) aiFilter = "all";
+  const list = aiFilter === "all" ? all : all.filter(s => chatAI(s) === aiFilter);
+  const ais = Object.keys(byAI).sort((a, b) => byAI[b] - byAI[a]);
+  const last = Math.max(0, ...all.map(s => s.updated || 0));
+  const said = aiFilter === "all" ? [] : mems.filter(m => (m.ais || []).includes(aiFilter)).sort((a, b) => b.updated - a.updated);
+  el.innerHTML = `<div class="wrap"><h1 class="hello">Chats</h1>
+    <p class="hello-sub"><span class="stack">${ais.slice(0, 6).map(a => aiLogo(a, "")).join("")}</span>
+      <span>${plural(all.length, "conversation")} across ${plural(Object.keys(byAI).filter(a => byAI[a]).length, "AI")}</span>${last ? `<span class="sep-dot"></span><span>last active ${ago(last)}</span>` : ""}</p>
+    <div class="section-h"><h2>${aiFilter === "all" ? "All chats" : esc(aiFilter)}</h2><p>newest first · which model answered · how full its context is</p>
+      <div class="segs" role="group" aria-label="Filter by AI"><button data-ai="all" aria-pressed="${aiFilter === "all"}">All<span class="n">${all.length}</span></button>${
+        ais.map(a => `<button data-ai="${esc(a)}" aria-pressed="${aiFilter === a}">${aiLogo(a)}${esc(a)}<span class="n">${byAI[a]}</span></button>`).join("")}</div></div>
+    <div class="card">${list.length ? `<div class="card-b rows">${list.map(s => chatRow(s)).join("")}</div>`
+      : `<div class="empty"><h3>${all.length ? `No ${esc(aiFilter)} chats tracked yet` : "No conversations yet"}</h3><p>${all.length
+        ? `Its ${plural(said.length, "memory").replace("memorys", "memories")} are below.`
+        : `Turn on Live mode in the extension to keep whole chats from ChatGPT, Claude, Gemini and more. Claude Code sessions on this machine appear on their own.`}</p></div>`}</div>
+    ${said.length ? `<div class="section-h"><h2>Said to ${esc(aiFilter)}</h2><p>${plural(said.length, "memory").replace("memorys", "memories")}</p></div>
+      <div class="card"><div class="card-b rows">${said.map(m => entryRow(m, { topic: true })).join("")}</div></div>` : ""}
+  </div>`;
+}
+
+// ---------- setup: each piece, whether it's working, and exactly how to connect it ----------
+const TICK = '<svg viewBox="0 0 24 24"><path d="M5 12.5 10 17 19 7.5"/></svg>';
+const cmdBox = (text, label = "Copy") => `<div class="cmd"><pre>${esc(text)}</pre><button class="btn sm" data-copy="${esc(text)}">${label}</button></div>`;
+function agentCards(base, st) {
+  const url = base + "/mcp", seen = st.agents?.apps || {}, ccLast = st.agents?.claude_code?.last;
+  const cards = [
+    ["Claude Code", "claude code", "In a terminal:", `claude mcp add --transport http -s user memgraph ${url}`, ccLast || seen["Claude Code"]],
+    ["Codex", "codex", "In a terminal:", `codex mcp add memgraph --url ${url}`, seen.Codex],
+    ["Antigravity", "Antigravity", "Add to ~/.gemini/config/mcp_config.json:", JSON.stringify({ mcpServers: { memgraph: { serverUrl: url } } }, null, 2), seen.Antigravity],
+    ["Cursor", "cursor", "Add to ~/.cursor/mcp.json:", JSON.stringify({ mcpServers: { memgraph: { url } } }, null, 2), seen.Cursor],
+    ["Windsurf", "windsurf", "Add to ~/.codeium/windsurf/mcp_config.json:", JSON.stringify({ mcpServers: { memgraph: { serverUrl: url } } }, null, 2), seen.Windsurf],
+    ["VS Code · Copilot", "vscode", "In a terminal:", `code --add-mcp '${JSON.stringify({ name: "memgraph", type: "http", url })}'`, seen["GitHub Copilot"]],
+    ["Gemini CLI", "Gemini", "In a terminal:", `gemini mcp add --transport http memgraph ${url}`, seen["Gemini CLI"]],
+    ["Cline", "cline", "Cline → MCP Servers → Configure, add:", JSON.stringify({ mcpServers: { memgraph: { url, type: "streamableHttp" } } }, null, 2), seen.Cline],
+    ["Zed", "zed", "Add to Zed's settings.json:", JSON.stringify({ context_servers: { memgraph: { url } } }, null, 2), seen.Zed],
+    ["Claude Desktop", "claude", `Download <a href="/mcp_stdio.py" download>mcp_stdio.py</a>, then add to claude_desktop_config.json:`,
+      JSON.stringify({ mcpServers: { memgraph: { command: "python3", args: ["/path/to/mcp_stdio.py"], env: { MEMGRAPH_URL: base } } } }, null, 2), seen.Claude],
+  ];
+  return cards.map(([name, lg, how, cfg, when]) => `<div class="agent${when ? " done" : ""}"><div class="agent-h">${logo(lg) || badge(name)}<b>${esc(name)}</b>${
+    when ? `<span class="ok"><i></i>connected${typeof when === "number" && when > 1e9 ? " · " + ago(when) : ""}</span>` : ""}</div>
+    <small>${how}</small>${cmdBox(cfg)}</div>`).join("");
+}
+async function renderSetup() {
+  const el = $("#setup");
+  let st;
+  try { st = await api("/status"); } catch { el.innerHTML = `<div class="wrap"><h1 class="hello">Setup</h1><div class="empty"><p>Can't reach the server.</p></div></div>`; return; }
+  const base = location.origin.startsWith("http://127.") || location.origin.includes("localhost") ? st.server.lan : location.origin;
+  const parts = [["server", true], ["extension", st.extension.ok], ["agents", st.agents.ok], ["phone", st.phone.ok], ["ai", st.ai.enabled], ["public", st.public.ok]];
+  const done = parts.filter(p => p[1]).length;
+  const step = (n, ok, title, sub, body) => `<section class="step${ok ? " done" : ""}"><div class="step-h"><span class="tick">${ok ? TICK : n}</span>
+    <div><h3>${title}</h3><p>${sub}</p></div></div>${body || ""}</section>`;
+  const webAIs = ["ChatGPT", "Claude", "Gemini", "Perplexity", "DeepSeek", "Grok", "Copilot", "Mistral"];
+  el.innerHTML = `<div class="wrap"><h1 class="hello">Set up memgraph</h1>
+    <p class="hello-sub">${done} of ${parts.length} connected — every green tick is something memgraph has actually seen working.</p>
+    <div class="progress" aria-hidden="true"><b style="width:${Math.round(done / parts.length * 100)}%"></b></div>
+    <div class="steps">
+    ${step(1, true, "Your memory server is running", "Other devices on your Wi-Fi use this address:", cmdBox(st.server.lan))}
+    ${step(2, st.extension.ok, "Browser extension — ChatGPT, Claude, Gemini and more",
+      st.extension.ok ? `Saving from ${esc(st.extension.ais.join(", ") || "your AI chats")}${st.extension.last ? " · last " + ago(st.extension.last) : ""}${st.extension.live ? " · Live mode on" : ""}`
+        : "Remembers what you tell AI websites, and hands a full chat to another AI.",
+      `<div class="stack">${webAIs.map(a => aiLogo(a, "")).join("")}</div><ol>
+        <li><a class="btn sm primary" href="/memgraph-extension.zip" download>Download the extension</a> and unzip it.</li>
+        <li>Open <b>chrome://extensions</b> ${`<button class="btn sm" data-copy="chrome://extensions">Copy</button>`}, turn on <b>Developer mode</b> (top right).</li>
+        <li>Click <b>Load unpacked</b> and pick the unzipped folder. Done — chat with any AI and it shows up here.</li></ol>`)}
+    ${step(3, st.agents.ok, "Coding agents and desktop apps",
+      st.agents.ok ? "Connected: " + esc([st.agents.claude_code?.chats ? "Claude Code" : null, ...Object.keys(st.agents.apps || {})].filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(", "))
+        : "Give Claude Code, Codex, Cursor and friends your memory: they read it, add to it, and continue chats.",
+      `<div class="agents">${agentCards(base, st)}</div>`)}
+    ${step(4, st.phone.ok, "Your phone",
+      st.phone.ok ? "Used from your phone · last " + ago(st.phone.last) : "memgraph as an app, and “Share → memgraph” from any app.",
+      st.phone.url ? `<ol><li>Install <b>Tailscale</b> on the phone and sign in (same account as this computer).</li>
+        <li>On the phone, open this in <b>Chrome</b>:</li></ol>${cmdBox(st.phone.url)}<ol start="3"><li>Tap <b>⋮ → Add to Home screen → Install</b>.</li>
+        <li>In ChatGPT, Gemini or any app: long-press a message → <b>Share</b> → <b>memgraph</b>.</li></ol>`
+        : `<p style="margin:0;color:var(--fg-3);font-size:13px">Install Tailscale on this computer and your phone to use memgraph from anywhere.</p>`)}
+    ${step(5, st.ai.enabled, "Free AI (optional) — summaries, answers, topic names",
+      st.ai.enabled ? `On: ${esc(st.ai.providers.join(" → "))} · ${st.ai.used_today} requests today${st.ai.last_error ? " · last error: " + esc(st.ai.last_error) : ""}`
+        : "memgraph works without it. With a free key it writes hand-off summaries and answers questions from your memory.",
+      `<ol><li>Get a free key: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent-strong)">Google AI Studio ↗</a>
+        or <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style="color:var(--accent-strong)">Groq ↗</a>.</li><li>Paste it here — it's tested before it's saved:</li></ol>
+      <form class="keyform" id="keyform"><select name="provider" aria-label="Provider"><option value="gemini">Google Gemini</option><option value="groq">Groq</option></select>
+        <input name="key" type="password" autocomplete="off" placeholder="Paste your key" aria-label="API key" required><button class="btn primary sm">Test and save</button></form>`)}
+    ${step(6, st.public.ok, "Claude and ChatGPT apps (optional, phone too)",
+      st.public.ok ? "Connected · last used " + ago(st.public.last) : st.public.configured ? "Ready — add the connector in Claude or ChatGPT." : "Needs a one-time public address (see the README).",
+      st.public.url ? `<ol><li>On <b>claude.ai</b>: Settings → Connectors → Add custom connector. On <b>chatgpt.com</b>: Settings → Apps & Connectors → Developer mode → Create.</li>
+        <li>Paste this address (treat it like a password):</li></ol><div class="cmd"><pre id="conn-url">•••• hidden ••••</pre><button class="btn sm" data-reveal="${esc(st.public.url)}">Reveal</button>
+        <button class="btn sm" data-copy="${esc(st.public.url)}">Copy</button></div>` : "")}
+    </div></div>`;
+  $("#keyform").onsubmit = async ev => {
+    ev.preventDefault();
+    const f = new FormData(ev.target), btn = ev.target.querySelector("button");
+    btn.disabled = true; btn.textContent = "Testing…";
+    try { const r = await api("/settings/ai-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.fromEntries(f)) });
+      toast(`${r.saved} key saved — the AI is on`); renderSetup(); }
+    catch (e) { toast(e.message); btn.disabled = false; btn.textContent = "Test and save"; }
+  };
+}
+
+// ---------- search ----------
+let recallTimer, lastQ = "";
+async function recall(q, deep) {
+  q = q.trim();
+  if (!q) { recallIds = null; lastQ = ""; diagram.draw(); return show(view === "recall" ? "overview" : view); }
+  let r;
+  try { r = await api("/recall?k=12&q=" + encodeURIComponent(q)); } catch (e) { return toast("Search failed: " + e.message); }
+  lastQ = q;
+  recallIds = new Set(r.nodes.map(n => n.id));
+  const ans = r.answer ? `<div class="answer">${ICON.spark}<div><p>${esc(r.answer.text)}</p>${r.answer.sources?.length ? `<small>from ${r.answer.sources.map(i => `<button data-id="${i}">#${i}</button>`).join(" ")}</small>` : ""}</div></div>` : "";
+  $("#recall").innerHTML = `<div class="wrap"><h1 class="hello" style="font-size:24px">“${esc(q)}”</h1>${ans}<div id="ai-answer"></div>
+    <p class="hello-sub">${r.memories.length ? `${plural(r.memories.length, "memory").replace("memorys", "memories")}, best match first` : "Nothing remembered about that yet."}</p>
+    <div class="card" style="margin-top:14px">${r.memories.length ? `<div class="card-b rows">${r.memories.map((m, i) => entryRow({ ...(byId.get(m.id) || {}), ...m, label: m.text, cluster: byId.get(m.id)?.cluster }, { rank: i + 1, topic: true, fresh: true })).join("")}</div>`
+      : `<div class="empty"><h3>No match</h3><p>Try other words — search understands synonyms, typos and questions like “which editor do I use”.</p></div>`}</div>
+    ${(() => { const cs = (r.conversations || []).map(c => ({ c, s: G.nodes.find(n => n.kind === "session" && n.key === "session:" + c.key) })).filter(x => x.s);
+      return cs.length ? `<div class="section-h"><h2>Conversations</h2><p>${plural(cs.length, "chat")} mention this</p></div><div class="card"><div class="card-b rows">${
+        cs.map(({ c, s }) => chatRow(s, { snippet: `${c.role === "assistant" ? (s.model || chatAI(s)) : "You"}: ${c.snippet}` })).join("")}</div></div>` : ""; })()}
+  </div>`;
+  if (view !== "map") show("recall"); else diagram.draw();
+  if (deep || /\?\s*$|^(what|who|where|when|which|why|how|do|did|does|am|is|are|have|has|can|should)\b/i.test(q) && q.split(/\s+/).length >= 3) askAI(q, deep);
+}
+let askTimer;
+async function askAI(q, now) {  // the rules found the memories; the AI words an answer from them and cites each one
+  clearTimeout(askTimer);
+  askTimer = setTimeout(async () => {
+    const slot = $("#ai-answer");
+    if (!slot || q !== lastQ) return;  // repeats are free: the server caches each answer
+    slot.innerHTML = `<div class="ai-card loading"><div class="ai-h">${ICON.spark}Asking your memory…</div><p>Reading what you've said about this.</p></div>`;
+    let r;
+    try { r = await api("/ask?q=" + encodeURIComponent(q)); } catch { r = null; }
+    if (q !== lastQ || !$("#ai-answer")) return;
+    if (!r?.answer) { $("#ai-answer").innerHTML = ""; return; }
+    const n = Object.keys(r.answer.cites || {}).length;
+    $("#ai-answer").innerHTML = `<div class="ai-card"><div class="ai-h">${ICON.spark}From your memory · ${esc(r.answer.by || "AI")}${
+      n ? ` · ${plural(n, "source")}` : ""}</div><p>${citeHTML(r.answer.text, r.answer.cites)}</p></div>`;
+  }, now ? 0 : 900);  // while typing, wait for a pause; Enter asks at once
+}
+
+// ---------- details panel ----------
+function select(id) {
+  selected = id;
+  document.querySelectorAll(".row[aria-current]").forEach(e => e.setAttribute("aria-current", e.dataset.id == id));
+  document.querySelectorAll(".chip").forEach(b => b.setAttribute("aria-pressed", b.dataset.id == id));
+  renderPanel(); diagram.draw();
+  if (id != null && view === "map" && byId.get(id)?.kind === "entity") diagram.focus(id);
+  $("#panel").classList.toggle("open", id != null);
+}
+function renderPanel() {
+  const el = $("#panel-body"), n = byId.get(selected);
+  if (!n) { $("#panel-kind").textContent = "Details"; el.innerHTML = ""; return; }
+  const edges = edgesOf(n.id);
+  const item = (id, k, cls = "") => { const m = byId.get(id); return m ? `<button data-id="${id}"><span class="k">${esc(k)}</span><span class="${cls}">${esc(m.label)}</span></button>` : ""; };
+  if (n.kind === "memory") {
+    $("#panel-kind").textContent = `${KIND[n.type] || "Note"} · #${n.id}`;
+    const things = edges.filter(e => e.src === n.id && e.rel === "mentions").map(e => byId.get(e.dst)).filter(Boolean);
+    const see = edges.filter(e => e.rel === "similar").sort((a, b) => b.weight - a.weight).map(e => e.src === n.id ? e.dst : e.src);
+    const replaces = edges.filter(e => e.rel === "replaces" && e.src === n.id).map(e => e.dst);
+    const replacedBy = edges.filter(e => e.rel === "replaces" && e.dst === n.id).map(e => e.src);
+    el.innerHTML = `<p class="p-title${n.status === "superseded" ? " old" : ""}">${esc(n.label)}</p>
+      <dl class="props">
+        <dt>Said in</dt><dd class="srcs">${(n.srcs?.length ? n.srcs : (n.ais?.length ? n.ais : ["agent"]).map(a => ({ ai: a }))).map(s => {
+          const inner = `${aiLogo(s.ai)}<span>${s.note ? "Memory note · " : ""}${esc(s.chat || s.ai)}</span>${s.chat && !s.note ? `<span style="color:var(--fg-3)">${esc(s.ai)}</span>` : ""}${
+            s.model ? `<span class="model">${esc(s.model)}</span>` : ""}${s.ts ? `<span class="when">${day(s.ts)}</span>` : ""}`;
+          return s.session && byId.has(s.session) ? `<button class="tag" data-id="${s.session}" title="Open this chat">${inner}</button>` : `<span class="tag">${inner}</span>`;
+        }).join("")}</dd>
+        <dt>Topic</dt><dd><span class="tag"><span class="dot" style="--c:${topicColor(n.cluster)}"></span>${esc(topicName(n.cluster))}</span></dd>
+        <dt>Last said</dt><dd>${ago(n.updated)}${n.count > 1 ? ` · ${n.count} times` : ""}</dd>
+        ${n.at ? `<dt>Date</dt><dd>${new Date(n.at * 1000).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}</dd>` : ""}
+        <dt>Confidence</dt><dd>${n.conf >= .85 ? "Stated plainly" : n.conf >= .55 ? "Implied" : "Mentioned in passing"}</dd>
+        ${n.status === "superseded" ? `<dt>Status</dt><dd style="color:var(--danger)">Replaced by something newer</dd>` : ""}
+      </dl>
+      ${things.length ? `<div class="p-sec">Things</div><div class="chips">${things.map(t => `<button class="chip" data-id="${t.id}">${badge(t, "var(--fg-3)", "sm")}${esc(t.label)}</button>`).join("")}</div>` : ""}
+      ${see.length ? `<div class="p-sec">Related memories</div><div class="p-list">${see.map(i => item(i, "#" + i)).join("")}</div>` : ""}
+      ${replaces.length ? `<div class="p-sec">Replaces</div><div class="p-list">${replaces.map(i => item(i, "#" + i, "old")).join("")}</div>` : ""}
+      ${replacedBy.length ? `<div class="p-sec">Replaced by</div><div class="p-list">${replacedBy.map(i => item(i, "#" + i)).join("")}</div>` : ""}
+      ${forgetBlock(n)}`;
+  } else if (n.kind === "session") {
+    const ai = chatAI(n), mems = chatMems(n).sort((a, b) => b.updated - a.updated);
+    $("#panel-kind").textContent = `${ai} chat · #${n.sid ?? n.id}`;
+    const talks = (G.out.get(n.id) || []).filter(e => e.rel === "discusses").sort((a, b) => b.weight - a.weight).map(e => byId.get(e.dst)).filter(Boolean).slice(0, 12);
+    const parent = (G.out.get(n.id) || []).find(e => e.rel === "continues"), kids = (G.in.get(n.id) || []).filter(e => e.rel === "continues");
+    const tset = new Set(talks.map(t => t.id));
+    const others = chats().filter(s => s.id !== n.id && chatAI(s) !== ai && ((n.cluster != null && s.cluster === n.cluster) ||
+      (G.out.get(s.id) || []).filter(e => e.rel === "discusses" && tset.has(e.dst)).length >= 2)).slice(0, 8);
+    el.innerHTML = `<div class="p-entity">${logo(ai) || badge(ai)}<div><h2 style="font-size:19px;line-height:1.3">${esc(n.label)}</h2>
+      <p>${esc(ai)}${n.model ? " · " + esc(n.model) : ""} · ${plural(n.turns || 0, "message")}</p></div></div>
+      <div class="ai-card loading" id="p-sum" hidden><div class="ai-h">${ICON.spark}Summary</div><p>Summarising this chat…</p></div>
+      <div class="p-sec">Continue in</div>
+      <div class="handoff">${HANDOFF_TO.filter(([, name]) => name !== ai).map(([host, name]) => `<button data-handoff="${n.sid}" data-to="${host}">${aiLogo(name)}<span>${esc(name)}</span></button>`).join("")}
+        <button data-handoff="${n.sid}"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8"/></svg><span>Copy hand-off</span></button></div>
+      <dl class="props">
+        <dt>App</dt><dd><span class="tag">${aiLogo(ai)}${esc(ai)}</span></dd>
+        <dt>Model</dt><dd>${n.models?.length ? n.models.map(m => `<span class="model">${esc(m)}</span>`).join('<span style="color:var(--fg-3)">→</span>')
+          : n.model ? `<span class="model">${esc(n.model)}</span>` : `<span style="color:var(--fg-3)">Not shown by ${esc(ai)}</span>`}</dd>
+        <dt>Context</dt><dd>${meterHTML(n, true)}</dd>
+        ${n.limit ? `<dt>Limit</dt><dd style="color:var(--danger)">${esc(n.limit)}</dd>` : ""}
+        ${n.cluster != null ? `<dt>Topic</dt><dd><span class="tag"><span class="dot" style="--c:${topicColor(n.cluster)}"></span>${esc(topicName(n.cluster))}</span></dd>` : ""}
+        ${n.cwd ? `<dt>Project</dt><dd><span class="mono">${esc(n.cwd.replace(/^\/home\/[^/]+/, "~"))}</span></dd>` : ""}
+        <dt>Started</dt><dd>${day(n.started || n.created)}</dd><dt>Last active</dt><dd>${ago(n.updated)}</dd>
+        ${parent && byId.get(parent.dst) ? `<dt>Continues</dt><dd><button class="tag" data-id="${parent.dst}">${aiLogo(chatAI(byId.get(parent.dst)))}${esc(byId.get(parent.dst).label)}</button></dd>` : ""}
+        ${kids.length ? `<dt>Continued in</dt><dd>${kids.map(e => byId.get(e.src)).filter(Boolean).map(s => `<button class="tag" data-id="${s.id}">${aiLogo(chatAI(s))}${esc(clip(s.label, 40))}</button>`).join("")}</dd>` : ""}
+        ${/^https?:/.test(n.url || "") ? `<dt>Link</dt><dd><a href="${esc(n.url)}" target="_blank" rel="noopener" style="color:var(--accent-strong)">Open in ${esc(ai)} ↗</a></dd>` : ""}
+      </dl>
+      <div class="p-sec">Memories from this chat</div><div class="p-list">${mems.slice(0, 30).map(m => item(m.id, KIND[m.type] || "Note")).join("")
+        || `<p style="color:var(--fg-3);margin:4px 8px">Nothing lasting said here yet.</p>`}</div>
+      ${talks.length ? `<div class="p-sec">Talks about</div><div class="chips">${talks.map(t => `<button class="chip" data-id="${t.id}">${badge(t, "var(--fg-3)", "sm")}${esc(t.label)}</button>`).join("")}</div>` : ""}
+      ${others.length ? `<div class="p-sec">Same topic in other apps</div><div class="p-list">${others.map(s => `<button data-id="${s.id}"><span class="k">${aiLogo(chatAI(s))} ${esc(chatAI(s))}</span><span>${esc(s.label)}${
+        s.model ? ` <span class="model">${esc(s.model)}</span>` : ""}</span></button>`).join("")}</div>` : ""}
+      <div class="p-sec">Latest messages</div><div class="msgs" id="p-msgs"><p style="color:var(--fg-3);margin:0">Loading…</p></div>
+      <div class="danger-zone"><button class="btn danger sm" data-forget="${n.id}">Forget</button><small>Deletes this conversation and its messages for good. Memories said in it stay.</small></div>`;
+    if (n.sid != null) chatSummary(n);
+    if (n.sid != null) api("/session?id=" + n.sid).then(t => {
+      const box = $("#p-msgs");
+      if (!box || selected !== n.id) return;
+      const msgs = t.messages || [], lastN = msgs.slice(-4);
+      box.innerHTML = lastN.map(m => `<div class="msg"><span class="who">${m.role === "user" ? "You" : `${aiLogo(ai)}${esc(m.model || ai)}`}${m.ts ? ` · ${ago(m.ts)}` : ""}</span>
+        <span class="body">${esc(m.text)}</span></div>`).join("") || `<p style="color:var(--fg-3);margin:0">No messages kept.</p>`;
+      if (msgs.length > 4) box.insertAdjacentHTML("beforeend", `<button class="btn-quiet" data-all>Show all ${msgs.length}</button>`);
+      box.dataset.all = JSON.stringify(msgs.length > 4);
+      if (msgs.length > 4) box.querySelector("[data-all]").onclick = () => { box.innerHTML = msgs.map(m => `<div class="msg all"><span class="who">${
+        m.role === "user" ? "You" : `${aiLogo(ai)}${esc(m.model || ai)}`}</span><span class="body">${esc(m.text)}</span></div>`).join(""); };
+    }).catch(() => { const box = $("#p-msgs"); if (box) box.innerHTML = `<p style="color:var(--fg-3);margin:0">Couldn't load the messages.</p>`; });
+  } else {
+    $("#panel-kind").textContent = n.type === "self" ? "You" : `Thing${n.cat ? " · " + n.cat : ""}`;
+    const said = (G.in.get(n.id) || []).filter(e => ["mentions", "about", "context"].includes(e.rel)).map(e => e.src).filter(i => byId.get(i)?.status === "active");
+    const rels = edges.filter(e => !["mentions", "about", "context", "similar", "replaces", "updates"].includes(e.rel) && byId.get(e.src)?.kind === "entity");
+    el.innerHTML = `<div class="p-entity">${badge(n, css(groupFor(rels.find(e => byId.get(e.src)?.type === "self")?.rel, n).c))}<div><h2>${esc(n.type === "self" ? "You" : n.label)}</h2>
+      <p>${plural(said.length, "memory").replace("memorys", "memories")} · first seen ${ago(n.created ?? n.updated)}${n.cluster != null ? ` · ${esc(topicName(n.cluster))}` : ""}</p></div></div>
+      ${rels.length ? `<div class="p-sec">How it connects</div><div class="p-list">${rels.map(e => { const out = e.src === n.id, other = out ? e.dst : e.src;
+        if (!out && byId.get(other)?.type === "self") return `<button data-id="${other}"><span class="k">You</span><span>${esc((YOU_PHRASE[e.rel] || "You " + e.rel).replace(/^You('re)? ?/, "").replace(/^Your /, "your ") || e.rel)}</span></button>`;
+        return item(other, out ? e.rel : e.rel + " ·"); }).join("")}</div>` : ""}
+      ${(() => {  // the chats it came up in, across apps: ones that discuss it + the ones its memories were said in
+        const ids = new Set((G.in.get(n.id) || []).filter(e => e.rel === "discusses").map(e => e.src));
+        said.forEach(i => (G.out.get(i) || []).filter(e => e.rel === "said in").forEach(e => ids.add(e.dst)));
+        const cs = [...ids].map(i => byId.get(i)).filter(s => s?.kind === "session").sort((a, b) => b.updated - a.updated).slice(0, 12);
+        const apps = new Set(cs.map(chatAI));
+        return n.type === "self" || !cs.length ? "" : `<div class="p-sec">Talked about in · ${plural(cs.length, "chat")} across ${plural(apps.size, "app")}</div>
+          <div class="p-list">${cs.map(s => `<button data-id="${s.id}"><span class="k">${aiLogo(chatAI(s))} ${esc(chatAI(s))}</span><span>${esc(s.label)}${
+            s.model ? ` <span class="model">${esc(s.model)}</span>` : ""}</span></button>`).join("")}</div>`;
+      })()}
+      <div class="p-sec">Mentioned in</div><div class="p-list">${said.slice(0, 40).map(i => { const m = byId.get(i);
+        return m ? `<button data-id="${i}"><span class="k">${aiLogo(m.srcs?.[0]?.ai || m.ais?.[0] || "agent")} #${i}</span><span>${esc(m.label)}</span></button>` : ""; }).join("")
+        || `<p style="color:var(--fg-3);margin:4px 8px">No active memories.</p>`}</div>
+      ${n.type === "self" ? "" : forgetBlock(n)}`;
+  }
+}
+async function chatSummary(n, tries = 0) {  // the AI summary if it's made; if not, it's being made — look again shortly
+  let r;
+  try { r = await api("/session/summary?id=" + n.sid); } catch { return; }
+  const box = $("#p-sum");
+  if (!box || selected !== n.id || r.enabled === false) return;
+  if (r.summary) {
+    box.hidden = false; box.classList.remove("loading");
+    box.innerHTML = `<div class="ai-h">${ICON.spark}Summary · ${esc(r.by || "AI")}</div><p>${esc(r.summary)}</p>${r.next ? `<p class="next"><b>Next:</b> ${esc(r.next)}</p>` : ""}`;
+  } else if (r.pending && tries < 6) {
+    box.hidden = false;
+    setTimeout(() => selected === n.id && chatSummary(n, tries + 1), 6000);
+  } else box.hidden = true;
+}
+const forgetBlock = n => `<div class="danger-zone"><button class="btn danger sm" data-forget="${n.id}">Forget</button><small>${n.kind === "memory"
+  ? "Deletes this memory for good — it won't come back, even when everything is re-read." : "Removes this thing everywhere. Memories that mention it stay."}</small></div>`;
+async function forget(id, btn) {
+  if (!btn.classList.contains("armed")) {
+    btn.classList.add("armed"); btn.textContent = "Forget for good?";
+    btn.insertAdjacentHTML("afterend", `<button class="btn sm" data-cancel>Keep</button>`);
+    return;
+  }
+  btn.disabled = true;
+  try { await api("/node/" + id, { method: "DELETE" }); } catch (e) { btn.disabled = false; return toast("Couldn't forget: " + e.message); }
+  toast("Forgotten"); select(null); await load(true);
+  if (view === "recall") recall(lastQ);
+}
+
+// ---------- views ----------
+const TITLES = { overview: "You", topics: "Topics", chats: "Chats", map: "Map", recall: "Search", setup: "Setup" };
+function show(v) {
+  view = v;
+  document.querySelectorAll(".view").forEach(p => p.hidden = p.id !== v);
+  document.querySelectorAll(".nav button").forEach(b => b.setAttribute("aria-current", b.dataset.view === v ? "page" : "false"));
+  $("#page-title").innerHTML = `<b>${TITLES[v]}</b>`;
+  if (v === "map") diagram.start();
+  if (v === "setup") renderSetup();
+  if (location.hash.slice(1) !== v && v !== "recall") history.replaceState(null, "", "#" + v);
+}
+
+// ---------- diagram: a map you can read — You at the centre, topics as bubbles, any thing as a lens ----------
+const TYPE_GROUP = { tech: ["Tools & tech", "--c-tool"], person: ["People", "--c-people"], place: ["Places", "--c-place"],
+  org: ["Organisations", "--c-place"], project: ["Projects", "--c-project"], name: ["Names", "--c-who"], concept: ["Ideas", "--c-learn"],
+  role: ["Roles", "--c-who"], thing: ["Things", "--c-own"] };
+const STRUCTURAL = new Set(["mentions", "about", "context", "similar", "replaces", "updates"]);
+const YOU_PHRASE = { uses: "You use it", has: "You have it", likes: "You like it", dislikes: "You dislike it", "working on": "You're building it",
+  built: "You built it", learning: "You're learning it", "lives in": "You live here", "works at": "You work here", from: "You're from here",
+  named: "Your name", age: "Your age", is: "What you are", plays: "You play it", does: "You do it", wants: "You want it" };
+const LOGO_IMG = new Map();  // brand logos drawn on the canvas: one-colour marks tinted with the brand colour
+function logoCanvas(k) {
+  if (!k || !LOGO[k]) return null;
+  if (LOGO_IMG.has(k)) return LOGO_IMG.get(k);
+  LOGO_IMG.set(k, null);
+  const e = LOGO[k], img = new Image();
+  img.onload = () => {
+    const c = document.createElement("canvas"); c.width = c.height = 96;
+    const x = c.getContext("2d"), ar = (img.naturalWidth || 1) / (img.naturalHeight || 1);
+    const w = ar >= 1 ? 80 : 80 * ar, h = ar >= 1 ? 80 / ar : 80;
+    x.drawImage(img, (96 - w) / 2, (96 - h) / 2, w, h);
+    if (e.mono) { x.globalCompositeOperation = "source-in"; x.fillStyle = e.hex || css("--fg"); x.fillRect(0, 0, 96, 96); }
+    LOGO_IMG.set(k, c); diagram.draw();
+  };
+  img.src = "/assets/icons/" + e.src;
+  return null;
+}
+
+const diagram = (() => {
+  const cv = $("#canvas"), g = cv.getContext("2d"), tip = $("#dg-tip");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+  let nodes = new Map(), links = [], cam = { x: 0, y: 0, k: 1 }, camTo = null, hover = null, pan = null, running = false, last = 0;
+  let stack = [{ type: "you" }], spotlight = null, built = false;
+  const W = () => cv.clientWidth, H = () => cv.clientHeight;
+  const cur = () => stack[stack.length - 1];
+  const toScreen = (x, y) => [W() / 2 + (x - cam.x) * cam.k, H() / 2 + (y - cam.y) * cam.k];
+  const toWorld = (sx, sy) => [(sx - W() / 2) / cam.k + cam.x, (sy - H() / 2) / cam.k + cam.y];
+  const rgba = (hex, a) => { const h = hex.replace("#", ""); const n = parseInt(h.length === 3 ? h.replace(/./g, "$&$&") : h, 16);
+    return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; };
+
+  // ---- layouts: each returns node specs (with targets) and links between spec keys ----
+  function radial(center, groups) {
+    const specs = [{ ...center, kind: "center", tx: 0, ty: 0, ring: 0 }], L = [], used = new Set([center.key]);
+    const G2 = groups.filter(gr => gr.items.length);
+    const weight = gr => Math.max(gr.items.length, 1.6);
+    const total = G2.reduce((s, gr) => s + weight(gr), 0) || 1;
+    const nItems = G2.reduce((s, gr) => s + gr.items.length, 0);
+    g.font = "500 12.5px Geist, sans-serif";
+    const pillW = G2.map(gr => g.measureText(gr.title + "  " + gr.items.length).width + 34);
+    const R1 = Math.max(128, pillW.reduce((s, w) => s + w + 18, 0) / (2 * Math.PI) * 1.15);
+    const R2 = Math.max(R1 + 125, nItems * 34 / (2 * Math.PI) + 90), gap = G2.length > 1 ? .09 : 0, full = 2 * Math.PI - gap * G2.length;
+    const mids = [];
+    let a = -Math.PI / 2 - (G2.length ? full * weight(G2[0]) / total / 2 : 0);
+    G2.forEach(gr => {
+      const span = full * weight(gr) / total, mid = a + span / 2, gk = "g:" + gr.key;
+      mids.push(mid);
+      specs.push({ key: gk, kind: "group", label: gr.title, color: gr.color, tx: Math.cos(mid) * R1, ty: Math.sin(mid) * R1, ring: 1, angle: mid,
+        count: gr.items.length, gkey: gr.key, parent: center.key });
+      L.push({ a: center.key, b: gk, color: gr.color, w: 2.6, gkey: gr.key });
+      const n = gr.items.length, dense = span * R2 / n < 46 || (n >= 3 && Math.abs(Math.sin(mid)) > .7 && span * R2 / n < 110);
+      gr.items.forEach((it, i) => {
+        if (used.has(it.key)) return;
+        used.add(it.key);
+        const ang = a + span * (i + .5) / n, rr = R2 + (dense && i % 2 ? 64 : 0);
+        specs.push({ ...it, kind: it.kind || "item", tx: Math.cos(ang) * rr, ty: Math.sin(ang) * rr, ring: 2, angle: ang,
+          color: it.color || gr.color, gkey: gr.key, parent: gk, idx: i });
+        L.push({ a: gk, b: it.key, color: it.color || gr.color, w: 1.4, gkey: gr.key });
+        (it.sats || []).forEach((s, j) => {
+          if (used.has(s.key)) return;
+          used.add(s.key);
+          const sr = rr + 96 + j * 30;
+          specs.push({ ...s, kind: "sat", tx: Math.cos(ang) * sr, ty: Math.sin(ang) * sr, ring: 3, angle: ang, color: gr.color, gkey: gr.key, parent: it.key });
+          L.push({ a: it.key, b: s.key, color: gr.color, w: 1, dash: true, gkey: gr.key });
+        });
+      });
+      a += span + gap;
+    });
+    // pills keep their sector's direction but never overlap: push neighbours apart along the ring
+    const pills = specs.filter(s => s.kind === "group");
+    for (let it = 0; it < 80; it++) {
+      pills.sort((p, q) => p.angle - q.angle);
+      for (let i = 0; i < pills.length; i++) {
+        const p = pills[i], q = pills[(i + 1) % pills.length], wrap = i === pills.length - 1 ? 2 * Math.PI : 0;
+        const need = (pillW[G2.findIndex(gr => "g:" + gr.key === p.key)] / 2 + pillW[G2.findIndex(gr => "g:" + gr.key === q.key)] / 2 + 10) / R1;
+        const have = q.angle + wrap - p.angle;
+        if (pills.length > 1 && have < need) { const push = (need - have) / 2; p.angle -= push; q.angle += push; }
+      }
+    }
+    for (const p of pills) { const rr = R1 + (Math.sin(p.angle) > .35 ? 58 : 0); p.tx = Math.cos(p.angle) * rr; p.ty = Math.sin(p.angle) * rr; }
+    return { specs, links: L };
+  }
+
+  function meNode() { return G.nodes.find(n => n.kind === "entity" && n.type === "self"); }
+  function mentionsOf(id) { return (G.in.get(id) || []).filter(e => e.rel === "mentions" || e.rel === "context" || e.rel === "about").length; }
+
+  function youLayout() {
+    const me = meNode();
+    if (!me) return null;
+    const buckets = new Map();
+    for (const e of G.out.get(me.id) || []) {
+      const o = byId.get(e.dst);
+      if (STRUCTURAL.has(e.rel) || !o || o.kind !== "entity") continue;
+      const grp = groupFor(e.rel, o);
+      (buckets.get(grp) || buckets.set(grp, []).get(grp)).push({ e, o });
+    }
+    const name = (G.out.get(me.id) || []).find(e => e.rel === "named");
+    const groups = [...GROUPS, OTHER].filter(gr => buckets.has(gr)).map(gr => ({
+      key: gr.key, title: gr.title, color: css(gr.c),
+      items: buckets.get(gr).sort((x, y) => y.e.weight - x.e.weight || mentionsOf(y.o.id) - mentionsOf(x.o.id)).slice(0, 16).map(({ e, o }) => ({
+        key: `e:${o.id}@${gr.key}`, ref: o.id, label: o.label, sub: gr.key === "people" || gr.key === "other" ? e.rel : "",
+        weight: e.weight + mentionsOf(o.id),
+        sats: (G.out.get(o.id) || []).filter(x => !STRUCTURAL.has(x.rel) && x.rel !== "related" && byId.get(x.dst)?.kind === "entity")
+          .slice(0, 2).map(x => ({ key: `e:${x.dst}@${o.id}`, ref: x.dst, label: byId.get(x.dst).label, sub: x.rel })) })) }));
+    return radial({ key: "e:" + me.id, ref: me.id, label: name ? byId.get(name.dst)?.label || "You" : "You",
+      sub: `${memories().length} memories · ${Object.keys(G.stats.ais || {}).length} AIs`, color: css("--fg") }, groups);
+  }
+
+  function entityLayout(id) {
+    const n = byId.get(id);
+    if (!n) return null;
+    const buckets = new Map(), put = (title, color, item) => { const b = buckets.get(title) || buckets.set(title, { color, items: [] }).get(title); b.items.push(item); };
+    let tone = null;
+    for (const e of edgesOf(id)) {
+      if (STRUCTURAL.has(e.rel)) continue;
+      const out = e.src === id, o = byId.get(out ? e.dst : e.src);
+      if (!o || o.kind !== "entity" || o.id === id) continue;
+      const grp = groupFor(e.rel, o);
+      if (!out && o.type === "self") {
+        tone = tone || css(grp.c);
+        put(YOU_PHRASE[e.rel] || (e.rel.match(/^[a-z]+$/) && GROUPS[8].key === grp.key ? `Your ${e.rel}` : `You: ${e.rel}`), css(grp.c),
+          { key: `e:${o.id}@you-${e.rel}`, ref: o.id, label: "You", weight: 3 });
+      } else if (e.rel === "related") {
+        put("Mentioned with", css("--c-other"), { key: `e:${o.id}@rel`, ref: o.id, label: o.label, weight: e.weight });
+      } else {
+        put(out ? e.rel : `${e.rel} (to it)`, css(grp.c), { key: `e:${o.id}@${e.rel}${out ? "" : "-in"}`, ref: o.id, label: o.label, weight: e.weight + 1 });
+      }
+    }
+    const said = (G.in.get(id) || []).filter(e => e.rel === "mentions" || e.rel === "context").map(e => byId.get(e.src))
+      .filter(m => m && m.kind === "memory" && m.status === "active").sort((a, b) => b.importance - a.importance || b.updated - a.updated).slice(0, 18);
+    const groups = [...buckets].map(([title, b]) => ({ key: "r:" + title, title, color: b.color, items: b.items.slice(0, 14) }));
+    const cids = new Set((G.in.get(id) || []).filter(e => e.rel === "discusses").map(e => e.src));
+    said.forEach(m => (G.out.get(m.id) || []).filter(e => e.rel === "said in").forEach(e => cids.add(e.dst)));
+    const cs = [...cids].map(i => byId.get(i)).filter(s => s?.kind === "session").sort((a, b) => b.updated - a.updated).slice(0, 12);
+    if (cs.length) groups.push({ key: "chats", title: "Chats", color: css("--fg-2"),
+      items: cs.map(s => ({ key: "c:" + s.id, ref: s.id, label: clip(s.label, 28), sub: s.model || chatAI(s), weight: 2 + Math.sqrt(s.turns || 1) })) });
+    if (said.length) groups.push({ key: "said", title: "Said about it", color: css("--fg"),
+      items: said.map(m => ({ key: "m:" + m.id, ref: m.id, kind: "mem", label: m.label, ais: m.ais })) });
+    const typeGroup = TYPE_GROUP[n.type] || TYPE_GROUP.thing;
+    return radial({ key: "e:" + id, ref: id, label: n.label, sub: (n.cat ? n.cat + " · " : "") + typeGroup[0].replace(/s$/, "").toLowerCase(),
+      color: tone || css(typeGroup[1]) }, groups);
+  }
+
+  function topicMembers(tid) { return memories().filter(m => (m.cluster ?? "loose") === tid); }
+  function topicEntities(members) {
+    const count = new Map();
+    for (const m of members) for (const e of G.out.get(m.id) || []) {
+      const o = byId.get(e.dst);
+      if ((e.rel === "mentions" || e.rel === "context") && o && o.kind === "entity" && o.type !== "self" && o.type !== "value") count.set(o.id, (count.get(o.id) || 0) + 1);
+    }
+    return [...count].sort((a, b) => b[1] - a[1]).map(([id, c]) => ({ n: byId.get(id), c }));
+  }
+
+  function topicLayout(tid) {
+    const members = topicMembers(tid);
+    if (!members.length) return null;
+    const ents = topicEntities(members), buckets = new Map();
+    for (const { n, c } of ents) {
+      const [title, token] = TYPE_GROUP[n.type] || TYPE_GROUP.thing;
+      const b = buckets.get(title) || buckets.set(title, { color: css(token), items: [] }).get(title);
+      if (b.items.length < 10) b.items.push({ key: `e:${n.id}@t${tid}`, ref: n.id, label: n.label, weight: c * 2 });
+    }
+    const groups = [...buckets].map(([title, b]) => ({ key: "tg:" + title, title, color: b.color, items: b.items }));
+    const said = members.sort((a, b) => b.importance - a.importance || b.updated - a.updated).slice(0, 18);
+    const cs = chats().filter(s => (s.cluster ?? "loose") === tid || chatMems(s).some(m => (m.cluster ?? "loose") === tid)).slice(0, 12);
+    if (cs.length) groups.push({ key: "chats", title: "Chats", color: css("--fg-2"),
+      items: cs.map(s => ({ key: "c:" + s.id, ref: s.id, label: clip(s.label, 28), sub: s.model || chatAI(s), weight: 2 + Math.sqrt(s.turns || 1) })) });
+    groups.push({ key: "entries", title: "Entries", color: css("--fg"),
+      items: said.map(m => ({ key: "m:" + m.id, ref: m.id, kind: "mem", label: m.label, ais: m.ais })) });
+    return radial({ key: "t:" + tid, ref: tid, label: tid === "loose" ? "Loose ends" : topicName(tid), sub: `${members.length} entries`,
+      color: topicColor(tid), topic: tid }, groups);
+  }
+
+  function topicsLayout() {
+    const byTopic = new Map();
+    for (const m of memories()) { const k = m.cluster ?? "loose"; (byTopic.get(k) || byTopic.set(k, []).get(k)).push(m); }
+    const list = [...byTopic].map(([id, ms]) => ({ id, ms, ents: topicEntities(ms), r: 40 + 17 * Math.sqrt(ms.length) }))
+      .sort((a, b) => b.ms.length - a.ms.length);
+    list.forEach((t, i) => { const a = i * 2.39996, d = 70 * Math.sqrt(i); t.x = Math.cos(a) * d; t.y = Math.sin(a) * d; });
+    for (let it = 0; it < 400; it++) {  // pack the bubbles: push overlaps apart, pull everything gently to the middle
+      for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+        const A = list[i], B = list[j], dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy) || .01, need = A.r + B.r + 26;
+        if (d < need) { const f = (need - d) / 2 / d; A.x -= dx * f; A.y -= dy * f; B.x += dx * f; B.y += dy * f; }
+      }
+      for (const t of list) { t.x *= .985; t.y *= .985; }
+    }
+    const specs = [], L = [], shared = new Map();
+    list.forEach(t => {
+      const color = topicColor(t.id), key = "t:" + t.id;
+      specs.push({ key, kind: "bubble", ref: t.id, topic: t.id, label: t.id === "loose" ? "Loose ends" : topicName(t.id),
+        sub: `${t.ms.length} entr${t.ms.length === 1 ? "y" : "ies"}`, color, tx: t.x, ty: t.y, r: t.r, ring: 0, members: t.ms.map(m => m.id) });
+      const top = t.ents.slice(0, 5);
+      top.forEach(({ n }, i) => {
+        const a = -Math.PI / 2 + (i + .5) * 2 * Math.PI / top.length + .4, rr = t.r * .5;
+        specs.push({ key: `d:${t.id}:${n.id}`, kind: "dot", ref: n.id, label: n.label, color, tx: t.x + Math.cos(a) * rr, ty: t.y + Math.sin(a) * rr + 8,
+          ring: 1, parent: key });
+      });
+      const sparks = Math.min(t.ms.length, 40);
+      for (let i = 0; i < sparks; i++) {
+        const rr = t.r * (.25 + .6 * Math.sqrt((i + .5) / sparks)), a = i * 2.39996;
+        specs.push({ key: `s:${t.id}:${i}`, kind: "spark", color, orbit: { cx: t.x, cy: t.y, rr, a, v: (.00006 + .00005 * ((i * 7) % 5)) * (i % 2 ? 1 : -1) },
+          tx: t.x + Math.cos(a) * rr, ty: t.y + Math.sin(a) * rr, ring: 1, parent: key });
+      }
+      for (const { n } of t.ents) (shared.get(n.id) || shared.set(n.id, new Set()).get(n.id)).add(t.id);
+    });
+    const pairs = new Map();
+    for (const ts of shared.values()) { const a = [...ts]; for (let i = 0; i < a.length; i++) for (let j = i + 1; j < a.length; j++) { const k = a[i] + "|" + a[j]; pairs.set(k, (pairs.get(k) || 0) + 1); } }
+    for (const [k, c] of pairs) { const [a, b] = k.split("|"); L.push({ a: "t:" + a, b: "t:" + b, color: css("--fg"), w: .8 + Math.min(c, 5) * .5, alpha: .16 + Math.min(c, 5) * .05, curve: true }); }
+    return { specs, links: L };
+  }
+
+  function layoutFor(v) {
+    if (v.type === "you") return youLayout() || topicsLayout();
+    if (v.type === "topics") return topicsLayout();
+    if (v.type === "entity") return entityLayout(v.id);
+    if (v.type === "topic") return topicLayout(v.id);
+  }
+
+  // ---- applying a layout: persistent nodes glide, new ones unfurl from where you clicked, old ones fade ----
+  function apply(origin) {
+    const lay = layoutFor(cur());
+    if (!lay) { stack = [{ type: "topics" }]; return apply(origin); }
+    const now = performance.now(), seen = new Set();
+    const [ox, oy] = origin || [0, 0];
+    for (const s of lay.specs) {
+      seen.add(s.key);
+      const n = nodes.get(s.key);
+      if (n) { Object.assign(n, s, { ta: 1, dying: false }); continue; }
+      const p = s.parent && nodes.get(s.parent);
+      nodes.set(s.key, { ...s, x: p ? p.x : ox, y: p ? p.y : oy, a: 0, ta: 1, rr: 0, born: now, delay: reduce.matches ? 0 : (s.ring || 0) * 85 + Math.min(s.idx || 0, 16) * 14 });
+    }
+    for (const [k, n] of nodes) if (!seen.has(k)) { n.ta = 0; n.dying = true; }
+    links = lay.links;
+    renderChrome();
+    fit(lay.specs);
+    kick();
+  }
+
+  function fit(specs) {
+    if (!specs.length) return;
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const s of specs) {
+      const r = (s.r || 12) + (s.kind === "mem" ? 180 : s.kind === "item" || s.kind === "sat" || s.kind === "dot" ? 120 : 30);  // room for labels
+      x0 = Math.min(x0, s.tx - r); x1 = Math.max(x1, s.tx + r); y0 = Math.min(y0, s.ty - r); y1 = Math.max(y1, s.ty + r);
+    }
+    const lg = $("#dg-legend"), head = document.querySelector(".dg-head");
+    const aL = 24, aR = W() - (lg.offsetWidth ? lg.offsetWidth + 34 : 24), aT = head.offsetHeight + 30, aB = H() - 56;
+    const k = Math.min(1.5, Math.max(.2, Math.min((aR - aL) / (x1 - x0), (aB - aT) / (y1 - y0))));
+    camTo = { x: (x0 + x1) / 2 - ((aL + aR) / 2 - W() / 2) / k, y: (y0 + y1) / 2 - ((aT + aB) / 2 - H() / 2) / k, k };
+    if (reduce.matches || !built) { cam = { ...camTo }; camTo = null; }
+  }
+
+  // ---- motion ----
+  function step(dt, now) {
+    let busy = false;
+    const s = reduce.matches ? 1 : 1 - Math.exp(-dt / 120);
+    for (const [k, n] of nodes) {
+      if (now < n.born + n.delay) { busy = true; continue; }
+      if (n.orbit && n.a > .9 && !reduce.matches && cur().type === "topics") {
+        n.orbit.a += n.orbit.v * dt;
+        n.tx = n.orbit.cx + Math.cos(n.orbit.a) * n.orbit.rr; n.ty = n.orbit.cy + Math.sin(n.orbit.a) * n.orbit.rr;
+      }
+      const dx = n.tx - n.x, dy = n.ty - n.y, da = n.ta - n.a;
+      n.x += dx * s; n.y += dy * s; n.a += da * s; n.rr += (1 - n.rr) * s;
+      if (Math.abs(dx) + Math.abs(dy) > .2 || Math.abs(da) > .01) busy = true;
+      if (n.dying && n.a < .02) nodes.delete(k);
+    }
+    if (camTo) {
+      for (const p of ["x", "y", "k"]) cam[p] += (camTo[p] - cam[p]) * s;
+      if (Math.abs(camTo.k - cam.k) < .001 && Math.abs(camTo.x - cam.x) < .3 && Math.abs(camTo.y - cam.y) < .3) camTo = null; else busy = true;
+    }
+    return busy;
+  }
+  function frame(now) {
+    if (view !== "map") { running = false; return; }
+    const dt = Math.min(64, now - last); last = now;
+    const busy = step(dt, now);
+    draw(now);
+    const alive = !reduce.matches && (hover || cur().type === "topics" || recallIds);
+    if (busy || alive) requestAnimationFrame(frame); else running = false;
+  }
+  function kick() { if (!running && view === "map") { running = true; last = performance.now(); requestAnimationFrame(frame); } }
+
+  // ---- drawing ----
+  function resize() {
+    const d = devicePixelRatio || 1;
+    if (cv.width !== Math.round(W() * d) || cv.height !== Math.round(H() * d)) { cv.width = Math.round(W() * d); cv.height = Math.round(H() * d); }
+  }
+  function lit(n) {
+    if (recallIds) {
+      if (n.kind === "bubble") return n.members.some(id => recallIds.has(id));
+      if (n.kind === "spark") return nodes.get(n.parent) ? lit(nodes.get(n.parent)) : false;
+      if (n.kind === "group") return true;
+      return n.kind === "center" || recallIds.has(n.ref);
+    }
+    if (spotlight) return n.kind === "center" || n.gkey === spotlight;
+    return true;
+  }
+  const near = n => hover && (n === hover || n.parent === hover.key || hover.parent === n.key || (hover.kind === "group" && n.gkey === hover.gkey));
+
+  function draw(now = performance.now()) {
+    if (view !== "map") return;
+    resize();
+    const d = devicePixelRatio || 1, ink = css("--fg"), paper = css("--bg"), deep = css("--panel"), t = now / 1000;
+    g.setTransform(d, 0, 0, d, 0, 0);
+    g.clearRect(0, 0, W(), H());
+    const K = cam.k, sz = v => v * Math.max(.75, Math.min(1.25, K));
+    const c0 = [...nodes.values()].find(n => n.kind === "center" && !n.dying);
+    if (c0) {
+      const [cx, cy] = toScreen(c0.x, c0.y), rad = 420 * K, glow = g.createRadialGradient(cx, cy, 0, cx, cy, rad);
+      glow.addColorStop(0, rgba(c0.color, .13 * c0.a)); glow.addColorStop(1, rgba(c0.color, 0));
+      g.fillStyle = glow; g.fillRect(cx - rad, cy - rad, rad * 2, rad * 2);
+    }
+    // links: grow out with their nodes; flow when you hover them
+    for (const L of links) {
+      const A = nodes.get(L.a), B = nodes.get(L.b);
+      if (!A || !B) continue;
+      const grow = Math.min(A.a, B.a);
+      if (grow < .02) continue;
+      const on = lit(A) && lit(B), hot = hover && (A === hover || B === hover || (hover.kind === "group" && L.gkey === hover.gkey));
+      const [x1, y1] = toScreen(A.x, A.y), [bx, by] = toScreen(B.x, B.y);
+      const x2 = x1 + (bx - x1) * B.rr, y2 = y1 + (by - y1) * B.rr;
+      g.globalAlpha = grow * (on ? (hot ? .95 : L.alpha ?? .55) : .08);
+      g.strokeStyle = L.color; g.lineWidth = L.w * (hot ? 1.9 : 1) * Math.max(.7, Math.min(1.3, K));
+      g.setLineDash(L.dash ? [3, 4] : hot && !reduce.matches ? [7, 7] : []);
+      g.lineDashOffset = hot && !reduce.matches ? -t * 28 : 0;
+      g.beginPath(); g.moveTo(x1, y1);
+      if (L.curve) { const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, nx = -(y2 - y1) * .18, ny = (x2 - x1) * .18; g.quadraticCurveTo(mx + nx, my + ny, x2, y2); }
+      else g.lineTo(x2, y2);
+      g.stroke();
+    }
+    g.setLineDash([]); g.lineDashOffset = 0;
+    const order = { bubble: 0, spark: 1, group: 2, sat: 3, item: 4, mem: 4, dot: 5, center: 6 };
+    const list = [...nodes.values()].filter(n => n.a > .02).sort((a, b) => order[a.kind] - order[b.kind]);
+    const labels = [];
+    for (const n of list) {
+      const [x, y] = toScreen(n.x, n.y), on = lit(n), a = n.a * (on ? 1 : .18), hot = near(n);
+      g.globalAlpha = a;
+      if (n.kind === "bubble") {
+        const r = n.r * K * n.rr, grd = g.createRadialGradient(x, y - r * .3, r * .1, x, y, r);
+        grd.addColorStop(0, rgba(n.color, hot ? .34 : .24)); grd.addColorStop(1, rgba(n.color, hot ? .12 : .05));
+        g.fillStyle = grd; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+        g.strokeStyle = rgba(n.color, hot ? 1 : .75); g.lineWidth = hot ? 2.2 : 1.4; g.stroke();
+        if (recallIds && on && !reduce.matches) { g.strokeStyle = rgba(n.color, .5 + .4 * Math.sin(t * 4)); g.lineWidth = 3; g.beginPath(); g.arc(x, y, r + 6, 0, 7); g.stroke(); }
+        labels.push({ text: n.label, x, y: y - r * .62, align: "center", font: `600 ${sz(Math.min(17, 11.5 + n.r / 11))}px Geist, sans-serif`, color: n.color, prio: 100 + n.r, upper: false, node: n, a });
+        labels.push({ text: n.sub, x, y: y - r * .62 + sz(17), align: "center", font: `${sz(12)}px Geist, sans-serif`, color: css("--fg-2"), prio: 99 + n.r, node: n, a });
+      } else if (n.kind === "spark") {
+        g.fillStyle = rgba(ink, .75); g.beginPath(); g.arc(x, y, 1.7 * Math.max(.8, K), 0, 7); g.fill();
+      } else if (n.kind === "group") {
+        g.font = `500 ${sz(12.5)}px Geist, sans-serif`;
+        const text = n.label + "  " + n.count, w = g.measureText(text).width + 24, h = sz(26);
+        g.fillStyle = rgba(deep, 1); g.beginPath(); g.roundRect(x - w / 2, y - h / 2, w, h, h / 2); g.fill();
+        g.fillStyle = rgba(n.color, hot || spotlight === n.gkey ? .24 : .11); g.strokeStyle = rgba(n.color, hot || spotlight === n.gkey ? .95 : .45); g.lineWidth = 1.2;
+        g.beginPath(); g.roundRect(x - w / 2, y - h / 2, w, h, h / 2); g.fill(); g.stroke();
+        g.fillStyle = n.color; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(text, x, y + 1); g.textBaseline = "alphabetic";
+        n.box = [x - w / 2, y - h / 2, w, h];
+      } else if (n.kind === "center") {
+        const r = sz(34) * n.rr;
+        if (!reduce.matches) { g.strokeStyle = rgba(n.color, .22 + .12 * Math.sin(t * 2)); g.lineWidth = 6; g.beginPath(); g.arc(x, y, r + 9 + 2 * Math.sin(t * 2), 0, 7); g.stroke(); }
+        const grd = g.createRadialGradient(x, y - r * .4, 2, x, y, r);
+        grd.addColorStop(0, rgba(n.color, .45)); grd.addColorStop(1, rgba(deep, 1));
+        g.fillStyle = grd; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+        g.strokeStyle = n.color; g.lineWidth = 2; g.stroke();
+        const ent = byId.get(n.ref), lc = ent && ent.type !== "self" ? logoCanvas(logoKey(ent)) : null;
+        if (lc) g.drawImage(lc, x - r * .62, y - r * .62, r * 1.24, r * 1.24);
+        else if (ent?.type === "self" || n.topic == null) {
+          g.fillStyle = ink; g.font = `600 ${r * .8}px Geist, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
+          g.fillText((n.label || "?").slice(0, 1).toUpperCase(), x, y + 1); g.textBaseline = "alphabetic";
+        }
+        labels.push({ text: n.label, x, y: y + r + sz(24), align: "center", font: `600 ${sz(19)}px Geist, sans-serif`, color: ink, prio: 1000, upper: false, node: n, a });
+        labels.push({ text: n.sub, x, y: y + r + sz(42), align: "center", font: `${sz(12.5)}px Geist, sans-serif`, color: css("--fg-2"), prio: 999, node: n, a });
+      } else if (n.kind === "mem") {
+        const r = sz(5.5) * n.rr;
+        g.fillStyle = ink; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+        const ai = n.ais?.[0];
+        g.strokeStyle = ai ? css("--ai-" + (AI_VAR[ai] || "agent")) : rgba(ink, .5); g.lineWidth = 2; g.beginPath(); g.arc(x, y, r + 3, 0, 7); g.stroke();
+        const side = Math.cos(n.angle ?? 0) >= -.2 ? "left" : "right", words = n.label.split(/\s+/).slice(0, 5).join(" ");
+        labels.push({ text: "“" + words + (n.label.split(/\s+/).length > 5 ? "…”" : "”"), x: x + (side === "left" ? 1 : -1) * (r + 9), y: y + 4, align: side,
+          font: `${sz(12)}px Geist, sans-serif`, color: css("--fg-2"), prio: 10, node: n, a });
+      } else {  // item, sat, dot
+        const ent = byId.get(n.ref), lc = n.kind !== "sat" && ent ? logoCanvas(logoKey(ent.kind === "session" ? chatAI(ent) : ent)) : null;
+        const base = n.kind === "sat" ? 4.5 : n.kind === "dot" ? 5 : Math.min(15, 6.5 + 2.2 * Math.sqrt(n.weight || 1));
+        const r = sz(lc ? Math.max(base, 12) : base) * n.rr * (hot ? 1.18 : 1);
+        if (hot && !reduce.matches) { g.fillStyle = rgba(n.color, .22); g.beginPath(); g.arc(x, y, r + 7, 0, 7); g.fill(); }
+        if (lc) {
+          g.fillStyle = css("--panel-2"); g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+          g.strokeStyle = n.color; g.lineWidth = 1.6; g.stroke();
+          g.drawImage(lc, x - r * .68, y - r * .68, r * 1.36, r * 1.36);
+        } else {
+          g.fillStyle = n.kind === "sat" ? rgba(n.color, .7) : n.color; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+          g.strokeStyle = paper; g.lineWidth = 2; g.stroke();
+        }
+        const outward = n.kind === "dot" ? 0 : n.angle ?? 0, cx = Math.cos(outward), side = n.kind === "dot" ? "center" : cx >= -.2 ? "left" : "right";
+        const lx = n.kind === "dot" ? x : x + (side === "left" ? 1 : -1) * (r + 7), ly = n.kind === "dot" ? y + r + sz(15) : y + Math.sin(outward) * 6 + 4;
+        const text = n.kind === "sat" && n.sub ? `${n.sub} ${n.label}` : n.label;
+        labels.push({ text, x: lx, y: ly, align: side, font: `${n.kind === "item" ? 500 : 400} ${sz(n.kind === "item" ? 13.5 : 12.5)}px Geist, sans-serif`,
+          color: n.kind === "item" ? ink : css("--fg-2"), prio: n.kind === "item" ? 50 + (n.weight || 0) : n.kind === "dot" ? 40 : 20, node: n, a });
+      }
+      if (recallIds && on && n.kind !== "bubble" && n.kind !== "spark" && n.kind !== "group" && !reduce.matches) {
+        g.globalAlpha = n.a * (.35 + .35 * Math.sin(t * 4)); g.strokeStyle = n.color || ink; g.lineWidth = 2;
+        g.beginPath(); g.arc(x, y, sz(16), 0, 7); g.stroke();
+      }
+      if (selected != null && n.ref === selected && n.kind !== "bubble") {
+        g.globalAlpha = n.a; g.setLineDash([3, 3]); g.strokeStyle = ink; g.lineWidth = 1.2;
+        g.beginPath(); g.arc(x, y, sz(19), 0, 7); g.stroke(); g.setLineDash([]);
+      }
+    }
+    // labels, most important first; a label that would overlap one already placed waits for a hover
+    labels.sort((p, q) => (near(q.node) ? 1e4 : 0) + q.prio - (near(p.node) ? 1e4 : 0) - p.prio);
+    const placed = [];
+    for (const L of labels) {
+      g.font = L.font;
+      const text = (L.upper ? L.text.toUpperCase() : L.text).slice(0, 44), w = g.measureText(text).width, h = parseFloat(L.font.match(/([\d.]+)px/)[1]) + 2;
+      const x0 = L.align === "left" ? L.x : L.align === "right" ? L.x - w : L.x - w / 2, box = [x0 - 3, L.y - h + 3, w + 6, h + 2];
+      if (!near(L.node) && placed.some(b => box[0] < b[0] + b[2] && b[0] < box[0] + box[2] && box[1] < b[1] + b[3] && b[1] < box[1] + box[3])) continue;
+      placed.push(box);
+      g.globalAlpha = L.a; g.textAlign = L.align;
+      g.lineWidth = 4; g.strokeStyle = rgba(paper, .9); g.lineJoin = "round"; g.strokeText(text, L.x, L.y);  // a halo so labels read over lines
+      g.fillStyle = L.color; g.fillText(text, L.x, L.y);
+    }
+    g.globalAlpha = 1; g.textAlign = "left";
+    if (!nodes.size) {
+      g.fillStyle = css("--fg-2"); g.font = "15px Geist, sans-serif"; g.textAlign = "center";
+      g.fillText("Nothing to map yet — chat with any AI and your memories appear here.", W() / 2, H() / 2); g.textAlign = "left";
+    }
+  }
+
+  // ---- chrome: title, breadcrumb, legend, tooltip ----
+  function crumbLabel(v) {
+    return v.type === "you" ? "You" : v.type === "topics" ? "Topics" : v.type === "entity" ? (byId.get(v.id)?.label || "thing")
+      : v.id === "loose" ? "Loose ends" : topicName(v.id);
+  }
+  function renderChrome() {
+    const v = cur();
+    const sub = { you: "Everything the AIs know about you, sorted by kind. Click any dot to explore it.",
+      topics: "What you talk about. Bigger bubble = more entries; lines join topics that share things.",
+      entity: "Everything connected to this — what it is, how you relate to it, and what you've said about it.",
+      topic: "The things this topic is about, and its entries." }[v.type];
+    $("#dg-sub").textContent = sub;
+    $("#dg-crumbs").innerHTML = stack.map((s, i) => i === stack.length - 1 ? `<span aria-current="page">${esc(crumbLabel(s))}</span>`
+      : `<button data-dg-crumb="${i}">${esc(crumbLabel(s))}</button><span class="sep" aria-hidden="true">›</span>`).join("");
+    document.querySelectorAll("[data-dg-view]").forEach(b => b.setAttribute("aria-pressed", b.dataset.dgView === (stack[0].type)));
+    const legend = $("#dg-legend");
+    if (v.type === "topics") {
+      legend.innerHTML = `<div class="lg-h lt">How to read it</div><div><i class="lg-bubble"></i>a topic — size is how much you've said</div>
+        <div><i class="lg-dot"></i>its main things</div><div><i class="lg-spark"></i>each spark is one entry</div><div><i class="lg-line"></i>topics that share things</div>`;
+    } else {
+      const seen = new Map();
+      for (const n of nodes.values()) if (n.kind === "group" && !n.dying) seen.set(n.gkey, n);
+      legend.innerHTML = `<div class="lg-h lt">Colours</div>` + [...seen.values()].map(n => `<button data-dg-spot="${esc(n.gkey)}" aria-pressed="${spotlight === n.gkey}">
+        <i style="background:${n.color}"></i>${esc(n.label)}<span class="num">${n.count}</span></button>`).join("")
+        + `<div class="lg-note">Click a colour to focus it</div>`;
+    }
+    $("#dg-back").hidden = stack.length < 2;
+  }
+  function showTip(n, ev) {
+    if (!n || n.kind === "spark") { tip.hidden = true; return; }
+    let title = n.label, body = "";
+    if (n.kind === "bubble") {
+      const ms = n.members.map(id => byId.get(id)).filter(Boolean), ais = {};
+      ms.forEach(m => (m.ais || []).forEach(a => ais[a] = (ais[a] || 0) + 1));
+      const k = chats().filter(s => (s.cluster ?? "loose") === n.ref).length;
+      const tp = G.topics.find(t => t.id === n.ref);
+      if (tp?.by === "ai" && tp.summary) title = `${n.label} — ${tp.summary}`;
+      body = `${n.sub}${k ? ` · ${plural(k, "chat")}` : ""}${Object.keys(ais).length ? " · " + Object.entries(ais).map(([a, c]) => `${a} ${c}`).join(", ") : ""}<br><em>Click to open this topic</em>`;
+    } else if (n.kind === "mem") {
+      const m = byId.get(n.ref), s0 = m?.srcs?.[0]; title = KIND[m?.type] || "Entry";
+      body = `${esc(m?.label || n.label)}<br><em>${esc(s0?.ai || (m?.ais || []).join(", ") || "agent")}${s0?.chat ? ` · in “${esc(clip(s0.chat, 40))}”` : ""}${
+        s0?.model ? ` · ${esc(s0.model)}` : ""} · ${day(m?.updated || 0)} — click to open</em>`;
+    } else if (n.kind === "group") {
+      body = `${n.count} thing${n.count === 1 ? "" : "s"} — click to focus this colour`;
+    } else if (n.kind === "center") {
+      body = n.sub;
+    } else if (byId.get(n.ref)?.kind === "session") {
+      const s = byId.get(n.ref); title = s.label;
+      body = `${esc(chatAI(s))}${s.model ? " · " + esc(modelText(s)) : ""} · ${plural(s.turns || 0, "message")} · ${ago(s.updated)}<br><em>Click to open the chat</em>`;
+    } else {
+      const e = byId.get(n.ref), uses = e ? mentionsOf(e.id) : 0;
+      body = `${n.sub ? esc(n.sub) + " · " : ""}mentioned in ${uses} entr${uses === 1 ? "y" : "ies"}<br><em>Click to explore</em>`;
+    }
+    tip.innerHTML = `<b>${esc(title)}</b><span>${body}</span>`;
+    tip.hidden = false;
+    const r = cv.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+    let x = ev.clientX - r.left + 16, y = ev.clientY - r.top + 16;
+    if (x + tw > r.width - 10) x = ev.clientX - r.left - tw - 16;
+    if (y + th > r.height - 10) y = ev.clientY - r.top - th - 16;
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  }
+
+  // ---- interaction ----
+  function pick(ev) {  // the nearest mark under the pointer; a bubble only when no mark inside it is closer
+    const r = cv.getBoundingClientRect(), sx = ev.clientX - r.left, sy = ev.clientY - r.top;
+    let best = null, bd = Infinity, bubble = null;
+    for (const n of nodes.values()) {
+      if (n.a < .3 || n.kind === "spark" || n.dying) continue;
+      const [x, y] = toScreen(n.x, n.y), dd = Math.hypot(sx - x, sy - y);
+      if (n.kind === "group" && n.box) {
+        const [bx, by, bw, bh] = n.box;
+        if (sx >= bx && sx <= bx + bw && sy >= by && sy <= by + bh) return n;
+      } else if (n.kind === "bubble") {
+        if (dd < n.r * cam.k) bubble = n;
+      } else if (dd < (n.kind === "center" ? 42 : 15) && dd < bd) { best = n; bd = dd; }
+    }
+    return best || bubble;
+  }
+  function go(v, from) {
+    const origin = from ? [from.x, from.y] : [0, 0];
+    stack.push(v); spotlight = null; apply(origin);
+  }
+  function open(n) {
+    tip.hidden = true;
+    if (!n) return;
+    if (n.kind === "bubble") return go({ type: "topic", id: n.ref }, n);
+    if (n.kind === "group") { spotlight = spotlight === n.gkey ? null : n.gkey; renderChrome(); return kick(); }
+    if (n.kind === "mem" || byId.get(n.ref)?.kind === "session") return select(n.ref);
+    if (n.kind === "center") return n.topic != null ? null : select(n.ref);
+    const e = byId.get(n.ref);
+    if (e?.type === "self") { stack = [{ type: "you" }]; spotlight = null; return apply([n.x, n.y]); }
+    if (!(cur().type === "entity" && cur().id === n.ref)) go({ type: "entity", id: n.ref }, n);
+    select(n.ref);
+  }
+  function back() {
+    if (stack.length < 2) return;
+    const from = [...nodes.values()].find(n => n.kind === "center" && !n.dying);
+    stack.pop(); spotlight = null; apply(from ? [from.x, from.y] : null);
+  }
+
+  cv.addEventListener("pointerdown", ev => { pan = { x: ev.clientX, y: ev.clientY, cx: cam.x, cy: cam.y, moved: false }; cv.setPointerCapture(ev.pointerId); });
+  cv.addEventListener("pointermove", ev => {
+    if (pan && (Math.abs(ev.clientX - pan.x) + Math.abs(ev.clientY - pan.y) > 4 || pan.moved)) {
+      pan.moved = true; camTo = null;
+      cam.x = pan.cx - (ev.clientX - pan.x) / cam.k; cam.y = pan.cy - (ev.clientY - pan.y) / cam.k;
+      cv.classList.add("dragging"); tip.hidden = true; return kick();
+    }
+    const n = pick(ev);
+    if (n !== hover) { hover = n; cv.style.cursor = n ? "pointer" : "grab"; kick(); }
+    showTip(n, ev);
+  });
+  cv.addEventListener("pointerup", ev => {
+    const click = pan && !pan.moved;
+    pan = null; cv.classList.remove("dragging");
+    if (click) open(pick(ev));
+  });
+  cv.addEventListener("pointerleave", () => { hover = null; tip.hidden = true; kick(); });
+  cv.addEventListener("wheel", ev => {
+    ev.preventDefault();
+    const r = cv.getBoundingClientRect(), [wx, wy] = toWorld(ev.clientX - r.left, ev.clientY - r.top);
+    camTo = null; cam.k = Math.min(4, Math.max(.15, cam.k * Math.exp(-ev.deltaY * .0015)));
+    const [nx, ny] = toWorld(ev.clientX - r.left, ev.clientY - r.top); cam.x += wx - nx; cam.y += wy - ny;
+    kick();
+  }, { passive: false });
+  $("#map").addEventListener("click", ev => {
+    const b = ev.target.closest("[data-dg-view],[data-dg-crumb],[data-dg-spot],#dg-back,#dg-fit");
+    if (!b) return;
+    if (b.dataset.dgView) { stack = [{ type: b.dataset.dgView }]; spotlight = null; return apply(); }
+    if (b.dataset.dgCrumb) { stack = stack.slice(0, +b.dataset.dgCrumb + 1); spotlight = null; return apply(); }
+    if (b.dataset.dgSpot) { spotlight = spotlight === b.dataset.dgSpot ? null : b.dataset.dgSpot; renderChrome(); return kick(); }
+    if (b.id === "dg-back") return back();
+    if (b.id === "dg-fit") { fit([...nodes.values()].filter(n => !n.dying).map(n => ({ ...n, tx: n.tx, ty: n.ty }))); return kick(); }
+  });
+  addEventListener("keydown", ev => {
+    if (view !== "map" || ev.target.matches("input, textarea")) return;
+    if (ev.key === "Backspace" || (ev.key === "Escape" && stack.length > 1)) { ev.preventDefault(); back(); }
+  });
+  addEventListener("resize", () => { if (view === "map") { fit([...nodes.values()].filter(n => !n.dying)); kick(); } });
+
+  return {
+    sync() { if (built) apply(); },
+    draw() { kick(); },
+    focus(id) { if (byId.get(id)?.kind === "entity" && !(cur().type === "entity" && cur().id === id)) go({ type: "entity", id }); },
+    start() { resize(); if (!built) { built = true; apply(); } else { renderChrome(); kick(); } },
+  };
+})();
+
+
+
+// ---------- events ----------
+document.addEventListener("click", ev => {
+  const t = ev.target.closest("[data-copy],[data-reveal],[data-forget],[data-cancel],[data-handoff],[data-id],[data-topic],[data-view],[data-kind],[data-more],[data-source],[data-ai],[data-all],#rebuild,#copy-brief,#panel-close");
+  if (!t) return;
+  if (t.dataset.handoff) return handoff(t.dataset.handoff, t.dataset.to || null, t);
+  if (t.dataset.copy) return toast(copyText(t.dataset.copy) ? "Copied" : "Copy blocked by the browser");
+  if (t.dataset.reveal) { $("#conn-url").textContent = t.dataset.reveal; return t.remove(); }
+  if (t.dataset.forget) return forget(+t.dataset.forget, t);
+  if (t.dataset.cancel !== undefined) return renderPanel();
+  if (t.id === "rebuild") return rebuild(t);
+  if (t.id === "copy-brief") return copyBrief(t);
+  if (t.id === "panel-close") return select(null);
+  if (t.dataset.view) { if (view === "recall") { $("#q").value = ""; recallIds = null; } return show(t.dataset.view); }
+  if (t.dataset.kind) { kindFilter = t.dataset.kind; return renderOverview(new Set()); }
+  if (t.dataset.more) { const k = t.dataset.more; openTopics.has(k) ? openTopics.delete(k) : openTopics.add(k); return renderTopics(new Set()); }
+  if (t.dataset.source) { aiFilter = t.dataset.source; renderChats(); return show("chats"); }
+  if (t.dataset.ai) { aiFilter = t.dataset.ai; return renderChats(); }
+  if (t.dataset.all !== undefined) { const m = t.closest(".msgs"); m?.querySelectorAll(".msg").forEach(x => x.classList.add("all")); return t.remove(); }
+  if (t.dataset.topic) {
+    show("topics");
+    return document.getElementById("topic-" + t.dataset.topic)?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  }
+  if (t.dataset.id) select(+t.dataset.id);
+});
+document.addEventListener("keydown", ev => {
+  const typing = ev.target.matches("input, textarea");
+  if (ev.key === "/" && !typing) { ev.preventDefault(); $("#q").focus(); $("#q").select(); }
+  else if (ev.key === "Escape") {
+    if (typing) { $("#q").value = ""; recall(""); $("#q").blur(); }
+    else if (selected != null) select(null);
+  }
+  else if (!typing && !ev.metaKey && !ev.ctrlKey && ["1", "2", "3", "4", "5"].includes(ev.key)) show(["overview", "topics", "chats", "map", "setup"][+ev.key - 1]);
+  else if (!typing && ev.key === "?") $("#help").showModal();
+});
+$("#lookup").addEventListener("submit", ev => { ev.preventDefault(); clearTimeout(recallTimer); recall($("#q").value, true); });
+$("#q").addEventListener("input", () => { clearTimeout(recallTimer); recallTimer = setTimeout(() => recall($("#q").value), 260); });
+
+async function copyBrief(btn) {
+  let text;
+  try { text = (await api("/context")).text; } catch (e) { return toast("Couldn't build the briefing: " + e.message); }
+  const ta = Object.assign(document.createElement("textarea"), { value: text }); // plain http: no async clipboard API
+  document.body.append(ta); ta.select();
+  const ok = document.execCommand("copy"); ta.remove();
+  toast(ok ? "Briefing copied — paste it into any AI chat" : "Copy blocked by the browser");
+  btn.blur();
+}
+async function rebuild(btn) {
+  btn.disabled = true;
+  try { const r = await api("/rebuild", { method: "POST" }); toast(`Re-read ${r.captures} captures into ${r.memories} memories`); await load(true); }
+  catch (e) { toast("Re-reading failed: " + e.message); }
+  finally { btn.disabled = false; }
+}
+let toastTimer;
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 2600); }
+
+logoReady.then(async () => {
+  await load(true);
+  const want = location.hash.slice(1);
+  if (TITLES[want] && want !== "recall") show(want);
+  else if (!memories().length) show("setup");  // first run: nothing remembered yet
+});
+addEventListener("hashchange", () => { const v = location.hash.slice(1); if (TITLES[v] && v !== view) show(v); });
+setInterval(() => { if (!document.hidden) load(); }, 15000); // new captures appear on their own
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});  // installable on a phone (Share menu)
+</script>
+</body>
+</html>

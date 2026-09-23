@@ -1,0 +1,23 @@
+# Your data and secrets stay on your box
+data/
+*.env
+!mindbaton.env.example
+*.db
+*.db-*
+*ai_keys
+*.log
+.imported.json
+backups/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Generated / scratch
+*.zip
+node_modules/
+.impeccable/review/
+shots-scratch/
+.DS_Store

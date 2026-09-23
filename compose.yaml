@@ -1,0 +1,22 @@
+# docker compose up -d   → Mindbaton on http://<this machine>:3004
+# The setup code for the first visit is in:  docker compose logs mindbaton
+services:
+  mindbaton:
+    build: .
+    image: mindbaton
+    restart: unless-stopped
+    ports:
+      - "3004:3004"          # to use another port, change the left number only
+    volumes:
+      - mindbaton-data:/data
+    env_file:                # optional: MINDBATON_PUBLIC_URL, MINDBATON_AI=0 … (see mindbaton.env.example)
+      - path: mindbaton.env
+        required: false
+    environment:             # these must stay as they are inside the container
+      MINDBATON_DATA: /data
+      MINDBATON_HOST: 0.0.0.0
+      MINDBATON_PORT: "3004"
+
+volumes:
+  mindbaton-data:
+    name: mindbaton-data   # same volume as `docker run -v mindbaton-data:/data`
