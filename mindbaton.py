@@ -17,6 +17,7 @@ Without a terminal (CI, Docker) or with --yes nothing is asked; answers come fro
 Everything it does is written to ~/.mindbaton/install.log (secrets masked).
 """
 import argparse
+import atexit
 import getpass
 import hashlib
 import json
@@ -245,7 +246,7 @@ def cmd_logo(args):
 
 MB = Path.home() / '.mindbaton'
 CFG, LOG, QUEUE = MB / 'config.json', MB / 'install.log', MB / 'queue.json'
-HOOK_MARK = 'mindbaton.py hook'  # how our hook entries are recognised in other apps' settings
+HOOK_RE = re.compile(r"mindbaton\.py['\"\\]*\s+hook\b")  # our hook entries in other apps' settings (the path may be quoted)
 HOSTNAME = socket.gethostname().split('.')[0] or 'this computer'
 STAMP = time.strftime('%Y%m%d-%H%M%S')  # one backup suffix per run
 SECRETS = re.compile(r'\b(mb_|gsk_|AIza)[\w\-]{6,}|(Bearer\s+)\S+')
@@ -281,7 +282,7 @@ def tilde(p):
 
 def write_file(path, text, mode=0o600):
     """Atomic write: a temp file next to it, then rename, so a crash never leaves half a file."""
-    path = Path(path)
+    path = Path(os.path.realpath(path))  # a symlinked dotfile (stow, chezmoi) is written through, never replaced
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f'.{path.name}.mindbaton-tmp')
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
@@ -426,17 +427,30 @@ def wait_health(base, secs=25, proc=None):
     return False
 
 
+KIDS = []  # the servers this program starts: stopped by PID however it ends (Ctrl-C mid-task, an error, SIGTERM)
+
+
+def spawn(cmd, **kw):
+    p = subprocess.Popen(cmd, cwd=HERE, stdin=subprocess.DEVNULL, start_new_session=True, **kw)
+    KIDS.append(p)
+    return p
+
+
 def start_server(port):
-    """A copy of the server for setup only (the service or the foreground run replaces it)."""
+    """A copy of the server for setup only (the service or the foreground run replaces it). Returns at once:
+    the caller waits for it (wait_health), so a Ctrl-C while it starts still has its PID to stop."""
     MB.mkdir(mode=0o700, parents=True, exist_ok=True)
     out = os.fdopen(os.open(MB / 'server.log', os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600), 'a')  # it prints the setup code
-    p = subprocess.Popen([sys.executable, str(HERE / 'server.py')], cwd=HERE, stdout=out, stderr=subprocess.STDOUT,
-                         stdin=subprocess.DEVNULL, start_new_session=True, env={**os.environ, 'MINDBATON_PORT': str(port)})
+    p = spawn([sys.executable, str(HERE / 'server.py')], stdout=out, stderr=subprocess.STDOUT,
+              env={**os.environ, 'MINDBATON_PORT': str(port)})
     log('started the setup server, pid', p.pid, 'port', port)
+    return p
+
+
+def server_up(p, port):
     if not wait_health(f'http://127.0.0.1:{port}', 30, p):
         stop_server(p)
         raise RuntimeError(f"Mindbaton didn't start. The last lines of {tilde(MB / 'server.log')} say why")
-    return p
 
 
 def stop_server(p):
@@ -446,14 +460,23 @@ def stop_server(p):
             p.wait(8)
         except subprocess.TimeoutExpired:
             p.kill()
-        log('stopped the setup server, pid', p.pid)
+        log('stopped pid', p.pid)
+
+
+atexit.register(lambda: [stop_server(p) for p in KIDS])
 
 
 def self_test():
-    r = run([sys.executable, str(HERE / 'server.py'), '--check'], timeout=300, cwd=HERE)
-    if r.returncode:
-        log('self-test output:', (r.stdout + r.stderr)[-3000:])
-        last = ((r.stderr or r.stdout).strip().splitlines() or ['no output'])[-1][:120]
+    log('$ server.py --check')
+    p = spawn([sys.executable, str(HERE / 'server.py'), '--check'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    try:
+        out = p.communicate(timeout=300)[0]
+    except subprocess.TimeoutExpired:
+        stop_server(p)
+        out = 'it took over 5 minutes'
+    if p.returncode:
+        log('self-test output:', out[-3000:])
+        last = (out.strip().splitlines() or ['no output'])[-1][:120]
         raise Stop(f'The self-test failed ({last}). Please open an issue with the details from {tilde(LOG)}.')
 
 
@@ -589,7 +612,7 @@ def check_key(provider, key):
     if provider == 'gemini' and s == 403:
         return "Google knows this key, but it can't use the Gemini API. Make a new key in AI Studio."
     if s in (400, 401, 403):
-        return f"{who} says this key isn't valid. Copy it again from {site.split('//')[1]}"
+        return f"{who} says this key isn't valid. Copy it again from {site.split('//')[1]}."
     return f'{who} answered with an error ({s}). Try again in a minute.'
 
 
@@ -637,7 +660,7 @@ def list_models(provider, key):
     else:
         s, d, _ = http('GET', 'https://api.groq.com/openai/v1/models', token=key, timeout=20)
     if s in (400, 401, 403):
-        raise Stop(f'{who} refused the saved {name} key. Replace it with: python3 mindbaton.py keys')
+        raise Stop(f'{who} refused the saved {name} key. Replace it with: {CLI} keys')
     if s != 200:
         raise Stop(f"Couldn't get the model list from {who} ({s or 'no answer'}). Try again in a minute.")
     return pick_gemini(d.get('models') or []) if provider == 'gemini' else pick_groq(d.get('data') or [])
@@ -646,8 +669,9 @@ def list_models(provider, key):
 # ── Other apps' settings files ─────────────────────────────────────────────────────────────────────────────
 
 def backup(path):
-    b = Path(path).with_name(f'{Path(path).name}.bak-mindbaton-{STAMP}')
-    if Path(path).exists() and not b.exists():
+    path = Path(os.path.realpath(path))
+    b = path.with_name(f'{path.name}.bak-mindbaton-{STAMP}')
+    if path.exists() and not b.exists():
         shutil.copy2(path, b)
         log('backup', path, '->', b.name)
 
@@ -720,9 +744,9 @@ def edit_json(path, change, private=True):
         try:
             data = jsonc(text)
         except ValueError:
-            raise Unsafe(f"{tilde(path)} isn't valid JSON, so Mindbaton left it alone")
+            raise Unsafe(f"{tilde(path)} isn't valid JSON, so it was left alone. Fix it (or delete it), then run this again.")
     if not isinstance(data, dict):
-        raise Unsafe(f"{tilde(path)} isn't a JSON object, so Mindbaton left it alone")
+        raise Unsafe(f"{tilde(path)} isn't a JSON object, so it was left alone. Fix it (or delete it), then run this again.")
     new = json.loads(json.dumps(data))
     change(new)
     if new == data:
@@ -731,7 +755,7 @@ def edit_json(path, change, private=True):
         out = json.dumps(new, indent=2, ensure_ascii=False) + '\n'
     else:  # comments: only whole top-level keys are added or removed, as text
         if any(k in new and new[k] != v for k, v in data.items()):
-            raise Unsafe(f"{tilde(path)} has comments, so Mindbaton won't rewrite it")
+            raise Unsafe(f"{tilde(path)} has comments, so Mindbaton won't rewrite it.")
         out = text
         for k in [k for k in data if k not in new]:
             out = jsonc_drop(out, k)
@@ -739,7 +763,7 @@ def edit_json(path, change, private=True):
         out = out[:brace] + ''.join(f'\n  {json.dumps(k)}: {textwrap.indent(json.dumps(v, indent=2), "  ").lstrip()},'
                                     for k, v in new.items() if k not in data) + out[brace:]
         if jsonc(out) != new:
-            raise Unsafe(f"{tilde(path)} has comments, so Mindbaton won't rewrite it")
+            raise Unsafe(f"{tilde(path)} has comments, so Mindbaton won't rewrite it.")
     mode = 0o600 if private else (path.stat().st_mode & 0o777 if path.exists() else 0o644)
     backup(path)
     write_file(path, out, mode)
@@ -753,12 +777,12 @@ DROP = object()
 def unhook(o):
     """o without any entry that runs our hook, and without containers that only held such entries."""
     if isinstance(o, str):
-        return DROP if HOOK_MARK in o else o
+        return DROP if HOOK_RE.search(o) else o
     if isinstance(o, list):
         out = [x for x in (unhook(x) for x in o) if x is not DROP]
         return DROP if o and not out else out
     if isinstance(o, dict):
-        if any(isinstance(v, str) and HOOK_MARK in v for v in o.values()):
+        if any(isinstance(v, str) and HOOK_RE.search(v) for v in o.values()):
             return DROP
         out = {k: u for k, u in ((k, unhook(v)) for k, v in o.items()) if u is not DROP}
         return DROP if o and not out else out
@@ -930,12 +954,12 @@ HOOKS = {  # tool: (settings file, add(settings, command)); every add runs after
                _each(('UserPromptSubmit', 'Stop'), lambda ev, c: {'hooks': [{'type': 'command', 'command': c, 'async': True}]})),
     'gemini': (lambda: _home() / '.gemini/settings.json',
                _each(('BeforeAgent', 'AfterAgent'), lambda ev, c: {'hooks': [{'name': 'mindbaton-capture' + ('-reply' if ev == 'AfterAgent' else ''),
-                                                                            'type': 'command', 'command': c, 'timeout': 5000}]})),
+                                                                            'type': 'command', 'command': c, 'timeout': 10000}]})),
     'antigravity': (lambda: _home() / '.gemini/config/hooks.json',
                     lambda d, c: d.__setitem__('mindbaton-capture', {'PostInvocation': [{'type': 'command', 'command': c, 'timeout': 10}]})),
     'cursor': (lambda: _home() / '.cursor/hooks.json',
                lambda d, c: (d.setdefault('version', 1), _each(('beforeSubmitPrompt', 'afterAgentResponse'),
-                                                               lambda ev, c: {'command': c, 'timeout': 5})(d, c))),
+                                                               lambda ev, c: {'command': c, 'timeout': 10})(d, c))),
     'windsurf': (lambda: _home() / '.codeium/windsurf/hooks.json',
                  _each(('pre_user_prompt', 'post_cascade_response'), lambda ev, c: {'command': c, 'show_output': False})),
     'vscode': (lambda: copilot_home() / 'hooks/mindbaton.json',  # our own file: VS Code, its Agent Host and Copilot CLI read it
@@ -961,13 +985,13 @@ def codex_connect(url, token, capture, prev_notify):
             except ValueError:
                 old = None
             if not isinstance(old, list):
-                raise Unsafe("Codex's notify setting has a format Mindbaton can't read, so capture was skipped")
+                raise Unsafe("Codex's notify setting has a format Mindbaton can't read, so messages aren't saved from Codex.")
             if 'mindbaton.py' not in json.dumps(old):  # ours from an earlier run: keep what it chained to
                 prev_notify = old
             new = new[:m.start()] + new[m.end():]
         new = f'notify = {json.dumps([sys.executable, str(MB / "mindbaton.py"), "hook", "codex"])}\n' + new.lstrip('\n')
     if not toml_ok(new):
-        raise Unsafe(f"{tilde(path)} couldn't be updated safely, so it was left alone")
+        raise Unsafe(f"{tilde(path)} couldn't be updated safely, so it was left alone.")
     if new != text:
         backup(path)
         write_file(path, new, 0o600)
@@ -999,7 +1023,7 @@ def connect_tool(t, url, token, capture=True, state=None):
     """Gives app t Mindbaton's memory tools (MCP) and, where it has hooks, per-message capture.
     → (what it got, a note for the person or None, new state for config.json)."""
     state = dict(state or {})
-    note = None
+    notes, pasted, targets = [], 0, []
     if t == 'claude' and shutil.which('claude'):
         backup(claude_json())
         claude_cli('remove', '--scope', 'user', 'mindbaton')  # `add` fails when the name exists
@@ -1013,27 +1037,37 @@ def connect_tool(t, url, token, capture=True, state=None):
             state['notify_prev'] = codex_connect(url, token, capture, state.get('notify_prev'))
         except Unsafe as e:
             state['notify_prev'] = codex_connect(url, token, False, state.get('notify_prev'))
-            capture, note = False, str(e)
+            capture = False
+            notes.append(str(e))
     else:
         if t == 'claude-desktop':
-            note = 'Quit Claude Desktop completely and open it again'
-        for path, top, style in json_targets(t):
+            notes.append('Quit Claude Desktop completely and open it again.')
+        targets = json_targets(t)
+        for path, top, style in targets:
             try:
                 edit_json(path, lambda d: d.setdefault(top, {}).__setitem__('mindbaton', entry(style, url, token)))
-            except Unsafe as e:  # a settings file with comments that already has this key: hand over a snippet
+            except Unsafe as e:  # a file Mindbaton won't rewrite: hand over a snippet to paste
                 snip = MB / f'{t}-snippet.json'
                 write_file(snip, json.dumps({top: {'mindbaton': entry(style, url, token)}}, indent=2) + '\n')
-                note = f'{e}. Paste {tilde(snip)} into it'
+                notes += [str(e), f'To connect it by hand, add {tilde(snip)} to it.']
+                pasted += 1
     hooked = False
     if capture and t in HOOKS:
         path, add = HOOKS[t][0](), HOOKS[t][1]
         if t != 'windsurf' or path.parent.exists():
-            edit_json(path, lambda d: (replace_all(d, unhook(d)), add(d, hook_cmd(t))), private=False)
-            hooked = True
+            try:
+                edit_json(path, lambda d: (replace_all(d, unhook(d)), add(d, hook_cmd(t))), private=False)
+                hooked = True
+            except Unsafe as e:
+                notes += [str(e), f"Until then, messages aren't saved from {TOOLS[t][0]}."]
     elif capture and t == 'codex':
         hooked = True
     state.update(token=token, capture=hooked, url=url)
-    return ('memory tools + saves every message' if hooked else 'memory tools'), note, state
+    if targets and pasted == len(targets):
+        what = 'saves every message · paste the snippet for memory tools' if hooked else 'paste the snippet to finish'
+    else:
+        what = 'memory tools + saves every message' if hooked else 'memory tools'
+    return what, ' '.join(dict.fromkeys(notes)) or None, state  # one file can refuse twice (MCP entry, hook): say it once
 
 
 def disconnect_tool(t, state=None):
@@ -1073,46 +1107,55 @@ def mcp_entry(t):
     """This app's current 'mindbaton' MCP settings, as text (for doctor), or ''."""
     if t == 'codex':
         return toml_tables(codex_toml().read_text() if codex_toml().exists() else '', 'mcp_servers').get('mindbaton', '')
-    path, top, _ = json_targets(t)[0]
-    e = (read_json(path).get(top) or {}).get('mindbaton')
-    return json.dumps(e) if e else ''
+    found = [(read_json(path).get(top) or {}).get('mindbaton') for path, top, _ in json_targets(t)]
+    return next((json.dumps(e) for e in found if e), '')
 
 
 def hook_present(t):
     if t == 'codex':
         return 'mindbaton.py' in (NOTIFY.search(toml_top(codex_toml().read_text())) or [''])[0] if codex_toml().exists() else False
-    return t in HOOKS and HOOK_MARK in json.dumps(read_json(HOOKS[t][0]()))
+    return t in HOOKS and bool(HOOK_RE.search(json.dumps(read_json(HOOKS[t][0]()))))
+
+
+def host_port(u):
+    u = urlparse(u)
+    try:
+        return (u.hostname or '').lower(), u.port or {'http': 80, 'https': 443}.get(u.scheme)
+    except ValueError:
+        return '', None
 
 
 def legacy(t, url):
-    """Older entries for the same memory: a server named like 'memgraph', or another name at this Mindbaton's /mcp.
-    → [(label, remove())]."""
-    port = urlparse(url).port
+    """Older memory connections: a server named like 'memgraph', or another name pointing at this Mindbaton.
+    → [(name, the URL it points at or '', same server as url?, remove())]."""
+    h, p = host_port(url)
+    mine = {(h, p)} | ({(x, p) for x in ('localhost', '127.0.0.1', lan_ip(), HOSTNAME.lower())} if h in ('localhost', '127.0.0.1') else set())
 
     def old(name, conf):
         u = json.dumps(conf) if not isinstance(conf, str) else conf
         at = re.search(r'https?://[^"\s]+?/mcp\b', u)
-        return name != 'mindbaton' and ('memgraph' in name.lower() or bool(at and urlparse(at[0]).port == port))
+        same = bool(at) and host_port(at[0]) in mine
+        return (at[0] if at else '', same) if name != 'mindbaton' and (same or 'memgraph' in name.lower()) else None
 
     found = []
     if t == 'codex' and codex_toml().exists():
         for name, block in toml_tables(codex_toml().read_text(), 'mcp_servers').items():
-            if old(name, block):
+            if (o := old(name, block)):
                 def rm(name=name):
                     p = codex_toml()
                     backup(p)
                     write_file(p, toml_drop(p.read_text(), 'mcp_servers.' + name), 0o600)
-                found.append((name, rm))
+                found.append((name, *o, rm))
         return found
     targets = [(claude_json(), 'mcpServers', '')] if t == 'claude' else json_targets(t)
     for path, top, _ in targets:
         for name, conf in (read_json(path).get(top) or {}).items():
-            if old(name, conf):
+            if (o := old(name, conf)):
                 if t == 'claude' and shutil.which('claude'):
                     rm = lambda name=name: (backup(claude_json()), claude_cli('remove', '--scope', 'user', name))
                 else:
                     rm = lambda path=path, top=top, name=name: edit_json(path, lambda d: d[top].pop(name, None))
-                found.append((name, rm))
+                found.append((name, *o, rm))
     return found
 
 
@@ -1229,7 +1272,8 @@ def hook_payload(tool, p, cfg):
         other = next((s for s, e in (('cursor', 'CURSOR_VERSION'), ('windsurf', 'DEVIN_PROJECT_DIR'), ('continue', 'CONTINUE_PROJECT_DIR'))
                       if os.environ.get(e)), None)
         if other:  # Cursor, Devin and Continue also run Claude Code's hooks: label them right, never twice
-            if (tools.get(other) or {}).get('capture') or not p.get('prompt'):
+            # (Windsurf's own hooks are Cascade's; Devin Local only runs these, so it is never skipped)
+            if (other != 'windsurf' and (tools.get(other) or {}).get('capture')) or not p.get('prompt'):
                 return None
             cid = p.get('session_id') or p.get('conversation_id') or 'chat'
             return other, cid, chat_log(other, cid, [('user', p['prompt'])], None), {}
@@ -1277,20 +1321,25 @@ def deliver(cfg, item, key, left):
             q = json.loads(QUEUE.read_text())
         except (OSError, ValueError):
             q = {}
+        save = lambda: write_file(QUEUE, json.dumps(dict(list(q.items())[-200:]))) if q else QUEUE.unlink(missing_ok=True)
         if item:
             q.pop(key, None)
             q[key] = item  # the newest transcript of a chat replaces an older one still waiting
+            save()  # on disk before the network, so a timeout can't lose it
+        down = set()
         for k in list(q):
+            it = q[k]
             if left() < 1:
                 break
-            it = q[k]
+            if it['url'] in down:
+                continue
             s, _, _ = http('POST', it['url'] + it['path'], it['body'], token=it['token'], timeout=min(3, left()))
-            if s == 200 or (400 <= s < 500 and s not in (401, 408, 429)):  # sent, or a message the server will never take
+            # sent, or never taken (401: a revoked token; a /session item is re-sent whole with the chat's next message)
+            if s == 200 or (400 <= s < 500 and s not in (408, 429)):
                 q.pop(k)
             else:
-                break  # down or refusing: keep the rest in order for next time
-        q = dict(list(q.items())[-200:])
-        write_file(QUEUE, json.dumps(q)) if q else QUEUE.unlink(missing_ok=True)
+                down.add(it['url'])  # down or busy: that server's items wait, in order; other servers' still go
+        save()
         return len(q)
 
 
@@ -1324,7 +1373,7 @@ def cmd_hook(args):
     end = time.monotonic() + 5
 
     def timeout(*_):
-        raise TimeoutError('hook took over 5 s')
+        raise TimeoutError('hook took too long')
     try:
         signal.signal(signal.SIGALRM, timeout)
         signal.alarm(5)
@@ -1332,11 +1381,25 @@ def cmd_hook(args):
         if tool == 'codex':  # notify passes the event as the last argument, not on stdin
             payload = json.loads(args[-1]) if len(args) > 1 else {}
             prev = ((load_cfg().get('tools') or {}).get('codex') or {}).get('notify_prev')
-            if prev:  # the notify program that was there before Mindbaton keeps running
-                subprocess.Popen([*prev, args[-1]], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                                 stderr=subprocess.DEVNULL, start_new_session=True)
+            try:  # the notify program that was there before Mindbaton keeps running
+                prev and subprocess.Popen([*prev, args[-1]], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                          stderr=subprocess.DEVNULL, start_new_session=True)
+            except OSError:
+                log('hook codex: the earlier notify program', prev[:1], "didn't start")
         else:
             payload = json.loads(sys.stdin.read(8_000_000) or '{}')
+        if hasattr(os, 'fork'):  # answer the app now and send in the background: an unreachable server never stalls it
+            if reply:
+                os.write(1, reply.encode())
+                reply = ''
+            if os.fork():
+                os._exit(0)
+            os.setsid()
+            null = os.open(os.devnull, os.O_RDWR)
+            for fd in (0, 1, 2):
+                os.dup2(null, fd)  # the app waits for these pipes to close
+            signal.alarm(12)
+            end = time.monotonic() + 10
         run_hook(tool, payload if isinstance(payload, dict) else {}, load_cfg(), lambda: end - time.monotonic())
     except BaseException as e:  # never fail the app over a memory
         log('hook', tool, 'skipped:', repr(e)[:300])
@@ -1530,10 +1593,11 @@ def qr_lines(text, quiet=2):
 # something changed. Every way out (finish, Ctrl-C, an error, SIGTERM, SIGHUP) restores the terminal.
 
 ANSI = re.compile(r'\x1b\[[\d;?]*[A-Za-z]')
-PAL = {False: dict(fg2='#a1a1aa', fg3='#71717a', accent='#8b95ff', ok='#3dd68c', danger='#ff6369', warn='#f5a524'),
-       True: dict(fg2='#52525b', fg3='#71717a', accent='#4f46e5', ok='#15803d', danger='#dc2626', warn='#b45309')}
+PAL = {False: dict(fg2='#a1a1aa', fg3='#71717a', accent='#ffffff', ok='#3dd68c', danger='#ff6369', warn='#f5a524'),
+       True: dict(fg2='#52525b', fg3='#71717a', accent='#09090b', ok='#15803d', danger='#dc2626', warn='#b45309')}
 KEYS = {'[A': 'up', '[B': 'down', '[C': 'right', '[D': 'left', 'OA': 'up', 'OB': 'down', 'OC': 'right', 'OD': 'left',
-        '[H': 'home', '[F': 'end', '[3~': 'delete', '[Z': 'shift-tab'}
+        '[H': 'home', '[F': 'end', 'OH': 'home', 'OF': 'end', '[1~': 'home', '[4~': 'end', '[7~': 'home', '[8~': 'end',
+        '[3~': 'delete', '[Z': 'shift-tab', '[5~': 'pgup', '[6~': 'pgdn'}
 CTRL = {'\r': 'enter', '\n': 'enter', '\t': 'tab', '\x7f': 'backspace', '\x08': 'backspace', '\x03': 'ctrl-c', '\x04': 'ctrl-d',
         '\x12': 'ctrl-r', '\x15': 'ctrl-u', '\x17': 'ctrl-w', '\x1b': 'esc', ' ': 'space'}
 
@@ -1602,8 +1666,9 @@ class TUI:
         self.light = self.color and terminal_is_light()  # asks the terminal, so before raw mode
         utf = 'utf' in (sys.stdout.encoding or '').lower() and os.environ.get('TERM') != 'linux'
         self.g = dict(ok='✓', fail='✗', warn='!', info='·', todo='○', sel='›', dot='•', bar='━', rule='─', spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏',
-                      on='[✓]', off='[ ]') if utf else dict(ok='+', fail='x', warn='!', info='-', todo='o', sel='>', dot='*',
-                                                            bar='=', rule='-', spin='|/-\\', on='[x]', off='[ ]')
+                      on='[✓]', off='[ ]', up='↑', down='↓') if utf else dict(ok='+', fail='x', warn='!', info='-', todo='o', sel='>',
+                                                                            dot='*', bar='=', rule='-', spin='|/-\\', on='[x]',
+                                                                            off='[ ]', up='^', down='v')
         self.pal = {k: (tuple(int(v[i:i + 2], 16) for i in (1, 3, 5)) if self.mode == 'truecolor' else
                         _to256(tuple(int(v[i:i + 2], 16) for i in (1, 3, 5)))) for k, v in PAL[self.light].items()}
         self.fd = sys.stdin.fileno()
@@ -1614,7 +1679,7 @@ class TUI:
         a[0] &= ~(termios.IXON | termios.ICRNL)  # Ctrl-S/Q and Enter arrive as keys
         a[3] &= ~(termios.ECHO | termios.ICANON | termios.ISIG | termios.IEXTEN)  # Ctrl-C too: we clean up, then quit
         termios.tcsetattr(self.fd, termios.TCSANOW, a)
-        self.last, self.resized, self.waiting = None, False, False
+        self.last, self.resized, self.waiting, self.scroll, self.hidden = None, False, False, 0, 0
         signal.signal(signal.SIGWINCH, lambda *_: setattr(self, 'resized', True))
         for sig in (signal.SIGTERM, signal.SIGHUP):
             signal.signal(sig, lambda *_: sys.exit(1))
@@ -1677,27 +1742,44 @@ class TUI:
     def clear(self):
         self.body = []
 
-    def body_lines(self, W, avail, extra=()):
-        items = [i for i in self.body if i[0] != 'qr'] + list(extra)
-        qr = next((i for i in self.body if i[0] == 'qr'), None)
+    def view(self, lines, room):
+        """A finished page taller than the window: `room` rows from self.scroll, with "↑/↓ n more" where rows are hidden."""
+        hidden = len(lines) - room
+        if hidden <= 0 or room < 3:
+            return lines[:room]
+        self.hidden = hidden
+        top = self.scroll = max(0, min(self.scroll, hidden))
+        out = lines[top:top + room]
+        if top:
+            out[0] = self.st(f"{self.g['up']} {top + 1} more", 'fg3')
+        if top < hidden:
+            out[-1] = self.st(f"{self.g['down']} {hidden - top + 1} more", 'fg3')
+        return out
+
+    def body_lines(self, W, avail, items, tail=()):
+        """The page body in `avail` rows or more; a finished page (tail = its Enter prompt) is cut to fit and scrolls."""
+        qr = next((i for i in items if i[0] == 'qr'), None)
+        items = [i for i in items if i[0] != 'qr']
+        fin = lambda lines, w=W: (self.view(lines, avail - len(tail)) + self.render_items(tail, w)) if self.waiting else lines
         if qr:
             ql, qw = qr_lines(qr[1])
             if self.color:
                 ql = [f'\x1b[38;2;255;255;255;48;2;0;0;0m{l}\x1b[0m' if self.mode == 'truecolor' else f'\x1b[38;5;231;48;5;16m{l}\x1b[0m'
                       for l in ql]
             side = W - qw - 4
-            cap = [self.st(x, 'fg3') for x in wrap(qr[2], qw)] if qr[2] and len(ql) < avail else []
-            if side >= 34 and len(ql) <= avail:  # the code on the left, everything else beside it
-                right = self.render_items(items, side)
+            cap = [self.st(x, 'fg3') for x in wrap(qr[2], qw)] if qr[2] else []
+            cap = cap if len(ql) + len(cap) <= avail else []
+            if side >= 34 and len(ql) <= avail:  # the code on the left, everything else beside it (scrolling, if need be)
+                right = fin(self.render_items(items, side), side)  # the prompt too: under the text, beside the code
                 left = ql + cap
                 n = max(len(left), len(right))
                 return [(left[k] if k < len(left) else ' ' * qw) + '    ' + (right[k] if k < len(right) else '') for k in range(n)]
             lines = self.render_items(items, W)
-            if len(lines) + len(ql) + 1 <= avail:
+            if len(lines) + len(ql) + 1 <= avail - len(tail):
                 pad = ' ' * ((W - qw) // 2)
-                return lines + [''] + [pad + l for l in ql]
-            return [self.st('Make this window taller to see a QR code for your phone.', 'fg3'), ''] + lines
-        return self.render_items(items, W)
+                return fin(lines + [''] + [pad + l for l in ql])
+            return fin([self.st('Make this window taller to see a QR code for your phone.', 'fg3'), ''] + lines)
+        return fin(self.render_items(items, W))
 
     def render_items(self, items, W):
         out = []
@@ -1736,26 +1818,14 @@ class TUI:
         if compact or not self.steps or self.step is None:
             return lines + [self.st(self.g['rule'] * W, 'fg3')]
         n, cur = len(self.steps), self.step
-        show = set(range(n))
-
-        def build():
-            parts = []
-            for i, name in enumerate(self.steps):
-                if i < cur:
-                    parts.append(self.icon('ok') + (' ' + self.st(name, 'fg3') if i in show else ''))
-                elif i == cur:
-                    parts.append(self.st(str(i + 1), 'accent', bold=True) + ' ' + self.st(name, bold=True))
-                else:
-                    parts.append(self.st(str(i + 1) + (' ' + name if i in show else ''), 'fg3'))
-            return '  '.join(parts)
-        if vlen(build()) > W:
-            show -= set(range(cur))  # too wide: finished steps become a row of ticks
-        for i in sorted(range(cur + 1, n), reverse=True):
-            if vlen(build()) <= W:  # then the labels farthest ahead go
-                break
-            show.discard(i)
+        row = '  '.join(self.icon('ok') + ' ' + self.st(name, 'fg3') if i < cur else
+                        self.st(str(i + 1), 'accent', bold=True) + ' ' + self.st(name, bold=True) if i == cur else
+                        self.st(f'{i + 1} {name}', 'fg3') for i, name in enumerate(self.steps))
         done = round(W * cur / max(1, n - 1))
-        return lines + [build(), self.st(self.g['bar'] * done, 'accent') + self.st(self.g['rule'] * (W - done), 'fg3')]
+        bar = self.st(self.g['bar'] * done, 'accent') + self.st(self.g['rule'] * (W - done), 'fg3')
+        if vlen(row) > W:  # not every step name fits: "3/8 Account" on the right, and the bar
+            return self.header(W, True)[:1] + [bar]
+        return lines + [row, bar]
 
     def render(self, extra=(), focus=None, keys=()):
         cols, rows = shutil.get_terminal_size((80, 24))
@@ -1779,18 +1849,17 @@ class TUI:
             pairs.append(self.st(k, 'fg2') + ' ' + self.st(v, 'fg3'))
         foot = ['', '   '.join(pairs)]
         avail = max(1, H - len(head) - len(foot))
-        body = self.body_lines(W, avail, extra)
+        items, tail = (self.body[:-2], self.body[-2:]) if self.waiting else (self.body, [])  # the Enter prompt stays in sight
+        self.hidden = 0
+        body = self.body_lines(W, avail, items + list(extra), tail)
         if focus is not None:
-            focus += len(body) - len(self.body_lines(W, avail))  # focus counts from the end of the static body
-        start = 0
-        if len(body) > avail and self.waiting:  # a finished page: its top, and the Enter prompt
-            body = body[:avail - 2] + body[-2:]
-        elif len(body) > avail:  # while working: the newest rows (or the focused field)
+            focus += len(body) - len(self.body_lines(W, avail, items))  # focus counts from the end of the static body
+        if len(body) > avail:  # while working: the newest rows (or the focused field)
             start = len(body) - avail if focus is None else max(0, min(focus - avail // 2, len(body) - avail))
-        page = head + body[start:start + avail] + [''] * max(0, avail - len(body)) + foot
+            body = body[start:start + avail]
+        page = head + body + [''] * max(0, avail - len(body)) + foot
         y0 = (rows - H) // 2
-        place = lambda l: (' ' * max(0, (cols - vlen(l[1:])) // 2) + fit(l[1:], cols)) if l[:1] == '\x00' else ' ' * x0 + fit(l, W)
-        frame = [''] * y0 + [place(l) if l else '' for l in page[:H]]
+        frame = [''] * y0 + [' ' * x0 + fit(l, W) if l else '' for l in page[:H]]
         frame += [''] * (rows - len(frame))
         self.paint(frame[:rows])
 
@@ -1871,9 +1940,15 @@ class TUI:
     def wait(self, label='continue'):
         prompt = [['gap'], ['raw', self.st('Press ', 'fg2') + self.st('Enter', 'accent', bold=True) + self.st(f' to {label}', 'fg2')]]
         self.body += prompt
-        self.waiting = True
+        self.waiting, self.scroll = True, 0
+
+        def key(k):
+            step = {'up': -1, 'down': 1, 'pgup': -8, 'pgdn': 8, 'home': -999, 'end': 999}.get(k)
+            if step:
+                self.scroll += step
+            return True if k == 'enter' else None
         try:
-            self.loop(lambda: ((), None, (('enter', label),)), lambda k: True if k == 'enter' else None)
+            self.loop(lambda: ((), None, ((('↑↓', 'scroll'),) if self.hidden else ()) + (('enter', label),)), key)
         finally:
             del self.body[-2:]
             self.waiting = False
@@ -1965,8 +2040,12 @@ class TUI:
                 if on:
                     focus = len(lines)
                 lines.append(['raw', f'{mark} {label}{value}'])
-                if f['error']:
-                    lines += [['raw', ' ' * (lw + 2) + self.st(l, 'danger')] for l in wrap(f['error'], max(20, W - lw - 2))]
+                err = f['error'] and (f['error']() if callable(f['error']) else f['error'])
+                if err:  # a glyph and bold too, so it doesn't rest on colour alone (NO_COLOR)
+                    lines += [['raw', ' ' * (lw + 2) + self.st((self.g['fail'] + ' ' if j == 0 else '  ') + l, 'danger', bold=not self.color)]
+                              for j, l in enumerate(wrap(err, max(20, W - lw - 4)))]
+                if f.get('note'):
+                    lines += [['raw', ' ' * (lw + 4) + self.st(l, 'fg3')] for l in wrap(f['note'], max(20, W - lw - 4))]
             hints = ((('tab', 'next'),) if len(fields) > 1 else ()) + (('enter', submit if cur[0] == len(fields) - 1 else 'next'),)
             if any(f['secret'] for f in fields):
                 hints += (('ctrl-r', 'hide' if reveal[0] else 'show'),)
@@ -2013,8 +2092,9 @@ class TUI:
         return None if r == 0 else r
 
     def welcome(self, sentence, action):
-        """The logo (drawn in from the bottom-left, the way the baton moves), one sentence, Enter."""
-        self.page(0, '', '')
+        """The logo (drawn in from the bottom-left, the way the baton moves), one sentence, Enter. No step row: the logo
+        says where you are."""
+        self.page(None, '', '')
         t0 = time.monotonic()
         light = self.light if self.color else False
 
@@ -2023,9 +2103,9 @@ class TUI:
             W, rows = min(cols - 4, 92), min(rows, 32)
             k = 1.0 if not self.motion else min(1.0, (time.monotonic() - t0) / 0.7)
             text = wrap(sentence, min(W, 64))
-            art, width = logo(cols - 4, max(0, rows - 13 - len(text)), mode=self.mode, light=light, reveal=1 - (1 - k) ** 3)
+            art, width = logo(W, max(0, rows - 13 - len(text)), mode=self.mode, light=light, reveal=1 - (1 - k) ** 3)
             center = lambda s: ' ' * max(0, (W - vlen(s)) // 2) + s
-            lines = [['raw', '\x00' + l] for l in art] or [['raw', center(self.st('Mindbaton', 'accent', bold=True))]]
+            lines = [['raw', center(l)] for l in art] or [['raw', center(self.st('Mindbaton', 'accent', bold=True))]]
             lines += [['gap'], ['raw', center(self.st('Tell one AI. Every AI knows.', bold=True))], ['gap']]
             lines += [['raw', center(self.st(l, 'fg2'))] for l in text]
             lines += [['gap'], ['raw', center(self.st(f' {action} ', 'accent', bold=True, rev=True) if self.color else
@@ -2040,6 +2120,13 @@ def friendly(e):
         return str(e)
     if isinstance(e, KeyboardInterrupt):
         return 'stopped'
+    if isinstance(e, OSError) and e.filename:  # the file itself, not its backup or temp copy
+        f = tilde(re.sub(r'\.bak-mindbaton-[\d-]+$', '', re.sub(r'/\.([^/]+)\.mindbaton-tmp$', r'/\1', str(e.filename))))
+        if isinstance(e, PermissionError):
+            return f"Mindbaton can't write {f} (no permission). Fix that folder's permissions, then run this again."
+        return f"Couldn't write {f}: {(e.strerror or str(e)).lower()}."
+    if isinstance(e, OSError) and e.strerror:
+        return e.strerror + '.'
     return f'{type(e).__name__}: {e}'
 
 
@@ -2059,11 +2146,11 @@ class Plain:
 
     def page(self, step, title, sub=''):
         self.step = step
-        n = f'[{step + 1}/{len(self.steps)}] ' if self.steps and step is not None else ''
+        n = f'[{step}/{len(self.steps) - 1}] ' if self.steps and step else ''  # the Welcome screen is never shown here
         print('\n' + self.b(n + title) if title else '', flush=True)
 
     def retitle(self, title, sub=None):
-        print(self.b(title), flush=True)
+        pass
 
     def row(self, kind, label, detail=''):
         print(f'  {self.g[kind]} {label}' + (f' ({detail})' if detail else ''), flush=True)
@@ -2137,6 +2224,8 @@ INSTALL_STEPS = ['Welcome', 'Check', 'Account', 'AI keys', 'Your AI tools', 'Con
 CONNECT_STEPS = ['Welcome', 'Pair', 'Your AI tools', 'Connect', 'Done']
 WORDS = ('/usr/share/dict/american-english', '/usr/share/dict/british-english', '/usr/share/dict/words')
 USERNAME = re.compile(r'[a-z0-9._-]{2,32}')
+CLI = 'python3 ~/.mindbaton/mindbaton.py'  # how the person runs this later (install_client puts it there)
+START_HINT = None  # set when setup ends with Mindbaton not running: how to start it
 
 
 def fts5_ok():
@@ -2156,12 +2245,15 @@ def step_check(ui, ctx, o):
     ui.row('ok' if ok else 'fail', f'Python {v.major}.{v.minor}.{v.micro}', '' if ok else 'Mindbaton needs Python 3.9 or newer')
     probs += [] if ok else ['python']
     ok = fts5_ok()
-    ui.row('ok' if ok else 'fail', 'Full-text search (SQLite FTS5)', '' if ok else "this Python's SQLite has no FTS5 — install a newer python3, or use Docker")
+    log('check: SQLite FTS5', 'ok' if ok else 'missing')
+    ui.row('ok' if ok else 'fail', 'Search engine', '' if ok else "this Python's SQLite has no full-text search (FTS5): "
+                                                                  "install a newer python3, or use Docker")
     probs += [] if ok else ['fts5']
-    ok = any(os.path.exists(p) for p in WORDS)
-    ui.row('ok' if ok else 'fail', 'Word list', next((p for p in WORDS if os.path.exists(p)), '') if ok else
-           'install it: sudo apt install wamerican · sudo dnf install words · sudo pacman -S words')
-    probs += [] if ok else ['words']
+    words = next((p for p in WORDS if os.path.exists(p)), None)
+    log('check: word list', words or 'missing')
+    ui.row('ok' if words else 'fail', 'Dictionary', '' if words else
+           'install one: sudo apt install wamerican · sudo dnf install words · sudo pacman -S words')
+    probs += [] if words else ['words']
     d = data_dir()
     while not d.exists() and d != d.parent:
         d = d.parent
@@ -2176,7 +2268,7 @@ def step_check(ui, ctx, o):
         raise Stop('Setup stopped: this computer is missing something Mindbaton needs (see above).')
 
     port = int(o.port or setting('MINDBATON_PORT', 3004))
-    ctx['running'] = None
+    ctx['running'], moved = None, False
     if port_busy(port):
         h = health(f'http://127.0.0.1:{port}')
         if h:
@@ -2186,15 +2278,20 @@ def step_check(ui, ctx, o):
             alt = next((p for p in range(port + 1, port + 200) if not port_busy(p)), None)
             ui.row('warn', f'Port {port} is used by another program')
             if ui.interactive:
-                i = ui.choose([(f'Use port {alt}', 'free'), ('Type a different port', '')])
-                if i == 1:
-                    def good(v, _):
-                        if not v.isdigit() or not 1024 <= int(v) <= 65535:
-                            return 'Use a number from 1024 to 65535.'
-                        if port_busy(int(v)):
-                            return f'Port {v} is in use too. Try another.'
-                    alt = int(ui.form([field('Port', str(alt), check=good)])['Port'])
-            port = alt
+                ui.gap()
+
+                def good(v, _):
+                    if not v.isdigit() or not 1024 <= int(v) <= 65535:
+                        return 'Use a number from 1024 to 65535.'
+                    if port_busy(int(v)):
+                        return f'Port {v} is in use too. Try another.'
+                while ui.choose([(f'Use port {alt}', 'free'), ('Type a different port', '')]) == 1:
+                    v = ui.form([field('Port', str(alt), check=good)], cancel=True, submit='use it')
+                    if v:
+                        alt = int(v['Port'])
+                        break
+                ui.body.pop()  # the gap before the menu
+            port, moved = alt, True
             ui.row('ok', f'Mindbaton will use port {port}')
     else:
         ui.row('ok', f'Port {port} is free')
@@ -2204,7 +2301,7 @@ def step_check(ui, ctx, o):
     ui.task('Self-test', self_test, lambda _: 'all good', 'about 10 seconds')
     ui.gap()
     ui.text('Everything looks good.', 'ok')
-    ui.wait()
+    ui.wait() if moved else ui.pause(0.8)  # a changed port is worth a look; all green just moves on
 
 
 def default_names():
@@ -2215,7 +2312,8 @@ def default_names():
     except (ImportError, KeyError):
         full = ''
     uname = re.sub(r'[^a-z0-9._-]', '', user.lower())[:32]
-    return (full.split()[0] if full else uname.capitalize()) or '', uname if USERNAME.fullmatch(uname) else ''
+    first = full.split()[0] if full else uname
+    return (first.capitalize() if first.islower() else first), uname if USERNAME.fullmatch(uname) else ''
 
 
 def check_name(v, _):
@@ -2230,11 +2328,32 @@ def check_pw(v, _):
     return None if len(v) >= 8 else 'Use at least 8 characters.'
 
 
+def check_again(v, fs):
+    if v == fs[2]['value']:
+        return None
+    fs[3]['value'] = ''  # start the second one over; nobody should need Ctrl-U
+    return "The passwords don't match. Type it again."
+
+
+def login_failed(f, s, d, hint=None):
+    """The password field after a failed sign-in: what happened, a way out, and a live countdown when locked."""
+    f['value'] = ''
+    if s == 429:
+        until = time.monotonic() + int(d.get('retry_after') or 60)
+        f['error'] = lambda: (f'Too many tries. Try again in {int(until - time.monotonic()) + 1} s.'
+                              if time.monotonic() < until else 'You can try again now.')
+    else:
+        f['error'] = 'Wrong username or password. Try again.' if s == 401 else err_text(d, f'Sign-in failed ({s or "no answer"})')
+    if s in (401, 429) and hint:
+        f['note'] = hint
+
+
 def step_account(ui, ctx, o):
     base = ctx['base']
     ui.page(2, 'Your account', '')
     if not health(base):
-        ctx['server'] = ui.task('Starting Mindbaton', lambda: start_server(ctx['port']))
+        ctx['server'] = start_server(ctx['port'])  # its PID is ours before any waiting starts
+        ui.task('Starting Mindbaton', lambda: server_up(ctx['server'], ctx['port']))
         ui.clear()
     s, st, _ = http('GET', base + '/api/auth/state')
     if s != 200:
@@ -2275,7 +2394,7 @@ def create_account(ui, ctx, o):
     fields = [field('Your name', name, check=check_name, placeholder='shown in the app'),
               field('Username', user, check=check_user, placeholder='for signing in'),
               field('Password', '', True, check_pw, 'at least 8 characters'),
-              field('Password again', '', True, lambda v, fs: None if v == fs[2]['value'] else "The passwords don't match.")]
+              field('Password again', '', True, check_again)]
     while True:
         v = ui.form(fields, submit='create account')
         s, d, cookie = ui.busy('Creating your account', lambda: http('POST', base + '/api/auth/setup', {
@@ -2311,13 +2430,12 @@ def sign_in(ui, ctx, o, profiles):
     fields = ([] if user else [field('Username', '', check=check_user)]) + [field('Password', '', True, check_pw)]
     while True:
         v = ui.form(fields, submit='sign in')
-        s, d, cookie = ui.busy('Signing in', lambda: http('POST', base + '/api/auth/login', {
-            'username': user or v['Username'].lower(), 'password': v['Password']}))
+        name = user or v['Username'].lower()
+        s, d, cookie = ui.busy('Signing in', lambda: http('POST', base + '/api/auth/login', {'username': name, 'password': v['Password']}))
         if s == 200:
             ctx.update(cookie=cookie, account=d['account'])
             return
-        fields[-1]['error'] = 'Wrong username or password. Try again.' if s == 401 else err_text(d, f'Sign-in failed ({s or "no answer"})')
-        fields[-1]['value'] = ''
+        login_failed(fields[-1], s, d, f"Forgot it? Run: python3 {tilde(HERE / 'server.py')} --reset-password {name}")
 
 
 def new_token(base, cookie, name, kind):
@@ -2364,8 +2482,8 @@ def add_key(ui, base, cred, provider, key=None):
 
 def keys_screen(ui, base, cred, step, local_remove=False):
     """The key menu: shows what's set, adds or replaces a key, removes one (on the server's own computer)."""
-    title, sub = 'Free AI keys', ('Optional. Mindbaton works without them. A free key lets it write hand-off summaries '
-                                   'and answer questions about your memory.')
+    title, sub = 'Free AI keys', ('Optional. Mindbaton works without them. A free key lets it write a summary when a chat '
+                                   'runs out of room, and answer questions about your memory.')
     while True:
         ui.page(step, title, sub)
         have = ai_status(base, cred)
@@ -2381,7 +2499,7 @@ def keys_screen(ui, base, cred, step, local_remove=False):
                 if name in have:
                     opts.append((f'Remove the {name} key', ''))
                     acts.append(('remove', p))
-        opts.append(('Continue' if have else 'Skip for now', '' if have else 'add them later: mindbaton.py keys'))
+        opts.append(('Continue', '') if have else ('Skip for now', '', f'Add them later with: {CLI} keys'))
         acts.append(('done', None))
         i = ui.choose(opts, default=len(opts) - 1 if have else 0)
         act, p = acts[i]
@@ -2404,9 +2522,10 @@ def step_keys(ui, ctx, o):
     ui.page(3, 'Free AI keys')
     given = [(p, getattr(o, p + '_key')) for p in KEY_SITES if getattr(o, p + '_key', None)]
     for p, k in given:
-        add_key(ui, ctx['base'], cred, p, k)
+        if not add_key(ui, ctx['base'], cred, p, k):
+            ctx['failed'].append(f'the {KEY_SITES[p][0]} key')
     if not given:
-        ui.row('info', 'Skipped', 'add them later with: python3 mindbaton.py keys')
+        ui.row('info', 'Skipped', f'add them later with: {CLI} keys')
 
 
 def step_tools(ui, o, step):
@@ -2422,6 +2541,8 @@ def step_tools(ui, o, step):
             if t not in TOOLS:
                 raise Stop(f"--tools: there's no tool called {t!r}. Known: {', '.join(TOOLS)}.")
             ui.row('ok' if t in found else 'warn', TOOLS[t][0], found.get(t) or 'not found here; connecting anyway')
+        if not pick:
+            ui.row('info', 'No AI tools found on this computer' if want == 'all' else 'Skipped')
         return pick
     if not found:
         ui.row('info', 'No AI tools found on this computer.')
@@ -2434,34 +2555,48 @@ def step_tools(ui, o, step):
     return [items[k]['id'] for k in picked]
 
 
-def step_connect(ui, o, chosen, step, url, mint, local_admin=False):
-    """Writes the settings of every chosen app. mint(tool) → (token id, token) for it."""
+def step_connect(ui, o, chosen, step, url, mint, local_admin=False, revoke=None):
+    """Writes the settings of every chosen app. mint(tool) → (token id, token) for it; revoke(id) takes back a token
+    minted for an app that then failed. → the names of the apps that failed."""
     ui.page(step, 'Connecting your tools', 'Adding Mindbaton to each one.')
-    if not chosen:
-        ui.row('info', 'Nothing to connect.', 'run this again any time to add one')
-        return ui.wait()
-    old = [(t, n, rm) for t in chosen for n, rm in legacy(t, url)]
+    old = [(t, *x) for t in chosen for x in legacy(t, url)]
     if old:
-        names = ', '.join(sorted({f'"{n}" in {TOOLS[t][0]}' for t, n, _ in old}))
-        ui.text(f'Found an older connection to the same memory: {names}. With both, your AI sees every memory tool twice.')
+        for t, n, at, same, _ in old:
+            ui.row('info', f'"{n}" in {TOOLS[t][0]}', at or 'an older memory connection')
+        same = all(x[3] for x in old)
         ui.gap()
-        replace = ui.choose([('Replace it', 'recommended'), ('Keep it', '')]) == 0 if ui.interactive else bool(o.replace_old)
+        ui.text(('This is an older memory connection. ' if len(old) == 1 else 'These are older memory connections. ')
+                + ("Replace it, or your AI sees every memory tool twice." if same else
+                   "Replace it only if it's an old copy of this memory that you don't use any more."))
+        ui.gap()
+        replace = (ui.choose([('Replace with Mindbaton', 'recommended' if same else ''), ('Keep', '' if same else 'recommended')],
+                             default=0 if same else 1) == 0) if ui.interactive else bool(o.replace_old)
         ui.clear()
-        for t, n, rm in old:
+        for t, n, at, same, rm in old:
             if replace:
                 ui.task(f'Removed "{n}" from {TOOLS[t][0]}', rm)
             else:
                 ui.row('info', f'Kept "{n}" in {TOOLS[t][0]}')
-    ui.task('Capture script copied to ~/.mindbaton', lambda: install_client(url))
+    ui.task('Capture script copied to ~/.mindbaton', lambda: install_client(url))  # doctor and keys run from there too
+    if not chosen:
+        ui.row('info', 'Nothing to connect.', 'run this again any time to add one')
+        ui.wait()
+        return []
     cfg = load_cfg()
     tools = cfg.setdefault('tools', {})
-    notes = []
+    mark = len(getattr(ui, 'body', []))
+    done, failed, notes, unfinished = {}, [], [], []
     for t in chosen:
         capture = TOOLS[t][4] and not (t == 'claude' and local_admin)  # the server already reads this computer's Claude Code
 
         def one(t=t, capture=capture):
             tid, token = mint(t)
-            what, note, state = connect_tool(t, url, token, capture, tools.get(t))
+            try:
+                what, note, state = connect_tool(t, url, token, capture, tools.get(t))
+            except BaseException:
+                if revoke and tid != (tools.get(t) or {}).get('token_id'):
+                    revoke(tid)  # no app holds it: don't leave a dead device in Settings
+                raise
             tools[t] = {**state, 'token_id': tid}
             save_cfg(cfg)
             if t == 'claude' and local_admin:
@@ -2469,15 +2604,27 @@ def step_connect(ui, o, chosen, step, url, mint, local_admin=False):
             return what, note
         try:
             what, note = ui.task(TOOLS[t][0], one, lambda r: r[0])
+            if 'snippet' in what:
+                unfinished.append(TOOLS[t][0])  # its warning row below says what to paste where
+            if what != 'paste the snippet to finish':
+                done.setdefault(what, []).append(TOOLS[t][0])
             if note:
                 notes.append((TOOLS[t][0], note))
         except Exception as e:
             log('connect', t, 'failed:', repr(e))
+            failed.append((TOOLS[t][0], friendly(e)))
+    if ui.interactive and len(chosen) > 1:  # one row per outcome, so a failure never scrolls out of sight
+        del ui.body[mark:]
+        for what, names in done.items():
+            ui.row('ok', ', '.join(names), what)
+        for name, why in failed:
+            ui.row('fail', name, why)
     for name, note in notes:
         ui.row('warn', name, note)
     ui.gap()
     ui.text(f'Every file that changed has a backup next to it (*.bak-mindbaton-{STAMP}).', 'fg3')
     ui.wait()
+    return [name for name, _ in failed] + unfinished
 
 
 def step_start(ui, ctx, o):
@@ -2496,9 +2643,6 @@ def step_start(ui, ctx, o):
     if kind:
         opts.append(('Start automatically', 'recommended', 'Runs in the background and starts again when this computer restarts.'))
     opts.append(('Only while this window is open', '', 'Mindbaton runs here after setup and stops when you close the window.'))
-    if not kind and (ui.interactive or o.foreground):
-        why = '--no-service was given' if o.no_service else "this computer can't run it as a service"
-        ui.row('info', 'Mindbaton will run in this window', why)
     if ui.interactive:
         i = ui.choose(opts) if len(opts) > 1 else 0
     else:
@@ -2519,38 +2663,69 @@ def step_start(ui, ctx, o):
             ui.row('info', 'To keep it running after you log out too, run this once:')
             ui.link(f'sudo loginctl enable-linger {getpass.getuser()}')
     else:
+        global START_HINT
+        START_HINT = f'cd {shlex.quote(str(HERE))} && python3 server.py'
         ctx['mode'] = 'foreground' if (ui.interactive or o.foreground) else 'manual'
-        ui.row('ok' if ctx['mode'] == 'foreground' else 'info', 'Mindbaton will keep running in this window after setup'
-               if ctx['mode'] == 'foreground' else f'Start Mindbaton with: cd {shlex.quote(str(HERE))} && python3 server.py')
+        why = '' if kind else '--no-service was given' if o.no_service else "this computer can't run it as a service"
+        if ctx['mode'] == 'foreground':
+            ui.row('ok', 'Mindbaton will keep running in this window after setup', why)
+        else:
+            ui.row('info', 'Start Mindbaton yourself when setup ends', why)
+            ui.link(START_HINT)
     ui.wait()
 
 
+def not_set_up(ui, failed, retry):
+    if failed:
+        ui.row('warn', 'Not set up: ' + ', '.join(failed), f'the reasons are in {tilde(LOG)} · {retry} to retry')
+
+
 def step_done(ui, ctx, chosen):
-    acc = ctx['account']
+    acc, failed = ctx['account'], ctx['failed']
     port, host = ctx['port'], setting('MINDBATON_HOST', '0.0.0.0')
     ip = lan_ip() if host in ('0.0.0.0', '::', '') else None
-    ctx['urls'] = (f'http://localhost:{port}', f'http://{ip}:{port}' if ip else None)
-    ui.page(7, f"You're all set, {acc['display_name'].split()[0]}.", 'Everything you tell your connected AIs now lands in one private memory.')
-    local, lan = ctx['urls']
+    local, lan = f'http://localhost:{port}', f'http://{ip}:{port}' if ip else None
+    if lan and ctx['mode'] == 'existing' and not health(lan, 2):  # it was already running, listening to this computer only
+        lan = None
+        ctx['phone_note'] = 'To open it from your phone, restart Mindbaton (it only listens on this computer now).'
+    ctx['urls'] = local, lan
+    first = acc['display_name'].split()[0]
+    if failed:
+        ui.page(7, f'Almost done, {first}.', 'Mindbaton works, but a few things need another try.')
+    else:
+        ui.page(7, f"You're all set, {first}.", 'Everything you tell your connected AIs now lands in one private memory.')
+    not_set_up(ui, failed, 'run ./install.sh')
+    if failed:
+        ui.gap()
+    if ctx['mode'] == 'manual':
+        ui.head('Start it first')
+        ui.link(START_HINT, '')
+        ui.gap()
     if lan:
-        ui.qr(lan, 'Scan with your phone')
+        ui.qr(lan, '')
     ui.head('Open Mindbaton')
     ui.link(local, '')
     if lan:
         ui.gap()
         ui.head('On your phone')
+        if ui.interactive:
+            ui.text('Scan the code, or open:', 'fg2')
         ui.link(lan, '')
         ui.text('Sign in, then Add to Home Screen.', 'fg3')
+    if ctx.get('phone_note'):
+        ui.gap()
+        ui.row('info', ctx['phone_note'])
     ui.gap()
     ui.head('Next')
-    ui.row('info', f'Tell {TOOLS[chosen[0]][0] if chosen else "an AI"} “remember I like tea”')
+    works = [t for t in chosen if TOOLS[t][0] not in failed]
+    ui.row('info', f'Tell {TOOLS[works[0]][0] if works else "an AI"} “remember I like tea”')
     ui.row('info', 'Browser extension: Settings → Devices')
-    ui.row('info', 'Health check: mindbaton.py doctor')
+    ui.row('info', f'Health check: {CLI} doctor')
     ui.wait('finish')
 
 
 def cmd_install(o):
-    ctx = {'server': None, 'mode': None}
+    ctx = {'server': None, 'mode': None, 'failed': [], 'urls': (None, None)}
     log('── install', 'from', HERE)
     ui = make_ui(INSTALL_STEPS, o, 'setup')
     try:
@@ -2563,16 +2738,25 @@ def cmd_install(o):
         chosen = step_tools(ui, o, 4)
         st = http('GET', ctx['base'] + '/status', cookie=ctx['cookie'])[1]
         local_admin = bool((st.get('server') or {}).get('local_sources')) and setting('MINDBATON_WATCH_CLAUDE', '1') != '0'
-        step_connect(ui, o, chosen, 5, ctx['base'], lambda t: mint_token(ctx, t), local_admin)
+        ctx['failed'] += step_connect(ui, o, chosen, 5, ctx['base'], lambda t: mint_token(ctx, t), local_admin,
+                                      lambda tid: http('DELETE', f"{ctx['base']}/api/tokens/{tid}", cookie=ctx['cookie']))
         step_start(ui, ctx, o)
         step_done(ui, ctx, chosen)
     finally:
         ui.close()
+        if ctx.get('cookie'):  # the installer's own sign-in isn't left open for 30 days
+            http('POST', ctx['base'] + '/api/auth/logout', {}, cookie=ctx['cookie'])
         if ctx.get('server') and ctx.get('mode') != 'existing':
             stop_server(ctx['server'])
     local, lan = ctx['urls']
     print(f"\n  Mindbaton  {local}" + (f"\n  Phone      {lan}" if lan else '') +
-          f"\n  Check      python3 ~/.mindbaton/mindbaton.py doctor\n  Log        {tilde(LOG)}\n")
+          (f"\n  Start it   {START_HINT}" if ctx['mode'] == 'manual' else '') +
+          (f"\n  Not done   {', '.join(ctx['failed'])}" if ctx['failed'] else '') +
+          f"\n  Check      {CLI} doctor\n  Log        {tilde(LOG)}\n")
+    if ctx.get('phone_note'):
+        print(f"  {ctx['phone_note']}\n")
+    if ctx['failed'] and ctx['mode'] != 'foreground':
+        sys.exit(2)  # scripts can tell "done" from "done, but something needs another try"
     if ctx['mode'] == 'foreground':
         print('  Mindbaton is running in this window. Close it or press Ctrl-C to stop.\n', flush=True)
         log('exec server in the foreground')
@@ -2581,9 +2765,13 @@ def cmd_install(o):
 
 
 def mint_token(ctx, t):
-    old = ((load_cfg().get('tools') or {}).get(t) or {}).get('token_id')
-    if old and load_cfg().get('url') == ctx['base']:
-        http('DELETE', f"{ctx['base']}/api/tokens/{old}", cookie=ctx['cookie'])  # the one it replaces
+    """The app's token: the one it already has when that still works for this account (so a re-run leaves its settings
+    as they are, even in files with comments Mindbaton won't rewrite), else a new one."""
+    cfg = load_cfg()
+    old = (cfg.get('tools') or {}).get(t) or {}
+    acc = old.get('token') and old.get('url') == ctx['base'] and token_ok(ctx['base'], old['token'])
+    if acc and acc.get('username') == ctx['account'].get('username') and old.get('token_id'):
+        return old['token_id'], old['token']
     return new_token(ctx['base'], ctx['cookie'], f'{TOOLS[t][0]} on {HOSTNAME}', 'mcp')
 
 
@@ -2614,6 +2802,7 @@ def cmd_connect(o):
         except (OSError, ValueError):
             pass
     ui = make_ui(CONNECT_STEPS, o, 'connect')
+    failed = []
     try:
         if ui.interactive:
             ui.welcome(f'Connect the AI tools on this computer to your Mindbaton at {urlparse(url).netloc}. '
@@ -2630,7 +2819,7 @@ def cmd_connect(o):
         ui.big(d['code'])
         ui.gap()
         ui.text('Open this link where you are signed in to Mindbaton, check the code, then Approve:', 'fg2')
-        ui.body.append(['raw', ui.st(d['approve_url'], 'accent', bold=True) if ui.interactive else d['approve_url']])
+        ui.link(d['approve_url'], '')
         ui.gap()
 
         def wait_pair():
@@ -2655,15 +2844,20 @@ def cmd_connect(o):
         ui.row('ok', 'Approved', f"this computer now saves to {acc.get('display_name', 'your')}'s memory")
         ui.pause(1)
         chosen = step_tools(ui, o, 2)
-        step_connect(ui, o, chosen, 3, url, lambda t: (p['id'], p['token']))
-        ui.page(4, 'This computer is connected', f'Its AI tools now share the memory at {urlparse(url).netloc}.')
-        for t in chosen:
-            ui.row('ok', TOOLS[t][0])
+        failed = step_connect(ui, o, chosen, 3, url, lambda t: (p['id'], p['token']))
+        works = [TOOLS[t][0] for t in chosen if TOOLS[t][0] not in failed]
+        ui.page(4, 'Almost connected' if failed else 'This computer is connected',
+                f'Its AI tools now share the memory at {urlparse(url).netloc}.' if works else '')
+        if works:
+            ui.row('ok', ', '.join(works))
+        not_set_up(ui, failed, f'run {CLI} connect {url}')
         ui.gap()
-        ui.row('info', 'Check on it any time: python3 ~/.mindbaton/mindbaton.py doctor')
+        ui.row('info', f'Check on it any time: {CLI} doctor')
         ui.wait('finish')
     finally:
         ui.close()
+    if failed:
+        sys.exit(2)
 
 
 # ── Doctor ─────────────────────────────────────────────────────────────────────────────────────────────────
@@ -2738,9 +2932,11 @@ def doctor(ui, o):
         ui.gap()
         if not fixes:
             ui.text('Everything works.' if h and acc else 'Nothing here can be fixed automatically.', 'ok' if h and acc else 'fg2')
+            if not (h and acc) and not ui.interactive:
+                raise Stop('Mindbaton needs attention (see above).')
             return ui.wait('close')
         if not ui.interactive and not o.fix:
-            ui.text(f'{len(fixes)} problem(s) can be fixed: run python3 mindbaton.py doctor --fix')
+            ui.text(f'{len(fixes)} problem(s) can be fixed: run {CLI} doctor --fix')
             raise Stop('Mindbaton needs attention (see above).')
         if ui.interactive and ui.choose([(f'Fix {"it" if len(fixes) == 1 else f"these {len(fixes)}"}', 'recommended',
                                           ' · '.join(f[0] for f in fixes)), ('Close', '')]) != 0:
@@ -2759,9 +2955,17 @@ def doctor(ui, o):
 # ── Update, keys, models, uninstall ────────────────────────────────────────────────────────────────────────
 
 def cmd_update(o):
+    home = Path(load_cfg().get('server_dir') or HERE)
+    if not (HERE / 'server.py').exists() and (home / 'server.py').exists():  # the copy in ~/.mindbaton: update the install
+        os.execv(sys.executable, [sys.executable, str(home / 'mindbaton.py'), *sys.argv[1:]])
     ui = make_ui(None, o, 'update')
     try:
         ui.page(None, 'Updating Mindbaton', tilde(HERE))
+        if not (HERE / 'server.py').exists():  # a computer set up with connect: only this script lives here
+            ui.row('info', 'This computer only has the connector')
+            ui.text('Get the latest mindbaton.py from https://github.com/DkshByte/mindbaton, then run: python3 mindbaton.py '
+                    f"connect {load_cfg().get('url') or '<address>'}. Your settings and memories stay.")
+            return ui.wait('close')
         if not (HERE / '.git').exists():
             ui.row('info', "This copy wasn't installed with git")
             ui.text('Download the latest release from https://github.com/DkshByte/mindbaton, put it in place of this folder '
@@ -2817,15 +3021,22 @@ def admin_cred(ui, cfg):
         s, d, cookie = ui.busy('Signing in', lambda: http('POST', url + '/api/auth/login', {'username': v['Username'].lower(), 'password': v['Password']}))
         if s == 200 and d['account']['role'] == 'admin':
             return url, {'cookie': cookie}
-        fields[1]['error'] = 'That account is not an admin.' if s == 200 else 'Wrong username or password.' if s == 401 else err_text(d, f'failed ({s})')
+        if s == 200:
+            http('POST', url + '/api/auth/logout', {}, cookie=cookie)
+            fields[1]['error'] = 'That account is not an admin.'
+        else:
+            login_failed(fields[1], s, d, f"Forgot it? Run: python3 {tilde(HERE / 'server.py')} --reset-password "
+                                          f"{v['Username'].lower()}" if (HERE / 'server.py').exists() else None)
 
 
 def cmd_keys(o):
     ui = make_ui(None, o, 'AI keys')
     try:
         url, cred = admin_cred(ui, load_cfg())
+        if 'cookie' in cred:  # a sign-in just for this: ended when it's done
+            atexit.register(http, 'POST', url + '/api/auth/logout', {}, cookie=cred['cookie'])
         if not health(url):
-            raise Stop(f'Mindbaton at {url} is not answering. Start it first (python3 mindbaton.py doctor).')
+            raise Stop(f'Mindbaton at {url} is not answering. Start it first ({CLI} doctor).')
         local = urlparse(url).hostname in ('127.0.0.1', 'localhost') and (HERE / 'server.py').exists()
         if ui.interactive:
             return keys_screen(ui, url, cred, None, local_remove=local)
@@ -2851,7 +3062,7 @@ def cmd_models(o):
         if not (HERE / 'server.py').exists():
             raise Stop('Run this on the Mindbaton computer (where server.py is).')
         if not have:
-            raise Stop('Add a free key first: python3 mindbaton.py keys')
+            raise Stop(f'Add a free key first: {CLI} keys')
         changed = False
         for p in have:
             name, var = KEY_SITES[p][0], f'MINDBATON_{p.upper()}_MODEL'
@@ -2930,7 +3141,13 @@ def cmd_uninstall(o):
                 ui.row('warn', f'{tilde(data)} does not look like Mindbaton data, so it was kept')
             else:
                 ui.task('Memories deleted', lambda: shutil.rmtree(data))
-        for p in ('config.json', 'queue.json', '.queue.lock', 'mindbaton.py', 'mcp_stdio.py', 'server.log'):
+        # A hook left in an app (a settings file Mindbaton wouldn't rewrite) still runs mindbaton.py: without the script it
+        # would exit 2, which Cursor, Gemini and Windsurf read as "block this prompt". So the script stays until it's gone.
+        left = [t for t in TOOLS if hook_present(t)]
+        for t in left:
+            ui.row('warn', f'Remove the Mindbaton hook from {TOOLS[t][0]} by hand',
+                   f'the lines with "mindbaton.py hook" in {tilde(codex_toml() if t == "codex" else HOOKS[t][0]())}')
+        for p in ('config.json', 'queue.json', '.queue.lock', 'mcp_stdio.py', 'server.log') + (() if left else ('mindbaton.py',)):
             (MB / p).unlink(missing_ok=True)
         for p in ('chats', 'assets'):
             shutil.rmtree(MB / p, ignore_errors=True)
@@ -2941,7 +3158,8 @@ def cmd_uninstall(o):
         ui.text('The backups of your AI tools\' settings are still next to each file (*.bak-mindbaton-*). '
                 'To revoke this computer\'s tokens, open the app → Settings → Devices.', 'fg3')
         if data and not o.purge:
-            ui.text(f'Your memories are still in {tilde(data)}. To delete them too: python3 mindbaton.py uninstall --purge', 'fg3')
+            ui.text(f'Your memories are still in {tilde(data)}. To delete them too: '
+                    f"python3 {tilde(HERE / 'mindbaton.py')} uninstall --purge", 'fg3')
         ui.wait('close')
     finally:
         ui.close()
@@ -2983,7 +3201,8 @@ def selfcheck():
             home / '.cursor/mcp.json': {'mcpServers': {'other': {'url': 'https://x.example/mcp'}}},
             home / '.cursor/hooks.json': {'version': 1, 'hooks': {'preToolUse': [mine]}},
             home / '.gemini/settings.json': {'theme': 'x'},
-            home / '.gemini/config/mcp_config.json': {'mcpServers': {'remote-mcp': {'serverUrl': 'http://10.0.0.2:3004/mcp'}}},
+            home / '.gemini/config/mcp_config.json': {'mcpServers': {'remote-mcp': {'serverUrl': 'http://localhost:3004/mcp'},
+                                                                     'elsewhere': {'serverUrl': 'http://10.0.0.2:3004/mcp'}}},
             home / '.codeium/windsurf/hooks.json': {},
         }
         for path, d in seed.items():
@@ -3000,8 +3219,11 @@ def selfcheck():
 
         url, tok = 'http://127.0.0.1:3004', 'mb_' + 'x' * 43
         assert all(detect(t) for t in TOOLS if t != 'windsurf' or True), [t for t in TOOLS if not detect(t)]
-        assert [n for n, _ in legacy('claude', url)] == ['memgraph'] and [n for n, _ in legacy('antigravity', url)] == ['remote-mcp']
-        assert [n for n, _ in legacy('codex', url)] == ['memgraph'] and legacy('cursor', url) == []
+        # by name (another host: not the same server), or by host and port (loopback in any spelling); never by port alone
+        assert [x[:3] for x in legacy('claude', url)] == [('memgraph', 'http://10.0.0.2:3004/mcp', False)]
+        assert [x[:3] for x in legacy('antigravity', url)] == [('remote-mcp', 'http://localhost:3004/mcp', True)]
+        assert [x[0] for x in legacy('codex', url)] == ['memgraph'] and legacy('cursor', url) == []
+        assert legacy('cursor', 'https://mindbaton.example.com') == []  # no port on either side is not a match
         states = {}
         for t in TOOLS:
             what, note, states[t] = connect_tool(t, url, tok, TOOLS[t][4], None)
@@ -3039,6 +3261,21 @@ def selfcheck():
         except Unsafe:
             pass
         assert unhook({'a': [{'hooks': [{'command': 'x mindbaton.py hook y'}]}], 'b': 1}) == {'b': 1}
+        assert unhook({'a': [{'command': "py '/x y/.mindbaton/mindbaton.py' hook cursor"}], 'b': 1}) == {'b': 1}  # quoted path
+        zed.write_text('// mine\n{"context_servers": {"other": {"url": "http://x/mcp"}}}\n')  # comments + a key we'd change
+        what, note, _ = connect_tool('zed', url, tok, False, None)
+        assert 'snippet' in what and 'zed-snippet.json' in note and '"other"' in zed.read_text(), (what, note)
+        real = home / 'dotfiles/cursor-mcp.json'
+        real.parent.mkdir()
+        real.write_text('{}')
+        (home / '.cursor/mcp.json').unlink()
+        (home / '.cursor/mcp.json').symlink_to(real)
+        connect_tool('cursor', url, tok, False, None)
+        assert (home / '.cursor/mcp.json').is_symlink() and tok in real.read_text()  # written through the link
+        e = PermissionError(13, 'Permission denied', str(home / '.cursor/mcp.json.bak-mindbaton-20260924-101010'))
+        assert friendly(e) == "Mindbaton can't write ~/.cursor/mcp.json (no permission). Fix that folder's permissions, then run this again."
+        assert all(callable(getattr(Plain, m, None)) for m in ('page', 'retitle', 'row', 'text', 'gap', 'qr', 'big', 'head', 'link',
+                                                               'clear', 'task', 'busy', 'pause', 'wait', 'choose', 'checklist', 'form'))
 
         cfg = {'url': 'http://127.0.0.1:9', 'token': tok, 'tools': {'cursor': {'capture': True}}}
         tr = home / 't.jsonl'
@@ -3071,6 +3308,18 @@ def selfcheck():
         assert run_hook('vscode', {'sessionId': 'v', 'prompt': 'second'}, cfg, left) == 1  # the newer transcript replaces it
         q = json.loads(QUEUE.read_text())
         assert [t['text'] for t in q['vscode/v']['body']['turns']] == ['q', 'first', 'second']
+        # a revoked token is dropped, a down server holds back only its own items
+        answers, sent = {'http://revoked': 401, 'http://down': 0, 'http://up': 200}, []
+        fake = lambda m, u, b, token, timeout: (sent.append(u), (answers[u.rsplit('/', 1)[0]], {}, None))[1]
+        QUEUE.write_text(json.dumps({k: {'url': u, 'path': '/session', 'body': {}, 'token': tok} for k, u in
+                                     (('a', 'http://revoked'), ('b', 'http://down'), ('c', 'http://down'), ('d', 'http://up'))}))
+        real_http = globals()['http']
+        globals()['http'] = fake
+        try:
+            assert deliver(cfg, None, None, left) == 2 and set(json.loads(QUEUE.read_text())) == {'b', 'c'}
+            assert sent == ['http://revoked/session', 'http://down/session', 'http://up/session'], sent
+        finally:
+            globals()['http'] = real_http
     finally:
         MB, CFG, LOG, QUEUE = old_globals
         for k, v in saved.items():
@@ -3133,7 +3382,8 @@ def main(argv):
          'models': cmd_models, 'uninstall': cmd_uninstall}[o.cmd](o)
     except KeyboardInterrupt:
         log('stopped with Ctrl-C')
-        print('\n  Stopped. Nothing is half-done: run it again any time and it picks up from here.\n')
+        again = "Run ./install.sh again any time — it's safe to repeat." if o.cmd == 'install' else ''
+        print(f"\n  Stopped. {again}" + (f"\n  Mindbaton isn't running now. To start it:\n    {START_HINT}" if START_HINT else '') + '\n')
         sys.exit(130)
     except Stop as e:
         log('stop:', e)

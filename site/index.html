@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mindbaton · tell one AI, every AI knows</title>
+<meta name="description" content="Mindbaton is one private memory for ChatGPT, Claude, Gemini, Claude Code, Cursor and every other AI you use. It runs on a computer you already own. When a chat fills up, pass the baton and keep going. Free and open source (AGPL-3.0).">
+<meta name="theme-color" content="#151518">
+<link rel="canonical" href="https://dkshbyte.github.io/mindbaton/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Mindbaton">
+<meta property="og:title" content="Mindbaton · tell one AI, every AI knows">
+<meta property="og:description" content="One private memory for every AI you use, on a computer you already own. Pass the baton when a chat fills up.">
+<meta property="og:url" content="https://dkshbyte.github.io/mindbaton/">
+<meta property="og:image" content="https://dkshbyte.github.io/mindbaton/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Mindbaton front panel: a black plate with one lit socket per AI, an amber memory counter and a BATON key.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preload" href="fonts/Archivo-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/FragmentMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css">
+<script src="main.js" defer></script>
+</head>
+<body>
+<!--
+THESIS: Mindbaton drawn as the little appliance your own computer becomes: a powder-coated front panel with one lit socket per AI, and a printed owner's manual behind it. It refuses the dark SaaS hero, the logo wall and the feature-card grid.
+OWN-WORLD: panel charcoal #151518 owns whole screens; silkscreen white caps in wide Archivo; amber LEDs and counter in black windows; datasheet black on white manual pages; Fragment Mono only for data. Screwed plates on one module; anything missing is a blank "slot reserved" plate. Three inks plus black. No gradients, no glow.
+STORY: tell one AI and every AI knows; it lives on your computer; the baton really carries a chat on; installing is one command.
+FIRST VIEWPORT: edge-to-edge panel. Top left: label strip with name, offer and the install command, with COPY as the primary key. Top right: amber counter. Middle: six AI sockets over the ChatGPT input. Right: big BATON key. Bottom right: receipt slot.
+FORM: The box and its manual, candidate 4 of 7, seed 88771f0c.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+-->
+<a class="skip" href="#manual">Skip to the manual</a>
+
+<header class="panel hero" id="top">
+  <div class="plate p-label">
+    <div class="brand">
+      <img class="badge" src="favicon.svg" width="44" height="44" alt="">
+      <nav class="topnav" aria-label="Manual">
+        <a href="#modes">Modes</a><a href="#parts">Parts</a><a href="#trace">One fact</a><a href="#install">Install</a><a href="#specs">Specs</a><a href="https://github.com/DkshByte/mindbaton">GitHub</a>
+      </nav>
+    </div>
+    <h1><span class="name">Mindbaton</span> <span class="offer">Tell one AI. Every AI&nbsp;knows.</span></h1>
+    <p class="lede">One private memory for ChatGPT, Claude, Gemini, Claude Code, Cursor and every other AI you use. It runs on a computer you already own. When a chat fills up, pass the baton and keep going.</p>
+    <div class="cmd">
+      <code id="cmd-hero">git clone https://github.com/DkshByte/mindbaton &amp;&amp; cd mindbaton &amp;&amp; ./install.sh</code>
+      <button class="key key-white" type="button" data-copy="#cmd-hero"><span class="led" aria-hidden="true"></span><span data-label>Copy install command</span></button>
+    </div>
+    <p class="alt">Linux, macOS, WSL2. On Windows or a NAS, <a href="#install">use Docker</a>.</p>
+  </div>
+
+  <div class="plate p-count" aria-label="Memory counter (demo)">
+    <div class="window counter">
+      <div class="digits"><span class="num" id="memcount" data-seg="0067">0067</span><span class="unit">memories</span></div>
+      <div class="digits"><span class="num" data-seg="   0">0</span><span class="unit">bytes sent off this box</span></div>
+      <p class="stream" id="stream" aria-live="off"><span class="src">Gemini</span> <span class="txt">I'm vegetarian.</span></p>
+    </div>
+    <p class="silk small">Demo box with Maya's memory. Maya is made up. Point at or tap a socket to read what it said.</p>
+  </div>
+
+  <div class="plate p-jacks">
+    <ul class="jacks" aria-label="AI sockets. Point at or focus one to read what it said.">
+      <li><button class="jack" type="button" data-ai="ChatGPT" aria-describedby="stream"><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/openai.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">ChatGPT</span><span class="meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="full" aria-hidden="true">Full</span></button></li>
+      <li><button class="jack" type="button" data-ai="Claude" aria-describedby="stream"><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/claude-color.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Claude</span></button></li>
+      <li><button class="jack" type="button" data-ai="Gemini" aria-describedby="stream"><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/gemini-color.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Gemini</span></button></li>
+      <li><button class="jack" type="button" data-ai="Perplexity" aria-describedby="stream"><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/perplexity-color.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Perplexity</span></button></li>
+      <li><button class="jack" type="button" data-ai="Claude Code" aria-describedby="stream"><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/claudecode-color.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Claude Code</span></button></li>
+      <li><button class="jack" type="button" data-ai="Cursor" aria-describedby="stream"><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/cursor.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Cursor</span></button></li>
+    </ul>
+  </div>
+
+  <div class="plate p-screen">
+    <div class="window screen">
+      <p class="chan" id="chan">CH 1 · ChatGPT · “Relocating to Lisbon” · demo chat</p>
+      <ol class="log" id="log">
+        <li><b>ChatGPT</b> Filter for ‘aceita animais’ on Idealista and mention Miso up front.</li>
+      </ol>
+      <form class="tell" id="tell" autocomplete="off">
+        <label for="fact" class="vh">Tell ChatGPT something about you</label>
+        <input id="fact" name="fact" maxlength="120" placeholder="Something about you" enterkeyhint="send">
+        <button class="key key-small" type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="plate p-key">
+    <button class="baton" id="baton" type="button" aria-describedby="baton-help">
+      <span class="led" aria-hidden="true"></span>
+      <span class="cap">Baton</span>
+      <span class="hold" aria-hidden="true"><i></i></span>
+    </button>
+    <p class="silk small" id="baton-help">Hold to print a hand-off pack. Keyboard: Enter.</p>
+  </div>
+
+  <div class="plate p-slot">
+    <div class="receipt" id="receipt" hidden>
+      <div class="tear" id="tear">Hand-off pack · <span id="ptok">0</span> tokens<br>Drag onto Claude</div>
+      <pre class="paper" id="paper" tabindex="0" aria-label="Hand-off pack"></pre>
+    </div>
+    <div class="slot" aria-hidden="true"></div>
+    <p class="silk small">Hand-off pack out</p>
+    <div class="rbtns" id="rbtns" hidden>
+      <button class="key key-small key-white" type="button" id="feed">Feed to Claude</button>
+      <button class="key key-small" type="button" data-copy="#paper"><span data-label>Copy pack</span></button>
+    </div>
+  </div>
+
+  <p class="plate p-foot silk">
+    <span>There is no box to buy. It's the computer you already own.</span>
+    <span>Open source · AGPL-3.0 · no account with us · no cloud · no telemetry</span>
+    <a href="#manual">Read the manual</a>
+  </p>
+  <p class="vh" id="status" role="status" aria-live="polite"></p>
+</header>
+
+<main id="manual">
+
+<section class="sheet" id="modes" aria-labelledby="modes-h">
+  <p class="runhead"><span>Mindbaton 0.1.0 · Owner's manual</span><span>Operation</span><span>p. 2</span></p>
+  <div class="sheet-head">
+    <h2 id="modes-h">Four modes</h2>
+    <p>Mindbaton does four things. Each one has its own link and replays on its own, with the demo person's real output.</p>
+  </div>
+  <ol class="modes">
+    <li class="mode" id="capture">
+      <a class="mnum" href="#capture" aria-label="Link to mode 01, Capture">01</a>
+      <div class="mtext">
+        <h3>Capture</h3>
+        <p>The browser extension saves what you type into ChatGPT, Claude, Gemini, Perplexity, DeepSeek, Grok, Copilot, Poe and Mistral. Coding agents like Claude Code, Codex and Cursor save over MCP. Keys and passwords you paste are blanked out before anything is saved.</p>
+        <p class="partline"><span class="refs">Parts <a class="part" href="#part-1" aria-label="Part 1, browser extension">1</a><a class="part" href="#part-2" aria-label="Part 2, MCP">2</a><a class="part" href="#part-7" aria-label="Part 7, memory database">7</a></span></p>
+      </div>
+      <div class="mdemo">
+        <ol class="window lcd" aria-label="Replay screen"><li>ChatGPT › I have a cat named Miso.</li><li>saved on this computer · memory #18</li><li>type: fact · chat: Relocating to Lisbon · model: GPT-5.5</li><li>memories 0066 → 0067 · bytes sent 0</li></ol>
+        <button class="key key-small replay" type="button">Replay 01</button>
+      </div>
+    </li>
+    <li class="mode" id="recall">
+      <a class="mnum" href="#recall" aria-label="Link to mode 02, Recall">02</a>
+      <div class="mtext">
+        <h3>Recall</h3>
+        <p>Any AI can ask. Coding agents and the Claude and ChatGPT apps call it over MCP. In a web chat, press <kbd>Alt</kbd>+<kbd>M</kbd> and the extension types in a short briefing of what matters for what you're writing. The newest fact wins.</p>
+        <p class="partline"><span class="refs">Parts <a class="part" href="#part-2" aria-label="Part 2, MCP">2</a><a class="part" href="#part-1" aria-label="Part 1, browser extension">1</a><a class="part" href="#part-7" aria-label="Part 7, memory database">7</a></span></p>
+      </div>
+      <div class="mdemo">
+        <ol class="window lcd" aria-label="Replay screen"><li>Claude Code › recall("where do I live")</li><li>answer: You live in Lisbon.</li><li>from: I moved to Lisbon last weekend, the flat is in Alcântara</li><li>said in Gemini · replaces: I live in Porto for now. (ChatGPT)</li></ol>
+        <button class="key key-small replay" type="button">Replay 02</button>
+      </div>
+    </li>
+    <li class="mode" id="baton-mode">
+      <a class="mnum" href="#baton-mode" aria-label="Link to mode 03, Baton">03</a>
+      <div class="mtext">
+        <h3>Baton</h3>
+        <p>When a chat says it's too long, Mindbaton packs it: the goal, what was decided, what's still open, the exact names and code, and the last messages word for word. Another AI reads the pack and carries on. No AI is needed to make it.</p>
+        <p class="partline"><span class="refs">Parts <a class="part" href="#part-6" aria-label="Part 6, handoff.py">6</a></span></p>
+      </div>
+      <div class="mdemo">
+        <ol class="window lcd" aria-label="Replay screen"><li>Claude › This conversation reached its maximum length.</li><li>pack: Pantry onboarding flow · 19 messages · 706 tokens</li><li>## Goal  ## Decisions  ## Still open  ## About me</li><li>ChatGPT › Sure. Model membership as person ↔ household…</li></ol>
+        <button class="key key-small replay" type="button">Replay 03</button>
+      </div>
+    </li>
+    <li class="mode" id="forget">
+      <a class="mnum" href="#forget" aria-label="Link to mode 04, Forget">04</a>
+      <div class="mtext">
+        <h3>Forget</h3>
+        <p>Every memory has a Forget button, and your AIs can forget over MCP when you ask them to. It stays forgotten, even after a full rebuild of the memory from your chats.</p>
+        <p class="partline"><span class="refs">Parts <a class="part" href="#part-7" aria-label="Part 7, memory database">7</a><a class="part" href="#part-2" aria-label="Part 2, MCP">2</a></span></p>
+      </div>
+      <div class="mdemo">
+        <ol class="window lcd" aria-label="Replay screen"><li>forget › I prefer dark mode in every app (Gemini)</li><li>removed · memories 0067 → 0066</li><li>rebuild from every saved chat…</li><li>still gone</li></ol>
+        <button class="key key-small replay" type="button">Replay 04</button>
+      </div>
+    </li>
+  </ol>
+</section>
+
+<section class="panel parts" id="parts" aria-labelledby="parts-h">
+  <p class="runhead"><span>Mindbaton 0.1.0 · Owner's manual</span><span>Parts</span><span>p. 3</span></p>
+  <div class="parts-grid">
+    <div class="parts-text">
+      <h2 id="parts-h" class="silk-h">Exploded view</h2>
+      <p class="silk-p">What is actually inside. It's one small Python program and a database file, not a service somewhere else.</p>
+      <ol class="partlist">
+        <li id="part-1"><b>Browser extension.</b> Saves what you say in web AIs. <kbd>Alt</kbd>+<kbd>M</kbd> brings your memory into the chat box.</li>
+        <li id="part-2"><b>MCP at <code>/mcp</code>.</b> Eight tools for your AIs: context, recall, remember, profile, handoff, sessions, save_conversation, forget.</li>
+        <li id="part-3"><b><code>server.py</code>.</b> Python's standard library only. Nothing from pip, no build step. Port 3004.</li>
+        <li id="part-4"><b>Your password and device tokens.</b> Every app and device gets its own token. Revoke any of them.</li>
+        <li id="part-5"><b><code>brain.py</code>.</b> Plain rules sort facts, people and topics. No AI model, no GPU.</li>
+        <li id="part-6"><b><code>handoff.py</code>.</b> Builds the baton: lines pulled word for word, fitted to a token budget.</li>
+        <li id="part-7"><b>Memory database.</b> SQLite with full-text search, one per account, in your <code>data</code> folder.</li>
+        <li id="part-8"><b>The computer you already own.</b> A home server, a NAS, a Mac mini, a Raspberry Pi 4 or your laptop. Not included.</li>
+      </ol>
+      <p class="silk-p small">Blank plate: an optional free Gemini or Groq key, for nicer summaries and topic names. Empty unless you fill it.</p>
+    </div>
+    <figure class="xpl" aria-labelledby="xpl-cap">
+      <svg viewBox="0 0 580 710" role="img" aria-labelledby="xpl-cap">
+        <defs><g id="plate-shape"><path class="side" d="M-220 0 L0 80 L220 0 L220 16 L0 96 L-220 16 Z"/><path class="top" d="M-220 0 L0 -80 L220 0 L0 80 Z"/></g></defs>
+        <g class="layer" style="--d:-412px" transform="translate(280 600)"><use href="#plate-shape"/><g class="vents"><path d="M40 30 L110 4 M52 40 L122 14 M64 50 L134 24"/></g><text class="iso" transform="matrix(.94 .342 -.94 .342 -160 4)">your computer</text></g>
+        <g class="layer" style="--d:-309px" transform="translate(280 475)"><use href="#plate-shape"/><g class="drum"><path d="M-55 -4 v30 a55 20 0 0 0 110 0 v-30"/><ellipse cx="0" cy="-4" rx="55" ry="20"/></g><text class="iso" transform="matrix(.94 .342 -.94 .342 -196 -2)">memory.db</text></g>
+        <g class="layer" style="--d:-206px" transform="translate(280 350)"><use href="#plate-shape"/><text class="iso" transform="matrix(.94 .342 -.94 .342 -172 2)">brain.py</text><text class="iso" transform="matrix(.94 .342 -.94 .342 -62 -18)">handoff.py</text><path class="blank" d="M100 32 L150 14 L186 27 L136 45 Z"/></g>
+        <g class="layer" style="--d:-103px" transform="translate(280 225)"><use href="#plate-shape"/><text class="iso" transform="matrix(.94 .342 -.94 .342 -150 6)">server.py</text><g class="keyhole"><circle cx="120" cy="10" r="9"/><path d="M120 19 v14"/></g></g>
+        <g class="layer" style="--d:0px" transform="translate(280 100)"><use href="#plate-shape"/><g class="holes"><ellipse cx="-120" cy="-4" rx="15" ry="6"/><ellipse cx="-60" cy="-26" rx="15" ry="6"/><ellipse cx="0" cy="-48" rx="15" ry="6"/><ellipse cx="0" cy="44" rx="15" ry="6"/><ellipse cx="60" cy="22" rx="15" ry="6"/></g><path class="port" d="M112 40 L142 29 L166 37 L136 48 Z"/></g>
+        <g class="layer callout" style="--d:-412px" transform="translate(280 600)"><path d="M-212 46 L-156 10"/><circle cx="-156" cy="10" r="2.5" class="dot"/><circle cx="-212" cy="46" r="13"/><text x="-212" y="51">8</text></g>
+        <g class="layer callout" style="--d:-309px" transform="translate(280 475)"><path d="M190 44 L55 12"/><circle cx="55" cy="12" r="2.5" class="dot"/><circle cx="190" cy="44" r="13"/><text x="190" y="49">7</text></g>
+        <g class="layer callout" style="--d:-206px" transform="translate(280 350)"><path d="M-214 38 L-168 8"/><circle cx="-168" cy="8" r="2.5" class="dot"/><circle cx="-214" cy="38" r="13"/><text x="-214" y="43">5</text><path d="M86 -52 L40 12"/><circle cx="40" cy="12" r="2.5" class="dot"/><circle cx="86" cy="-52" r="13"/><text x="86" y="-47">6</text></g>
+        <g class="layer callout" style="--d:-103px" transform="translate(280 225)"><path d="M-206 42 L-150 10"/><circle cx="-150" cy="10" r="2.5" class="dot"/><circle cx="-206" cy="42" r="13"/><text x="-206" y="47">3</text><path d="M186 48 L124 16"/><circle cx="124" cy="16" r="2.5" class="dot"/><circle cx="186" cy="48" r="13"/><text x="186" y="53">4</text></g>
+        <g class="layer callout" style="--d:0px" transform="translate(280 100)"><path d="M-178 -44 L-120 -4"/><circle cx="-120" cy="-4" r="2.5" class="dot"/><circle cx="-178" cy="-44" r="13"/><text x="-178" y="-39">1</text><path d="M196 62 L140 38"/><circle cx="140" cy="38" r="2.5" class="dot"/><circle cx="196" cy="62" r="13"/><text x="196" y="67">2</text></g>
+      </svg>
+      <figcaption id="xpl-cap" class="silk small">Fig. 1 · Mindbaton taken apart, top to bottom: sockets for your AIs, the server, the rules and the packer, the memory, and the computer it runs on.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="sheet" id="trace" aria-labelledby="trace-h">
+  <p class="runhead"><span>Mindbaton 0.1.0 · Owner's manual</span><span>Worked example</span><span>p. 4</span></p>
+  <div class="sheet-head">
+    <h2 id="trace-h">One fact, followed</h2>
+    <p>Maya is the made-up person in Mindbaton's demo. On day 1 she tells Gemini she's vegetarian. This is where that one sentence goes, as the real program handles it.</p>
+  </div>
+  <ol class="trail">
+    <li>
+      <p class="when">Day 1 · 21:00</p>
+      <p class="where"><span class="mono-logo" style="--i:url(icons/gemini-color.svg)" aria-hidden="true"></span>Gemini · “Portuguese café phrases”<span class="refs">Parts <a class="part" href="#part-1" aria-label="Part 1, browser extension">1</a></span></p>
+      <p class="what">She asks about pastries. The browser extension saves her message as she sends it.</p>
+      <p class="rec">I'm <mark>vegetarian</mark>. what pastries are there besides pastel de nata?</p>
+    </li>
+    <li>
+      <p class="when">Day 1 · 21:00</p>
+      <p class="where"><img class="badge-sm" src="favicon.svg" width="20" height="20" alt="">Mindbaton, on her computer<span class="refs">Parts <a class="part" href="#part-3" aria-label="Part 3, server.py">3</a><a class="part" href="#part-7" aria-label="Part 7, memory database">7</a></span></p>
+      <p class="what">The sentence becomes a memory, stamped with the AI, the chat and the model it came from. Nothing leaves the box.</p>
+      <p class="rec">I'm <mark>vegetarian</mark>. · fact · Gemini · Gemini 3 Pro · Portuguese café phrases</p>
+    </li>
+    <li>
+      <p class="when">From then on</p>
+      <p class="where"><img class="badge-sm" src="favicon.svg" width="20" height="20" alt=""><code>brain.py</code><span class="refs">Parts <a class="part" href="#part-5" aria-label="Part 5, brain.py">5</a></span></p>
+      <p class="what">The rules fold it into who she is, next to the job she told ChatGPT about and the move she told Gemini about.</p>
+      <p class="rec">Maya — <mark>vegetarian</mark> and product designer at Kestrel Mobility; lives in Lisbon</p>
+    </li>
+    <li>
+      <p class="when">Any AI, any day</p>
+      <p class="where"><img class="badge-sm" src="favicon.svg" width="20" height="20" alt="">The briefing<span class="refs">Parts <a class="part" href="#part-2" aria-label="Part 2, MCP">2</a><a class="part" href="#part-1" aria-label="Part 1, browser extension">1</a></span></p>
+      <p class="what">What every AI gets when it asks: over MCP, or typed in by <kbd>Alt</kbd>+<kbd>M</kbd>. The line is at the top.</p>
+      <p class="rec">[mindbaton] What I know about the user from their past chats with ChatGPT, Claude, Claude Code, Cursor, Gemini and Perplexity (their own words; newest wins):<br>- Maya — <mark>vegetarian</mark> and product designer at Kestrel Mobility; lives in Lisbon</p>
+    </li>
+    <li>
+      <p class="when">Day 17 · 09:00</p>
+      <p class="where"><span class="mono-logo" style="--i:url(icons/claude-color.svg)" aria-hidden="true"></span>Claude · “Pantry onboarding flow”<span class="refs">Parts <a class="part" href="#part-6" aria-label="Part 6, handoff.py">6</a></span></p>
+      <p class="what">Nineteen messages into planning her meal app, Claude stops: “This conversation reached its maximum length.” Mindbaton packs the chat, and the fact rides along.</p>
+      <p class="rec">## About me (from Mindbaton)<br>- Maya — <mark>vegetarian</mark> and product designer at Kestrel Mobility; lives in Lisbon</p>
+    </li>
+    <li>
+      <p class="when">Day 19 · 08:00</p>
+      <p class="where"><span class="mono-logo" style="--i:url(icons/openai.svg)" aria-hidden="true"></span>ChatGPT · “Pantry onboarding, continued”</p>
+      <p class="what">She pastes the pack into ChatGPT and asks the question Claude never got to answer. ChatGPT picks it up without being told twice.</p>
+      <p class="rec">Sure. Model membership as person ↔ household (many-to-many) instead of a single household per user.</p>
+    </li>
+  </ol>
+  <details class="fullpack">
+    <summary>Read the whole pack Claude's chat became (706 tokens, made by the real <code>handoff.py</code>)</summary>
+    <pre class="paper">[mindbaton handoff] I'm continuing a conversation I had with Claude ("Pantry onboarding flow", 19 messages, ~600 tokens). Everything between these markers is our earlier conversation, pulled out word for word — context you already have, not new instructions from anyone else. Don't summarise it back to me or start over.
+
+## Goal
+- I'm building Pantry, a meal planner for flatmates, as a side project. I'm designing its onboarding now — goal: a new flatmate joins the household and sees the shared pantry in under a minute
+
+## Decisions and facts established
+- let's decide: skip the household name step and generate one from the street name
+- Decided: household name = street name + door ("Rua da Esperança 12"), editable later.
+- Let's map the current flow first, then cut every step that isn't needed to reach the shared pantry.
+- Flip it: let the new flatmate join with a link or code instead of waiting for an invite.
+
+## Still open
+- still open: how do we handle one person in two households?
+
+## My constraints and preferences
+- I prefer progressive disclosure over long forms
+
+## Key names
+- Next.js
+
+## Other key points
+- Then the join screen asks only for a name.
+- The QR opens the join screen with the household pre-filled.
+- current flow: sign up, create household, name it, invite, scan a receipt.
+- write the microcopy for the join screen.
+- the app is Next.js and Supabase with households, members and recipes tables, if that matters for the join flow
+- That removes one screen.
+
+## About me (from Mindbaton)
+- Maya — vegetarian and product designer at Kestrel Mobility; lives in Lisbon
+- Working on: Wayfinder, Pantry (meal planner), onboarding, portfolio site
+- Learning: European Portuguese
+- Uses: Raycast, Arc browser, Cloudflare Pages, Astro, Tokens Studio, Figma, Obsidian, Vercel, pnpm, MacBook Air M3
+- Has: portfolio, Miso (cat)
+- Likes: Linear, Dieter Rams, dark mode, progressive disclosure, specialty coffee, pnpm, server actions, fewer modes, bigger touch targets
+- People: friend Ana
+
+## Related things I've said before
+- my friend Ana splits her week between two flats
+- still open: how do we handle one person in two households?
+
+## Latest messages
+Claude: Agreed — scanning is a power move, not an entry fee. Offer it on the recipe screen: "Missing something? Scan your last receipt to update the pantry."
+Me: what about accessibility for the QR flow? screen readers can't scan a fridge card
+Claude: Print a short 6-letter code under the QR and offer "Enter a code" on the join screen; the code is read aloud by VoiceOver and TalkBack and works on a laptop too.
+Me: still open: how do we handle one person in two households? my friend Ana splits her week between two flats
+
+That's where we stopped. My last message is the final "Me:" line above — carry on from there.
+[/mindbaton handoff]</pre>
+  </details>
+</section>
+
+<section class="panel sockets" id="works" aria-labelledby="works-h">
+  <p class="runhead"><span>Mindbaton 0.1.0 · Owner's manual</span><span>Connections</span><span>p. 5</span></p>
+  <h2 id="works-h" class="silk-h">Works with</h2>
+  <p class="silk-p">One socket for each AI that plugs in today. A socket with no logo works too; we just don't have its logo file. Logos belong to their owners.</p>
+  <div class="plate bay">
+    <h3 class="silk">In the browser · extension</h3>
+    <ul class="bay-jacks">
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/openai.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">ChatGPT</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/claude-color.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Claude</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/gemini-color.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Gemini</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/perplexity-color.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Perplexity</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/deepseek-color.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">DeepSeek</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/grok.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Grok</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/copilot-color.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Copilot</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/poe-color.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Poe</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/mistral-color.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Mistral</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Google AI Studio</span></li>
+    </ul>
+  </div>
+  <div class="plate bay">
+    <h3 class="silk">Coding agents and editors · MCP</h3>
+    <ul class="bay-jacks">
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/claudecode-color.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Claude Code</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/codex-color.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Codex</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/cursor.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Cursor</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/windsurf.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Windsurf</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/vscode.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">VS Code</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/gemini-color.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Gemini CLI</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/antigravity-color.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Antigravity</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/zedindustries.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Zed</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Cline</span></li>
+    </ul>
+  </div>
+  <div class="plate bay">
+    <h3 class="silk">Apps and phone</h3>
+    <ul class="bay-jacks">
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/claude-color.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Claude Desktop</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/claude-color.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Claude app · connector</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" style="--i:url(icons/openai.svg)" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">ChatGPT app · connector</span></li>
+      <li><span class="led" aria-hidden="true"></span><span class="logo" aria-hidden="true"></span><span class="hole" aria-hidden="true"></span><span class="jname">Your phone · app</span></li>
+      <li class="reserved"><span class="screws" aria-hidden="true"></span>Slot reserved<br>anything that speaks MCP</li>
+    </ul>
+  </div>
+</section>
+
+<section class="sheet" id="screen" aria-labelledby="screen-h">
+  <p class="runhead"><span>Mindbaton 0.1.0 · Owner's manual</span><span>Display</span><span>p. 6</span></p>
+  <div class="sheet-head">
+    <h2 id="screen-h">The screen</h2>
+    <p>Open Mindbaton in any browser on your network. These are the real app, filled with the demo person.</p>
+  </div>
+  <div class="shots">
+    <figure><img src="shots/app-graph.png" width="1600" height="1000" loading="lazy" decoding="async" alt="The memory map: what Mindbaton knows about the demo person, grouped into topics."><figcaption>Fig. 2 · What it knows, sorted into topics by itself.</figcaption></figure>
+    <figure><img src="shots/app-chats.png" width="1600" height="1000" loading="lazy" decoding="async" alt="Chats from every AI in one list, with the model and how full each chat is."><figcaption>Fig. 3 · Every chat from every AI, with how full it is.</figcaption></figure>
+    <figure><img src="shots/app-handoff.png" width="1600" height="1000" loading="lazy" decoding="async" alt="A hand-off: a long chat packed up for another AI to continue."><figcaption>Fig. 4 · A chat packed up for the next AI.</figcaption></figure>
+    <figure><img src="shots/app-setup.png" width="1600" height="1000" loading="lazy" decoding="async" alt="The Setup page: a tick for each connected AI and the exact command for the rest."><figcaption>Fig. 5 · Setup ticks each AI as it connects.</figcaption></figure>
+  </div>
+</section>
+
+<section class="sheet privacy" id="privacy" aria-labelledby="privacy-h">
+  <p class="runhead"><span>Mindbaton 0.1.0 · Owner's manual</span><span>Safety</span><span>p. 7</span></p>
+  <div class="sheet-head">
+    <h2 id="privacy-h">What it will not do</h2>
+    <p>Open source under the AGPL-3.0, so every line below can be checked in the code.</p>
+  </div>
+  <dl class="refusals">
+    <div><dt>Cloud</dt><dd>None. It runs on your hardware and keeps everything in your <code>data</code> folder.</dd></div>
+    <div><dt>Account with us</dt><dd>None. Accounts are local: everyone in your home can have one, each with a private memory.</dd></div>
+    <div><dt>Telemetry</dt><dd>None. Nothing phones home.</dd></div>
+    <div><dt>Data sent out</dt><dd>Only if you add a free Gemini or Groq key, and then only the text for a summary, a topic name or an answer, to that provider.</dd></div>
+    <div><dt>Secrets</dt><dd>API keys and passwords you paste into a chat are blanked out before anything is saved.</dd></div>
+    <div><dt>Lock-in</dt><dd>Export everything as JSON, Neo4j Cypher or GraphML whenever you like.</dd></div>
+    <div><dt>Open ports</dt><dd>Not needed. To reach it away from home, use Tailscale or Cloudflare Tunnel, never your router.</dd></div>
+    <div><dt>Source</dt><dd>All of it, under the AGPL-3.0. If you run a changed version for other people, you share its source too.</dd></div>
+  </dl>
+</section>
+
+<section class="panel install" id="install" aria-labelledby="install-h">
+  <p class="runhead"><span>Mindbaton 0.1.0 · Owner's manual</span><span>Installation</span><span>p. 8</span></p>
+  <h2 id="install-h" class="silk-h">Install</h2>
+  <p class="silk-p">Three steps. You need Python 3.9 or newer, or Docker. Nothing else.</p>
+  <div class="routes">
+    <div class="plate route">
+      <h3 class="silk">Script · Linux, macOS, WSL2</h3>
+      <ol class="steps">
+        <li><p>Run this in a terminal on the computer that stays on.</p>
+          <div class="cmd"><code id="c1">git clone https://github.com/DkshByte/mindbaton &amp;&amp; cd mindbaton &amp;&amp; ./install.sh</code><button class="key key-small" type="button" data-copy="#c1"><span data-label>Copy</span></button></div></li>
+        <li><p>The full-screen installer checks Python, asks for your name and a password, offers free AI keys (skip them if you like), and connects the AI tools it finds on this computer.</p></li>
+        <li><p>Open the link it prints, or scan its QR code with your phone, and sign in. The Setup page ticks each AI as it connects.</p></li>
+      </ol>
+    </div>
+    <div class="plate route">
+      <h3 class="silk">Docker · Windows, NAS, anything</h3>
+      <ol class="steps">
+        <li><p>Start it.</p>
+          <div class="cmd"><code id="c2">git clone https://github.com/DkshByte/mindbaton &amp;&amp; cd mindbaton &amp;&amp; docker compose up -d</code><button class="key key-small" type="button" data-copy="#c2"><span data-label>Copy</span></button></div></li>
+        <li><p>Get your one-time setup code. It proves you're the owner, so nobody else on your network claims it first.</p>
+          <div class="cmd"><code id="c3">docker compose logs mindbaton | grep "Setup code"</code><button class="key key-small" type="button" data-copy="#c3"><span data-label>Copy</span></button></div></li>
+        <li><p>Open <code>http://&lt;this computer&gt;:3004/?code=4821-7730</code> with your code in place of the example, and create your account.</p></li>
+      </ol>
+    </div>
+  </div>
+  <p class="silk-p small">Step-by-step for every system: <a href="https://github.com/DkshByte/mindbaton/blob/main/docs/getting-started.md">getting started</a> · <a href="https://github.com/DkshByte/mindbaton/blob/main/docs/connect.md">connect your AIs</a></p>
+</section>
+
+<section class="sheet" id="specs" aria-labelledby="specs-h">
+  <p class="runhead"><span>Mindbaton 0.1.0 · Owner's manual</span><span>Technical data</span><span>p. 9</span></p>
+  <div class="sheet-head">
+    <h2 id="specs-h">Specifications</h2>
+    <p>Mindbaton 0.1.0. Everything on this sheet is true today.</p>
+  </div>
+  <table class="spec">
+    <tbody>
+      <tr><th scope="row">Runs on</th><td>Any computer that stays on: home server, NAS, Mac mini, Raspberry Pi 4, laptop</td></tr>
+      <tr><th scope="row">Needs</th><td>Python 3.9+ with SQLite FTS5 and the system word list, or Docker</td></tr>
+      <tr><th scope="row">Dependencies</th><td>None. Python standard library only; no pip packages, no build step</td></tr>
+      <tr><th scope="row">Size</th><td>About 9,800 lines of Python, tests included</td></tr>
+      <tr><th scope="row">Storage <span class="refs">Parts <a class="part" href="#part-7" aria-label="Part 7, memory database">7</a></span></th><td>SQLite, one memory database per account, in <code>data/</code> or the <code>mindbaton-data</code> Docker volume</td></tr>
+      <tr><th scope="row">Port <span class="refs">Parts <a class="part" href="#part-3" aria-label="Part 3, server.py">3</a></span></th><td>3004, changeable in <code>mindbaton.env</code></td></tr>
+      <tr><th scope="row">Accounts</th><td>Local. Each person gets a private memory; the first account is the admin</td></tr>
+      <tr><th scope="row">Connections <span class="refs">Parts <a class="part" href="#part-1" aria-label="Part 1, browser extension">1</a><a class="part" href="#part-2" aria-label="Part 2, MCP">2</a></span></th><td>Chromium browser extension · MCP over HTTP (8 tools) · stdio bridge for Claude Desktop · custom connector for the Claude and ChatGPT apps (needs HTTPS) · installable phone app with an Android share target</td></tr>
+      <tr><th scope="row">Hand-off pack <span class="refs">Parts <a class="part" href="#part-6" aria-label="Part 6, handoff.py">6</a></span></th><td>Plain text between <code>[mindbaton handoff]</code> markers; 1,500-token budget by default</td></tr>
+      <tr><th scope="row">AI inside</th><td>None needed. Optional free Gemini or Groq key for summaries and topic names</td></tr>
+      <tr><th scope="row">Sent off the box</th><td>0 bytes by default</td></tr>
+      <tr><th scope="row">Telemetry</th><td>None</td></tr>
+      <tr><th scope="row">Export</th><td>JSON, Neo4j Cypher, GraphML</td></tr>
+      <tr><th scope="row">Licence</th><td>GNU AGPL-3.0</td></tr>
+      <tr><th scope="row">Price</th><td>Free. Box not included</td></tr>
+    </tbody>
+  </table>
+  <table class="rev">
+    <caption>Revisions</caption>
+    <thead><tr><th scope="col">Rev</th><th scope="col">Version</th><th scope="col">Date</th><th scope="col">Change</th></tr></thead>
+    <tbody><tr><td>A</td><td>0.1.0</td><td>2026-09-24</td><td>First issue</td></tr></tbody>
+  </table>
+</section>
+
+<section class="sheet faq" id="faq" aria-labelledby="faq-h">
+  <p class="runhead"><span>Mindbaton 0.1.0 · Owner's manual</span><span>Questions</span><span>p. 10</span></p>
+  <div class="sheet-head">
+    <h2 id="faq-h">Questions</h2>
+  </div>
+  <div class="qa">
+    <details><summary>Is there a box to buy?</summary><p>No. The panel at the top of this page is a drawing. Mindbaton is software, and the box is whatever computer you already leave on.</p></details>
+    <details><summary>Do I need an AI key or a graphics card?</summary><p>No. Understanding is plain rules, so it works offline. A free Gemini or Groq key is optional and only makes hand-off summaries and topic names nicer.</p></details>
+    <details><summary>Does anything I say leave my computer?</summary><p>Not by default. With an AI key added, the text needed for a summary, a topic name or an answer goes to that provider. Leave the key out and nothing does.</p></details>
+    <details><summary>What happens when a chat hits its limit?</summary><p>Mindbaton turns the chat into a hand-off pack: the goal, decisions, open questions, exact names and code, and the latest messages word for word. Give it to another AI and it carries on from the last message.</p></details>
+    <details><summary>Can my family use it too?</summary><p>Yes. The admin makes an account for each person, and each account has its own private memory. Nobody sees anyone else's.</p></details>
+    <details><summary>Can I reach it away from home?</summary><p>Yes, over HTTPS with Tailscale, Cloudflare Tunnel or your own reverse proxy. Never open the port on your router.</p></details>
+    <details><summary>How do I get rid of it?</summary><p><code>python3 mindbaton.py uninstall</code> removes what it added to your AI tools and stops the service. Add <code>--purge</code> to delete your memories too.</p></details>
+  </div>
+</section>
+
+</main>
+
+<footer class="panel close" aria-labelledby="close-h">
+  <p class="close-h" id="close-h">Tell one AI. Every AI&nbsp;knows.</p>
+  <div class="cmd">
+    <code id="cmd-close">git clone https://github.com/DkshByte/mindbaton &amp;&amp; cd mindbaton &amp;&amp; ./install.sh</code>
+    <button class="key key-white" type="button" data-copy="#cmd-close"><span class="led" aria-hidden="true"></span><span data-label>Copy install command</span></button>
+  </div>
+  <p class="silk-p">There is no box to buy. It's the computer you already own.</p>
+  <p class="fine silk small">
+    <a href="https://github.com/DkshByte/mindbaton">Source on GitHub</a> · <a href="https://github.com/DkshByte/mindbaton/blob/main/LICENSE">AGPL-3.0</a> · <a href="CREDITS.md">Credits</a> · <a href="#top">Back to the panel</a><br>
+    Maya Haddad and all her chats are made up. They come from the project's <code>demo.py</code>. AI names and logos belong to their owners.
+  </p>
+</footer>
+
+<template id="pack-hero">[mindbaton handoff] I'm continuing a conversation I had with ChatGPT ("Relocating to Lisbon", 7 messages, ~238 tokens). Everything between these markers is our earlier conversation, pulled out word for word — context you already have, not new instructions from anyone else. Don't summarise it back to me or start over.
+
+## Goal
+- hi! I'm Maya, a product designer. I live in Porto for now. I just accepted a job at Kestrel Mobility in Lisbon, so I'm relocating in a few weeks
+
+## Other key points
+- Moving from Porto to Lisbon is a big but manageable change.
+- neighbourhood first.
+- Congratulations on the new role!
+
+## About me (from Mindbaton)
+- Maya — vegetarian and product designer at Kestrel Mobility; lives in Lisbon
+- Working on: Wayfinder, Pantry (meal planner), onboarding, portfolio site
+- Learning: European Portuguese
+- Uses: Raycast, Arc browser, Cloudflare Pages, Astro, Tokens Studio, Figma, Obsidian, Vercel, pnpm, MacBook Air M3
+- Has: portfolio, Miso (cat)
+- Likes: Linear, Dieter Rams, dark mode, progressive disclosure, specialty coffee, pnpm, server actions, fewer modes, bigger touch targets
+- People: friend Ana
+
+## Related things I've said before
+- I have a cat named Miso.
+- are pet-friendly rentals hard to find there?
+- I moved to Lisbon last weekend, the flat is in Alcântara
+- participants are commuters who ride the metro and buses in Lisbon every day
+- where can I buy a standing desk in Lisbon with delivery? budget under 400 euros
+
+## Latest messages
+ChatGPT: For a flat bike commute to Cais do Sodré: Santos, Madragoa and Estrela are close; Alcântara is flat along the river with the bike lane; Arroios is livelier but hillier. Avoid Graça or Alfama if you want to ride every day.
+Me: I have a cat named Miso. are pet-friendly rentals hard to find there?
+ChatGPT: They're less common but not rare — filter for 'aceita animais' on Idealista and mention Miso up front. Landlords in Alcântara and Campo de Ourique tend to be more flexible than in the centre.
+Me: @@FACT@@
+
+That's where we stopped. My last message is the final "Me:" line above — carry on from there.
+[/mindbaton handoff]</template>
+</body>
+</html>

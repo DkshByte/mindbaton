@@ -2,14 +2,14 @@
 <meta charset="utf-8">
 <style>
   :root { --bg: #09090b; --panel: #111113; --raise: #18181b; --line: rgba(255,255,255,.07); --line2: rgba(255,255,255,.11);
-    --text: #ededef; --muted: #a1a1aa; --faint: #71717a; --accent: #8b95ff; --accent2: #a5b0ff; --ok: #3dd68c; --warn: #f5a524; --bad: #ff6369; }
+    --text: #ededef; --muted: #a1a1aa; --faint: #71717a; --accent: #f4f4f5; --accent2: #ffffff; --ok: #3dd68c; --warn: #f5a524; --bad: #ff6369; }
   * { box-sizing: border-box; }
   body { width: 340px; margin: 0; background: var(--bg); color: var(--text); font: 13px/1.45 "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
     -webkit-font-smoothing: antialiased; }
   header { display: flex; align-items: center; gap: 9px; padding: 14px 16px 12px; }
-  .mark { width: 24px; height: 24px; border-radius: 7px; background: linear-gradient(145deg, #2a2f5c, #14162a); border: 1px solid rgba(139,149,255,.35);
+  .mark { width: 24px; height: 24px; border-radius: 7px; background: #0a0a0b; border: 1px solid rgba(255,255,255,.35);
     display: grid; place-items: center; }
-  .mark svg { width: 13px; height: 13px; stroke: var(--accent2); fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .mark svg { width: 17px; height: 17px; color: #fff; }
   header b { font-weight: 600; font-size: 13px; letter-spacing: -.01em; }
   .pill { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px; border-radius: 99px;
     border: 1px solid var(--line); font-size: 11px; color: var(--muted); }
@@ -27,7 +27,7 @@
   .who b { display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .who span { color: var(--faint); font-size: 11px; }
   .chip { font-size: 11px; font-weight: 500; height: 20px; padding: 0 7px; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px;
-    background: rgba(139,149,255,.12); color: var(--accent2); flex: none; }
+    background: rgba(255,255,255,.12); color: var(--accent2); flex: none; }
   .chip.full { background: rgba(255,99,105,.12); color: #ff9a9e; }
   .chip i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: pulse 1.8s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: .35; } }
@@ -52,7 +52,7 @@
   .grid button:active { transform: scale(.97); }
   .copy { margin-top: 6px; width: 100%; height: 30px; border-radius: 8px; border: 1px dashed var(--line2); background: none; color: var(--accent2);
     font-weight: 500; font-size: 11px; font-family: inherit; cursor: pointer; }
-  .copy:hover { background: rgba(139,149,255,.07); }
+  .copy:hover { background: rgba(255,255,255,.07); }
   .empty { padding: 14px 12px; color: var(--muted); font-size: 13px; display: flex; gap: 10px; align-items: center; }
   .stack { display: flex; }
   .stack img { width: 20px; height: 20px; padding: 3px; border-radius: 6px; background: var(--raise); border: 1px solid var(--line); margin-left: -5px; }
@@ -85,11 +85,11 @@
   summary { cursor: pointer; list-style: none; } summary::-webkit-details-marker { display: none; }
   input[type=text] { width: 100%; height: 30px; margin-top: 8px; padding: 0 9px; border-radius: 7px; border: 1px solid var(--line2); background: var(--panel);
     color: var(--text); font: 11px ui-monospace, monospace; }
-  input[type=text]:focus { outline: none; border-color: rgba(139,149,255,.5); box-shadow: 0 0 0 3px rgba(139,149,255,.13); }
+  input[type=text]:focus { outline: none; border-color: rgba(255,255,255,.5); box-shadow: 0 0 0 3px rgba(255,255,255,.13); }
   button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
-<header><span class="mark"><svg viewBox="0 0 16 16"><path d="M3.2 12.2V4.6L8 9.4l4.8-4.8v7.6"/></svg></span><b>memgraph</b>
+<header><span class="mark"><svg viewBox="0 0 96 96" fill="currentColor"><path fill-rule="evenodd" d="M38.83 19.27A23 23 0 0 1 77.84 43.65L57.17 76.73A23 23 0 0 1 18.16 52.35ZM53.63 39.08A4.3 4.3 0 0 1 46.34 34.52L50 28.67A4.3 4.3 0 0 1 57.29 33.23ZM67.63 47.82A4.3 4.3 0 0 1 60.33 43.27L63.99 37.41A4.3 4.3 0 0 1 71.28 41.97Z"/></svg></span><b>Mindbaton</b>
   <span class="pill"><span class="dot" id="dot"></span><span id="conn">Checking…</span></span></header>
 <main>
   <section class="chat" id="chat"></section>
@@ -103,6 +103,6 @@
   <div class="warn" id="warn" hidden></div>
   <button class="primary" id="insert">Insert my memory <kbd>Alt</kbd><kbd>M</kbd></button>
 </main>
-<footer><a id="open" href="#">Open memgraph ↗</a>
+<footer><a id="open" href="#">Open Mindbaton ↗</a>
   <details><summary>Server</summary><input type="text" id="server" spellcheck="false" aria-label="Server address"></details></footer>
 <script src="popup.js"></script>

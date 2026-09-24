@@ -13,7 +13,7 @@
   function alive() { try { return !!chrome.runtime?.id; } catch { return false; } }
   async function send(msg) {
     if (!alive()) {
-      if (!warned && current()) { warned = true; toast("memgraph was updated — refresh this tab to keep saving"); }
+      if (!warned && current()) { warned = true; toast("Mindbaton was updated — refresh this tab to keep saving"); }
       return null;
     }
     try { return await chrome.runtime.sendMessage(msg); } catch { return null; }
@@ -83,7 +83,7 @@
     const el = box();
     if (!el) return toast("Click into the message box first");
     const r = await send({ context: draft(el) || document.title });
-    if (!r || !r.text) return toast(r && r.error ? r.error : "Can't reach memgraph");
+    if (!r || !r.text) return toast(r && r.error ? r.error : "Can't reach Mindbaton");
     insertText(el, r.text);
     toast(`Added what memgraph knows · ${r.text.split("\n").length - 2} lines`);
   }
@@ -243,17 +243,17 @@
         border-radius: 14px; box-shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 18px 44px rgba(0,0,0,.5); font: 500 13px/1 system-ui, -apple-system, sans-serif;
         max-width: calc(100vw - 32px); flex-wrap: wrap; animation: in .3s cubic-bezier(.2,.8,.2,1) }
       @keyframes in { from { opacity: 0; transform: translate(-50%, 10px) } }
-      .mark { width: 20px; height: 20px; border-radius: 6px; background: linear-gradient(145deg, #2a2f5c, #14162a); border: 1px solid rgba(139,149,255,.35);
+      .mark { width: 20px; height: 20px; border-radius: 6px; background: #0a0a0b; border: 1px solid rgba(255,255,255,.35);
         display: grid; place-items: center; flex: none }
-      .mark svg { width: 11px; height: 11px; stroke: #a5b0ff; fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round }
+      .mark svg { width: 15px; height: 15px; color: #fff; fill: currentColor }
       .why { font-weight: 600 } .sub { color: #a1a1aa; margin: 0 4px 0 2px }
       button { height: 32px; padding: 0 11px 0 8px; display: inline-flex; align-items: center; gap: 7px; border-radius: 9px; border: 1px solid rgba(255,255,255,.08);
         background: #1c1c1f; color: #ededef; font: inherit; cursor: pointer; transition: background .15s, transform .1s }
       button img { width: 16px; height: 16px } button:hover { background: #27272a } button:active { transform: scale(.96) }
-      button.copy { color: #a5b0ff; padding: 0 11px } button.x { border: 0; background: none; color: #71717a; padding: 0 8px } button.x:hover { color: #ededef }
-      button:focus-visible { outline: 2px solid #8b95ff; outline-offset: 1px }
+      button.copy { color: #fff; padding: 0 11px } button.x { border: 0; background: none; color: #71717a; padding: 0 8px } button.x:hover { color: #ededef }
+      button:focus-visible { outline: 2px solid #fff; outline-offset: 1px }
       @media (prefers-reduced-motion: reduce) { .bar { animation: none } } </style>
-      <div class="bar" role="status"><span class="mark"><svg viewBox="0 0 16 16"><path d="M3.2 12.2V4.6L8 9.4l4.8-4.8v7.6"/></svg></span>
+      <div class="bar" role="status"><span class="mark"><svg viewBox="0 0 96 96" fill="currentColor"><path fill-rule="evenodd" d="M38.83 19.27A23 23 0 0 1 77.84 43.65L57.17 76.73A23 23 0 0 1 18.16 52.35ZM53.63 39.08A4.3 4.3 0 0 1 46.34 34.52L50 28.67A4.3 4.3 0 0 1 57.29 33.23ZM67.63 47.82A4.3 4.3 0 0 1 60.33 43.27L63.99 37.41A4.3 4.3 0 0 1 71.28 41.97Z"/></svg></span>
         <span class="why"></span><span class="sub">· continue in</span>${TARGETS.filter(([h]) => h !== here)
         .map(([h, n]) => `<button data-to="${h}" title="Continue in ${n}">${L(LOGO[h])}${n}</button>`).join("")}<button class="copy">Copy pack</button><button class="x" aria-label="Dismiss">✕</button></div>`;
     root.querySelector(".why").textContent = why;
@@ -262,7 +262,7 @@
       if (!b) return;
       if (b.classList.contains("x")) { dismissed = meter.key; host.remove(); return; }
       const r = await send({ handoff: { session: meter.id, to: b.dataset.to || null, open: !!b.dataset.to } });
-      if (!r || !r.text) return toast(r && r.error ? r.error : "Can't reach memgraph");
+      if (!r || !r.text) return toast(r && r.error ? r.error : "Can't reach Mindbaton");
       const by = r.summary_by ? ` · summarised by ${r.summary_by}` : "";
       if (b.classList.contains("copy")) { await navigator.clipboard.writeText(r.text); toast(`Hand-off copied · ~${r.tokens} tokens${by}`); }
       else toast(`Opening ${b.textContent} — the conversation will be waiting in the message box`);

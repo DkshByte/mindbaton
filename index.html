@@ -16,7 +16,8 @@
   --bg: #09090b; --side: #0c0c0e; --panel: #111113; --panel-2: #17171a; --panel-3: #1d1d21;
   --line: rgba(255, 255, 255, .07); --line-2: rgba(255, 255, 255, .11); --line-3: rgba(255, 255, 255, .18);
   --fg: #ededef; --fg-2: #a1a1aa; --fg-3: #88888f;
-  --accent: #8b95ff; --accent-strong: #a5b0ff; --accent-soft: rgba(139, 149, 255, .13); --accent-line: rgba(139, 149, 255, .35);
+  --accent: #f4f4f5; --accent-strong: #ffffff; --accent-soft: rgba(255, 255, 255, .08); --accent-line: rgba(255, 255, 255, .28);
+  --glass: rgba(255, 255, 255, .06); --glass-hi: rgba(255, 255, 255, .11); --glass-rim: rgba(255, 255, 255, .14);
   --ok: #3dd68c; --danger: #ff6369; --danger-soft: rgba(255, 99, 105, .12);
   /* colour codes: kinds of fact and topic identity (map, dots, chips) */
   --c-who: #f5c451; --c-place: #f59e6b; --c-project: #5fd9a8; --c-tool: #6cb8ff; --c-own: #e59df5; --c-learn: #a99bff;
@@ -31,7 +32,7 @@
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 400 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased; overflow: hidden; }
-::selection { background: rgba(139, 149, 255, .35); color: #fff; }
+::selection { background: rgba(255, 255, 255, .28); color: #fff; }
 * { scrollbar-width: thin; scrollbar-color: var(--line-3) transparent; }
 input { caret-color: var(--accent-strong); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
@@ -104,7 +105,14 @@ img.lg { object-fit: contain; }
 .btn { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 13px; border-radius: 8px; font-weight: 500; font-size: 13px;
   border: 1px solid var(--line-2); background: var(--panel); color: var(--fg); transition: background .15s, border-color .15s; white-space: nowrap; }
 .btn:hover { background: var(--panel-3); border-color: var(--line-3); }
-.btn.primary { background: var(--fg); color: #0b0b0d; border-color: var(--fg); }
+/* Liquid glass: frost + translucency + a soft top highlight. No SVG refraction at the edges (by choice). */
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .btn, .handoff button { background: var(--glass); border-color: var(--glass-rim); -webkit-backdrop-filter: blur(14px) saturate(160%);
+    backdrop-filter: blur(14px) saturate(160%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 1px 2px rgba(0, 0, 0, .35); }
+  .btn:hover, .handoff button:hover { background: var(--glass-hi); border-color: var(--line-3); }
+}
+.btn.primary { background: linear-gradient(180deg, #fff, #e4e4e7); color: #0b0b0d; border-color: rgba(255, 255, 255, .9);
+  box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 rgba(0, 0, 0, .12), 0 1px 3px rgba(0, 0, 0, .4); }
 .btn.primary:hover { background: #fff; }
 .btn.danger { color: var(--danger); border-color: rgba(255, 99, 105, .35); background: transparent; }
 .btn.danger:hover, .btn.danger.armed { background: var(--danger-soft); border-color: var(--danger); }
@@ -263,7 +271,7 @@ dialog.help dd { margin: 0; color: var(--fg-2); }
 
 /* look up */
 .answer { display: flex; gap: 14px; align-items: flex-start; padding: 18px 20px; border-radius: var(--r);
-  background: linear-gradient(135deg, rgba(139, 149, 255, .14), rgba(139, 149, 255, .04)); border: 1px solid var(--accent-line); margin: 22px 0 8px; }
+  background: linear-gradient(135deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, .02)); border: 1px solid var(--accent-line); margin: 22px 0 8px; }
 .answer svg.i { color: var(--accent-strong); width: 18px; height: 18px; margin-top: 4px; }
 .answer p { margin: 0; font-size: 19px; font-weight: 500; letter-spacing: -.01em; }
 .answer small { display: block; margin-top: 4px; color: var(--fg-2); font-size: 12.5px; }
@@ -342,7 +350,7 @@ dialog.help dd { margin: 0; color: var(--fg-2); }
 .av.md { width: 32px; height: 32px; font-size: 13px; }
 .av.big { width: 48px; height: 48px; font-size: 18px; }
 .av.xl { width: 76px; height: 76px; font-size: 28px; letter-spacing: -.02em; }
-@property --glow { syntax: "<color>"; inherits: true; initial-value: #8b95ff; }
+@property --glow { syntax: "<color>"; inherits: true; initial-value: #f4f4f5; }
 .gate { position: fixed; inset: 0; overflow-y: auto; display: grid; grid-template-rows: 1fr auto; background: var(--bg); z-index: 20;
   --glow: var(--accent); transition: --glow .6s var(--ease); }
 .gate::before { content: ""; position: fixed; left: 50%; top: -260px; width: min(1000px, 160vw); height: 560px; transform: translateX(-50%); pointer-events: none;
@@ -542,7 +550,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
 <body>
 <!--
 THESIS: Mindbaton as a calm, fast, precise dark app at the craft level of Linear and Vercel — your AI memory reads like a well-kept profile you can search in one keystroke. Refuses the blueprint costume and the neon dashboard.
-OWN-WORLD: charcoal #09090b surfaces stepped by hairline rgba borders; Geist + Geist Mono; one periwinkle accent (#8b95ff) for focus, selection and the answer; colour codes only for kinds of fact and topics; real brand logos (Simple Icons, LobeHub, Devicon) are the only imagery.
+OWN-WORLD: charcoal #09090b surfaces stepped by hairline rgba borders; Geist + Geist Mono; one white accent (#f4f4f5) for focus, selection and the answer; colour codes only for kinds of fact and topics; real brand logos (Simple Icons, LobeHub, Devicon) are the only imagery.
 STORY: open, see what every AI knows about you grouped by kind with real logos, what you said lately, search anything (answer first), explore the map, correct the record in the slide-over.
 FIRST VIEWPORT: 248px sidebar (mark, nav, topics with colour dots, sources with AI logos, live status) | 56px top bar (page, search with /, Copy briefing) | greeting + one status line with an AI logo stack | two columns: profile by kind (chips with logos) / recent entries + connect an AI.
 FORM: canon (standing exit, chosen by the owner) — Linear + Vercel craft bar. Seed b8503b2b.

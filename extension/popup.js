@@ -26,7 +26,7 @@ function health() {
     const ok = r && r.ok;
     $("dot").className = "dot " + (ok ? "on" : "off");
     $("conn").textContent = ok ? "Connected" : "Offline";
-    $("conn").title = ok ? `${r.captures} captures on the server` : "Can't reach the memgraph server";
+    $("conn").title = ok ? `${r.captures} captures on the server` : "Can't reach the Mindbaton server";
   });
 }
 
@@ -61,7 +61,7 @@ async function chat() {
     const b = e.target.closest("button");
     if (!b) return;
     chrome.runtime.sendMessage({ handoff: { session: m.id, to: b.dataset.to || null, open: !!b.dataset.to } }, async r => {
-      if (!r || !r.text) { $("warn").hidden = false; $("warn").textContent = (r && r.error) || "Can't reach memgraph"; return; }
+      if (!r || !r.text) { $("warn").hidden = false; $("warn").textContent = (r && r.error) || "Can't reach Mindbaton"; return; }
       if (b.dataset.to) return window.close();
       await navigator.clipboard.writeText(r.text);
       b.textContent = `Copied · ~${fmt(r.tokens)} tokens${r.summary_by ? " · by " + r.summary_by : ""} ✓`;

@@ -12,7 +12,7 @@ chrome.runtime.onMessage.addListener((m, _sender, reply) => {
   }
   if (m.context !== undefined) {  // Alt+M: a briefing relevant to what's being typed
     server().then(s => fetch(`${s}/context?budget=1800&q=${encodeURIComponent(String(m.context).slice(0, 300))}`))
-      .then(r => r.json()).then(reply).catch(() => reply({ error: "Can't reach memgraph" }));
+      .then(r => r.json()).then(reply).catch(() => reply({ error: "Can't reach Mindbaton" }));
     return true;
   }
   if (m.live) {  // Live mode: the whole conversation, re-sent when it changes; the server keeps only what's new
@@ -27,7 +27,7 @@ chrome.runtime.onMessage.addListener((m, _sender, reply) => {
       .then(r => r.json()).then(r => {
         if (r.open && h.open) chrome.tabs.create({ url: r.open });
         reply(r);
-      }).catch(() => reply({ error: "Can't reach memgraph" }));
+      }).catch(() => reply({ error: "Can't reach Mindbaton" }));
     return true;
   }
   if (m.summary) {  // this chat's AI summary (made on the server, in the background, if it isn't ready yet)
@@ -73,7 +73,7 @@ async function flush() {
     if (now.length) badge(String(now.length), "#f59e0b");
     else if (n) { badge("+" + n, "#3dd68c"); setTimeout(() => badge(""), 2500); }
   } catch {
-    await chrome.storage.local.set({ error: "Can't reach memgraph" });
+    await chrome.storage.local.set({ error: "Can't reach Mindbaton" });
     const { queue = [] } = await chrome.storage.local.get(["queue"]);
     if (queue.length) badge(String(queue.length), "#f59e0b");
   } finally { flushing = false; }

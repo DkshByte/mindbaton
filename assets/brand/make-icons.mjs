@@ -2,7 +2,8 @@
 // Needs Node 20+ and the `playwright` package with its Chromium:
 //   npm i --no-save playwright && npx playwright install chromium
 //   node assets/brand/make-icons.mjs          (any cwd; NODE_PATH pointing at a playwright install also works)
-// Writes: assets/brand/{mark-white,app-icon,wordmark}.svg · assets/app-{,maskable-}{192,512}.png ·
+// Reads mark.svg + wordmark.svg (outlined lockup; update it with the mark).
+// Writes: assets/brand/{mark-white,app-icon}.svg · assets/app-{,maskable-}{192,512}.png ·
 //         extension/icon{16,48,128}.png · site/favicon.svg · site/favicon-32.png · site/apple-touch-icon.png ·
 //         assets/brand/terminal-logo.json (the installer's terminal art, drawn by mindbaton.py)
 import { createRequire } from 'node:module';
@@ -12,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 const { chromium } = createRequire(import.meta.url)('playwright');
 const brand = dirname(fileURLToPath(import.meta.url)), repo = join(brand, '../..');
-const BG = '#0A0A0B', ACCENT = '#8B7CFF';
+const BG = '#0A0A0B'; // the logo is one colour: white on this black
 
 // The mark's own <svg> with its size/colour attributes replaced by `attrs` (its viewBox is kept).
 const mark = readFileSync(join(brand, 'mark.svg'), 'utf8').replace(/<\?xml[^>]*>|<!--[\s\S]*?-->/g, '').replace(/\n\s*\n/g, '\n').trim();
@@ -20,26 +21,22 @@ const withAttrs = attrs => mark.replace(/<svg\b([^>]*)>/, (_, a) =>
   `<svg${a.replace(/\s(width|height|x|y|color|style)="[^"]*"/g, '')} ${attrs}>`);
 
 // 512-unit tile: #0A0A0B square (rx 0 = full bleed) with the white mark at fraction k of its width.
-const tile = (k, rx = 115, accent = ACCENT) => {
+const tile = (k, rx = 115) => {
   const s = +(512 * k).toFixed(2), o = +((512 - s) / 2).toFixed(2);
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="${rx}" fill="${BG}"/>` +
-    withAttrs(`x="${o}" y="${o}" width="${s}" height="${s}" color="#fff" style="--mb-accent:${accent}"`) + '</svg>\n';
+    withAttrs(`x="${o}" y="${o}" width="${s}" height="${s}" color="#fff"`) + '</svg>\n';
 };
 const appIcon = tile(0.7);
 const small = tile(0.8, 96);    // 32–48px: less padding so the strokes survive
-const tiny = tile(0.9, 80, '#fff'); // 16px (and tab favicons): violet at 2px turns to mud, white nodes stay distinct
+const tiny = tile(0.9, 80);    // 16px (and tab favicons)
 const square = tile(0.7, 0);    // iOS rounds it itself and paints transparency black
 const maskable = tile(0.56, 0); // mark box ≤ 80% safe-zone circle (0.8/√2 ≈ 0.566), whatever the mark's shape
 
-// Text is live <text>: it renders in Geist where the page has loaded it (index.html, site), else falls back.
-const wordmark = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 121 24" fill="currentColor" role="img" aria-label="Mindbaton">' +
-  withAttrs('width="24" height="24"') +
-  '<text x="32" y="18.3" font-family="Geist, Inter, system-ui, sans-serif" font-size="18" font-weight="600" letter-spacing="-0.36">Mindbaton</text></svg>\n';
+const wordmark = readFileSync(join(brand, 'wordmark.svg'), 'utf8').trim(), WW = +wordmark.match(/viewBox="0 0 ([\d.]+)/)[1];
 
 const out = (rel, data) => { mkdirSync(dirname(join(repo, rel)), { recursive: true }); writeFileSync(join(repo, rel), data); console.log('wrote', rel); };
 out('assets/brand/mark-white.svg', withAttrs('color="#fff"') + '\n');
 out('assets/brand/app-icon.svg', appIcon);
-out('assets/brand/wordmark.svg', wordmark);
 out('site/favicon.svg', tiny);
 
 const pngs = [
@@ -54,7 +51,7 @@ const pngs = [
 // clear pixels stay transparent (null) so the terminal's own background shows.
 const TERM = { mark: [6, 8, 10, 12, 16], lockup: [6, 8, 10, 12] }; // 5 and 7 rows break letters up
 const geist = readFileSync(join(repo, 'assets/fonts/Geist-Variable.woff2')).toString('base64');
-const lockupSvg = wordmark.replace('<svg', '<svg width="121" height="24"');
+const lockupSvg = wordmark.replace('<svg', `<svg width="${WW}" height="24"`);
 const markSvg = withAttrs('width="24" height="24"');
 const XTERM = [0, 95, 135, 175, 215, 255];
 const hex = c => '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
@@ -83,7 +80,7 @@ try {
     await page.setViewportSize({ width: w, height: h });
     await page.setContent(`<style>@font-face{font-family:Geist;src:url(data:font/woff2;base64,${geist});font-weight:100 900}
       *{margin:0}svg{display:block}</style><svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb.join(' ')}" width="${w}" height="${h}"
-      preserveAspectRatio="none" color="${ink}" style="--mb-accent:${ACCENT}">${inner}</svg>`);
+      preserveAspectRatio="none" color="${ink}">${inner}</svg>`);
     await page.evaluate(() => document.fonts.ready);
     const png = (await page.screenshot({ omitBackground: true })).toString('base64');
     return page.evaluate(async b64 => {
@@ -103,7 +100,7 @@ try {
     return [x0 / k, y0 / k, (x1 + 1 - x0) / k, (y1 + 1 - y0) / k];
   };
   const art = {};
-  for (const [name, inner, W] of [['mark', markSvg, 24], ['lockup', lockupSvg, 121]]) {
+  for (const [name, inner, W] of [['mark', markSvg, 24], ['lockup', lockupSvg, WW]]) {
     const vb = await tight(inner, W, 24);
     art[name] = [];
     // The art's solid colours: each covering ≥ 1% of the opaque pixels of a big render, near-duplicates merged.
@@ -121,7 +118,7 @@ try {
       const cols = Math.round(rows * 2 * vb[2] / vb[3]), W2 = cols * 2;
       const px = await raster(inner, vb, W2, rows * 2), pxL = await raster(inner, vb, W2, rows * 2, BG), keys = [];
       // At cell size an anti-aliased edge reads as dirt, not smoothness: a pixel is ink (coverage ≥ ½) or clear, and ink
-      // snaps to the nearest of the art's solid colours (white + accent today; a multi-colour logo keeps its colours).
+      // snaps to the nearest of the art's solid colours (white today; a multi-colour logo keeps its colours).
       const snap = (S, c) => hex(S.length ? S.reduce((b, s) => dist(s, c) < dist(b, c) ? s : b) : c);
       const rank = k => sd.findIndex(c => hex(c) === k.slice(0, 7));
       const idx = k => keys.includes(k) ? keys.indexOf(k) : keys.push(k) - 1; // palette index of a dark+light colour pair

@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "memgraph",
+  "name": "Mindbaton",
   "version": "4.4",
   "description": "Remembers what you tell every AI, keeps whole chats in Live mode, and hands a full chat to another AI",
   "permissions": [
@@ -29,7 +29,7 @@
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "memgraph"
+    "default_title": "Mindbaton"
   },
   "icons": {
     "16": "icon16.png",
