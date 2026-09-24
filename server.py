@@ -1440,7 +1440,10 @@ def open_data(path):
     os.makedirs(path, mode=0o700, exist_ok=True)
     AUTH = sqlite3.connect(os.path.join(path, "auth.db"), isolation_level=None, check_same_thread=False)
     AUTH.executescript("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;" + AUTH_SCHEMA)
-    return migrate_accounts()
+    aid = migrate_accounts()
+    # data dirs made before 'local_account' was stored: the first admin, pinned now so later role changes can't move it
+    AUTH.execute("INSERT OR IGNORE INTO meta SELECT 'local_account', min(id) FROM accounts WHERE role='admin' HAVING count(*)")
+    return aid
 
 
 def migrate_accounts():
@@ -1494,9 +1497,10 @@ def graph(aid):
         return g
 
 
-def local_account():
-    """What this machine itself collects (Claude Code's transcripts, import_memories.py) goes to the first admin."""
-    r = AUTH.execute("SELECT id FROM accounts WHERE role='admin' ORDER BY id LIMIT 1").fetchone()
+def local_account(db=None):
+    """What this machine itself collects (Claude Code's transcripts, import_memories.py) goes to the install's first admin,
+    pinned in meta when that account was made: promoting or demoting people never moves it. Deleted = nobody (None)."""
+    r = (db or AUTH).execute("SELECT a.id FROM meta m JOIN accounts a ON a.id = CAST(m.v AS INTEGER) WHERE m.k='local_account'").fetchone()
     return r and r[0]
 
 
@@ -1509,9 +1513,12 @@ def create_account(username, password, display_name=None, role="member", hidden=
     """password: already hashed, or None (nobody can sign in to it until one is set). A taken username raises
     sqlite3.IntegrityError."""
     n = AUTH.execute("SELECT count(*) FROM accounts").fetchone()[0]
-    return AUTH.execute("INSERT INTO accounts(username, display_name, role, hidden, color, password, created) VALUES(?,?,?,?,?,?,?)",
-                        (username, display_name or username.capitalize(), role, int(hidden), color or COLORS[n % len(COLORS)],
-                         password, time.time())).lastrowid
+    aid = AUTH.execute("INSERT INTO accounts(username, display_name, role, hidden, color, password, created) VALUES(?,?,?,?,?,?,?)",
+                       (username, display_name or username.capitalize(), role, int(hidden), color or COLORS[n % len(COLORS)],
+                        password, time.time())).lastrowid
+    if role == "admin":  # the first admin ever made owns this machine's own sources (local_account), for good
+        AUTH.execute("INSERT OR IGNORE INTO meta VALUES('local_account', ?)", (aid,))
+    return aid
 
 
 def delete_account(aid):
@@ -2175,13 +2182,12 @@ class Handler(SimpleHTTPRequestHandler):
                                  (time.time(), int(m[1]), me)).rowcount
             return self.reply(200, {"revoked": n}) if n else self.reply(404, {"error": "no such token"})
         if (method, p) == ("GET", "/api/pair/pending"):
-            # ?code= from the approve link, else the requests made from this same address (the pairing device is usually
-            # the one you're on): a code is the right to take a device, so nobody sees another person's codes
-            now, code, ip = time.time(), norm_code(qs.get("code")), self.ip()
+            # only the request whose ?code= you hold (the approve link, or typed from the device): a code is the right to take
+            # a device, and an address proves nothing (behind a proxy or Docker, or on a shared computer, everyone has one)
+            now, code = time.time(), norm_code(qs.get("code"))
             with LOCK:
                 out = [{"code": c, "name": x["name"], "kind": x["kind"], "created": x["created"], "expires_in": int(x["created"] + PAIR_S - now)}
-                       for c, x in PAIRS.items() if x["status"] == "pending" and now - x["created"] < PAIR_S
-                       and (c == code if code else x["ip"] == ip)]
+                       for c, x in PAIRS.items() if x["status"] == "pending" and now - x["created"] < PAIR_S and c == code]
             return self.reply(200, out)
         if method == "POST" and p in ("/api/pair/approve", "/api/pair/deny"):
             with LOCK:
@@ -2578,7 +2584,8 @@ def authcheck():
     assert s == 200 and re.fullmatch(r"[A-Z]{4}-[A-Z]{4}", pr["code"]) and pr["expires_in"] == 600 and pr["approve_url"] == f"{url}/#pair/{pr['code']}", pr
     poll = lambda: call("GET", "/api/pair/poll?poll=" + pr["poll"])[2]
     assert poll()["status"] == "pending" and call("GET", "/api/pair/poll?poll=guess")[2] == {"status": "expired"}
-    assert [x["name"] for x in call("GET", "/api/pair/pending", cookie=a)[2]] == ["Chrome on laptop"]
+    assert call("GET", "/api/pair/pending", cookie=a)[2] == [], "same address, no code: not listed"
+    assert [x["name"] for x in call("GET", f"/api/pair/pending?code={pr['code'].lower()}", cookie=a)[2]] == ["Chrome on laptop"]
     assert st("POST", "/api/pair/approve", {"code": pr["code"].lower().replace("-", "")}, cookie=a) == 200
     got = poll()
     assert got["status"] == "approved" and got["token"].startswith("mb_") and got["kind"] == "extension" and got["scope"] == "full", got
@@ -2710,6 +2717,7 @@ def authcheck():
     assert st("DELETE", f"/api/accounts/{maya}?confirm=maya", cookie=a) == 409
     assert st("PATCH", f"/api/accounts/{sam['id']}", {"role": "admin"}, cookie=a) == 200
     assert st("PATCH", f"/api/accounts/{maya}", {"role": "member"}, cookie=a) == 200 and st("GET", "/api/accounts", cookie=a) == 403
+    assert local_account() == maya and not call("GET", "/status", cookie=b)[2]["server"]["local_sources"], "roles never move local sources"
     assert st("DELETE", f"/api/accounts/{sam['id']}?confirm=sam", cookie=b) == 409 and st("PATCH", f"/api/accounts/{sam['id']}", {"role": "member"}, cookie=b) == 409
     assert st("PATCH", f"/api/accounts/{maya}", {"role": "admin"}, cookie=b) == 200 and st("GET", "/api/accounts", cookie=a) == 200
     # deleting an account deletes its memory, sessions and devices (after an explicit confirm)
@@ -2745,7 +2753,7 @@ def authcheck():
     g.db.execute("INSERT INTO logins VALUES(?,?,?)", (sha("old-session"), time.time(), time.time() + 86400))
     g.db.close()
     aid = open_data(old)
-    assert aid and account(aid)["username"] == "admin" and account(aid)["role"] == "admin" and not setup_needed()
+    assert aid and local_account() == aid and account(aid)["username"] == "admin" and account(aid)["role"] == "admin" and not setup_needed()
     assert os.path.exists(os.path.join(old, "mindbaton.db.pre-accounts.bak")) and not os.path.exists(os.path.join(old, "mindbaton.db"))
     mem = sqlite3.connect(os.path.join(acct_dir(aid), "memory.db"))
     assert not mem.execute("SELECT 1 FROM sqlite_master WHERE name IN ('tokens', 'logins')").fetchone()
@@ -2785,9 +2793,11 @@ if __name__ == "__main__":
         authcheck()
         sys.exit()
     link = lambda code: f"{PUBLIC_URL or f'http://{HOST if HOST not in ('0.0.0.0', '::', '') else 'localhost'}:{PORT}'}/?code={code}"
-    if open_data(DATA):
-        print("Moved the single-owner database into the first admin account (username: admin); the original is kept "
-              "next to it as *.pre-accounts.bak", flush=True)
+    moved = open_data(DATA)
+    if moved:
+        print("Moved the single-owner database into the first admin account (username: admin)" if not setup_needed() else
+              "Moved your old memories into the first account — open the setup link below to claim it",
+              "(the original is kept next to it as *.pre-accounts.bak)", flush=True)
     if "--setup-code" in sys.argv or "--reset-password" in sys.argv:  # this machine's shell, no server needed
         if "--reset-password" in sys.argv:
             i = sys.argv.index("--reset-password") + 1

@@ -4,18 +4,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#09090b">
 <link rel="manifest" href="/manifest.webmanifest">
-<link rel="icon" href="/assets/app-192.png">
-<title>Save to memgraph</title>
+<link rel="icon" href="/assets/brand/app-icon.svg">
+<title>Save to Mindbaton</title>
 <style>
   @font-face { font-family: "Geist"; src: url("/assets/fonts/Geist-Variable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
   :root { --bg: #09090b; --panel: #111113; --raise: #18181b; --line: rgba(255,255,255,.08); --line2: rgba(255,255,255,.13);
-    --text: #ededef; --muted: #a1a1aa; --faint: #71717a; --accent: #8b95ff; --accent2: #a5b0ff; --ok: #3dd68c; --bad: #ff6369; }
+    --text: #ededef; --muted: #a1a1aa; --faint: #88888f; --accent: #8b95ff; --accent2: #a5b0ff; --ok: #3dd68c; --bad: #ff6369; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 "Geist", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
   main { max-width: 560px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom)); display: grid; gap: 20px; }
   header { display: flex; align-items: center; gap: 10px; padding-top: 4px; }
-  .mark { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(145deg, #2a2f5c, #14162a); border: 1px solid rgba(139,149,255,.35); display: grid; place-items: center; }
-  .mark svg { width: 15px; height: 15px; stroke: var(--accent2); fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .mark { width: 28px; height: 28px; border-radius: 8px; box-shadow: 0 0 0 1px var(--line2); }
+  .who { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); min-width: 0; }
+  .who span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (max-width: 420px) { header { flex-wrap: wrap; } .who { order: 3; flex-basis: 100%; margin-left: 0; } }  /* whose memory it is never gets cut */
+  .av { --c: #8b95ff; width: 26px; height: 26px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 600;
+    background: color-mix(in srgb, var(--c) 20%, #17171a); color: color-mix(in srgb, var(--c) 72%, #fff); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 34%, transparent); }
   h1 { font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -.01em; }
   .label { font-size: 12px; font-weight: 500; color: var(--faint); text-transform: uppercase; letter-spacing: .06em; margin: 0 0 8px; }
   textarea { width: 100%; min-height: 150px; max-height: 45vh; resize: vertical; padding: 12px 13px; border-radius: 12px; border: 1px solid var(--line2);
@@ -48,7 +52,7 @@
   @media (prefers-reduced-motion: no-preference) { .done { animation: in .3s cubic-bezier(.2,.8,.2,1); } @keyframes in { from { opacity: 0; transform: translateY(6px); } } }
 </style>
 <main id="app">
-  <header><span class="mark"><svg viewBox="0 0 16 16"><path d="M3.2 12.2V4.6L8 9.4l4.8-4.8v7.6"/></svg></span><h1>Save to memgraph</h1></header>
+  <header><img class="mark" src="/assets/brand/app-icon.svg" alt="" width="28" height="28"><h1>Save to Mindbaton</h1><span class="who" id="who"></span></header>
   <section>
     <p class="label">What to save</p>
     <textarea id="text" aria-label="Text to save" placeholder="Share a message from any app, or type here…"></textarea>
@@ -65,7 +69,7 @@
     <p class="label">Which app</p>
     <div class="ais" id="ais"></div>
   </section>
-  <p class="err" id="err" hidden></p>
+  <p class="err" id="err" role="alert" hidden></p>
 </main>
 <div class="bar"><div class="in"><button class="ghost" id="cancel">Cancel</button><button class="primary" id="save">Save</button></div></div>
 <script>
@@ -90,7 +94,7 @@ $("meta").textContent = title ? `From “${title}”` : "";
 function render() {
   $("me").setAttribute("aria-pressed", String(!bot)); $("bot").setAttribute("aria-pressed", String(bot));
   $("whohint").textContent = bot ? "Kept as a conversation you can search and hand off — not as facts about you."
-                                 : "memgraph learns from it: facts, preferences, plans.";
+                                 : "Mindbaton learns from it: facts, preferences, plans.";
   document.querySelectorAll(".ais button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.site === site)));
   $("save").disabled = !$("text").value.trim();
 }
@@ -121,17 +125,30 @@ $("save").onclick = async () => {
           turns: [{ role: "assistant", text: body }] }) })
       : await fetch("/capture", { method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: body, site, chat: title || null, url: url || null }) });
+    if (r.status === 401) return signIn();
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "Server error " + r.status);
     const out = await r.json();
     const n = bot ? 1 : (out.ids || []).length;
     $("app").innerHTML = `<div class="done"><span class="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5 10 17 19 7.5"/></svg></span>
-      <h1>Saved</h1><p>${bot ? `Kept as a conversation from ${app}.` : n ? `${n} ${n === 1 ? "memory" : "memories"} from ${app}.` : `Already known — memgraph had this.`}</p>
-      <p><a href="/">Open memgraph</a></p></div>`;
+      <h1>Saved</h1><p>${bot ? `Kept as a conversation from ${app}.` : n ? `${n} ${n === 1 ? "memory" : "memories"} from ${app}.` : `Already known — Mindbaton had this.`}</p>
+      <p><a href="/">Open Mindbaton</a></p></div>`;
     document.querySelector(".bar").hidden = true;
   } catch (e) {
-    $("err").textContent = "Couldn't save: " + e.message + ". Is Tailscale on?"; $("err").hidden = false; $("save").disabled = false;
+    $("err").textContent = "Couldn't save: " + e.message + ". Check that this phone can reach Mindbaton, then try again."; $("err").hidden = false; $("save").disabled = false;
   }
 };
+// Saving needs the signed-in person (it goes to their memory). Not signed in: sign in, then come straight back here.
+function signIn() {
+  const back = "/share.html?" + new URLSearchParams({ title, url, text: $("text").value });
+  location.replace("/?next=" + encodeURIComponent(back));
+}
+fetch("/api/auth/state").then(r => r.json()).then(s => {
+  if (!s.authed) return signIn();
+  const a = s.account, ini = a.display_name.trim().split(/\s+/).slice(0, 2).map(w => [...w][0]).join("").toUpperCase();
+  $("who").innerHTML = `<span class="av" aria-hidden="true"></span><span></span>`;
+  $("who").firstChild.style.setProperty("--c", a.color); $("who").firstChild.textContent = ini;
+  $("who").lastChild.textContent = a.display_name + "'s memory";
+}).catch(() => {});
 render();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 </script>

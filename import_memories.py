@@ -13,7 +13,8 @@ itself a temporary token for the first admin account (this machine's own memorie
 transcripts) and revokes it when done. For another account, or a server elsewhere, pass a token from Settings → Devices.
 
 Each note becomes short standalone statements ("the user prefers X" -> "I prefer X"), filed under the note's name so
-they sort into one topic. Safe to re-run: statements already sent are remembered in <data dir>/imported.json and skipped.
+they sort into one topic. Safe to re-run: statements already sent are remembered per target (<data dir>/imported.json for
+this machine's own account, imported-<hash of URL + token>.json for a MINDBATON_TOKEN target) and skipped. A demo memory never takes them.
 """
 import glob, hashlib, json, os, re, sqlite3, sys, time, urllib.request
 
@@ -23,7 +24,6 @@ import server  # noqa: E402  (same folder; importing starts nothing, and loads m
 from server import third_to_first  # noqa: E402
 
 URL = os.environ.get("MINDBATON_URL", f"http://127.0.0.1:{server.PORT}").rstrip("/")
-STATE = os.path.join(server.DATA, "imported.json")
 AUTH = {}
 SOURCES = [("claude-code", "~/.claude/projects/*/memory/*.md"), ("codex", "~/.codex/memories/*")]
 
@@ -74,29 +74,34 @@ def local_token():
     read the data dir, so it may)."""
     path = os.path.join(server.DATA, "auth.db")
     db = sqlite3.connect(path, isolation_level=None, timeout=10) if os.path.exists(path) else None
-    admin = db and db.execute("SELECT id FROM accounts WHERE role='admin' ORDER BY id LIMIT 1").fetchone()
-    if not admin:
-        sys.exit(f"No Mindbaton accounts in {server.DATA} (start the server and set it up first), or set MINDBATON_TOKEN "
-                 "(Settings → Devices) and MINDBATON_URL")
-    t = server.issue_token(db, admin[0], "import_memories.py (temporary)", "agent")
+    aid = db and server.local_account(db)
+    if not aid:
+        sys.exit(f"No account in {server.DATA} takes this machine's memories (start the server and set it up first, or its "
+                 "first admin was deleted), or set MINDBATON_TOKEN (Settings → Devices) and MINDBATON_URL")
+    mem = os.path.join(server.acct_dir(aid), "memory.db")
+    if os.path.exists(mem) and sqlite3.connect(mem).execute("SELECT 1 FROM meta WHERE k='demo'").fetchone():
+        sys.exit("That account is a demo memory (demo.py): it never takes this machine's real memories")
+    t = server.issue_token(db, aid, "import_memories.py (temporary)", "agent")
     return lambda: db.execute("UPDATE tokens SET revoked=? WHERE id=?", (time.time(), t["id"])), t["token"]
 
 
 def main(paths):
     AUTH["token"] = os.environ.get("MINDBATON_TOKEN", "").strip()
-    revoke = None
-    if not AUTH["token"]:
+    revoke, state = None, "imported.json"  # this machine's own account keeps the file it always had
+    if AUTH["token"]:  # another account or server: its own record, so what went elsewhere isn't skipped here
+        state = "imported-" + hashlib.sha256(f"{URL}\0{AUTH['token']}".encode()).hexdigest()[:16] + ".json"
+    else:
         revoke, AUTH["token"] = local_token()
     try:
-        run(paths)
+        run(paths, os.path.join(server.DATA, state))
     finally:
         if revoke:
             revoke()
 
 
-def run(paths):
+def run(paths, state):
     try:
-        done = set(json.load(open(STATE)))
+        done = set(json.load(open(state)))
     except (OSError, ValueError):
         done = set()
     files = [(src, p) for src, pattern in SOURCES for p in sorted(glob.glob(os.path.expanduser(pattern)))
@@ -123,7 +128,7 @@ def run(paths):
             done.add(h)
         print(f"  {src:12} {name:28} {path}")
     os.makedirs(server.DATA, mode=0o700, exist_ok=True)
-    json.dump(sorted(done), open(STATE, "w"))
+    json.dump(sorted(done), open(state, "w"))
     print(f"imported {sent} statements from {len(files)} notes -> {memories} memories ({skipped} already imported)")
 
 

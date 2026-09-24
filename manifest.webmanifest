@@ -1,7 +1,7 @@
 {
-  "name": "memgraph",
-  "short_name": "memgraph",
-  "description": "Your memory across every AI",
+  "name": "Mindbaton",
+  "short_name": "Mindbaton",
+  "description": "Your memory across every AI — tell one AI, every AI knows",
   "id": "/",
   "start_url": "/",
   "scope": "/",
