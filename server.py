@@ -1419,8 +1419,9 @@ ACCOUNT = ("id", "username", "display_name", "role", "hidden", "color", "created
 AUTH = None                      # auth.db (open_data): used under LOCK only
 GRAPHS = {}                      # account id -> its Graph, opened on first use
 NAMING = False                   # only the running server asks the AI for topic names (never tests or the benchmark)
-FAILS = {}                       # ip, or "u:<username>" -> [misses in a row, locked until]
-ATTEMPTS = deque()               # every password / setup-code attempt in the last minute, all IPs
+FAILS = {}                       # "u:<username>" -> [misses in a row, locked until]
+TRIES = defaultdict(deque)       # ip -> password / setup-code attempts in the last TRY_S seconds, right or wrong
+TRY_S = 900
 PAIR_HITS = defaultdict(deque)   # ip -> pairing requests in the last minute
 CONN_HITS = defaultdict(deque)   # connector token id -> requests in the last hour
 PAIRS = {}  # code -> {poll (sha256), name, kind, ip, created, status, account}. In memory: after a restart a device pairs again.
@@ -1479,6 +1480,9 @@ def migrate_accounts():
     for suffix in ("", "-wal", "-shm"):
         if os.path.exists(old + suffix):
             os.replace(old + suffix, old + ".pre-accounts.bak" + suffix)
+    for log in ("access.log", "access.log.1"):  # the old install-wide connector log belongs to that owner too
+        if os.path.exists(os.path.join(DATA, log)):
+            os.replace(os.path.join(DATA, log), os.path.join(acct_dir(aid), log))
     return aid
 
 
@@ -1640,28 +1644,34 @@ def recent(q, now, window=60):
     return len(q)
 
 
-def wait_for(*keys):
-    """Seconds before another password or setup-code attempt from this IP / for this username; 0 = go ahead (it counts)."""
+def wait_for(ip, user=None):
+    """Seconds before another password or setup-code attempt from this IP / for this username; 0 = go ahead (it counts).
+    An address gets 20 tries in 15 minutes, right or wrong, so signing in to your own account never buys more guesses at
+    someone else's. Misses lock only the username (see failed), so one person's typos don't lock out the rest of the
+    household on that computer. No install-wide limit: it would let anyone block every sign-in."""
     now = time.time()
-    if recent(ATTEMPTS, now) >= 30:
-        return 60
-    wait = max((FAILS[k][1] - now for k in keys if k in FAILS), default=0)
-    if wait > 0:
-        return math.ceil(wait)
-    ATTEMPTS.append(now)
+    if len(TRIES) > 10000:  # ponytail: forget quiet addresses; a real store if this ever faces a botnet
+        for k in [k for k, q in TRIES.items() if not recent(q, now, TRY_S)]:
+            del TRIES[k]
+    q = TRIES[ip]
+    if recent(q, now, TRY_S) >= 20:
+        return max(1, math.ceil(q[0] + TRY_S - now))
+    f = FAILS.get("u:" + user) if user is not None else None
+    if f and f[1] > now:
+        return math.ceil(f[1] - now)
+    q.append(now)
     return 0
 
 
-def failed(*keys):
-    """5 misses in a row lock the IP (or the username) out for 60 s, doubling with each further miss up to 15 minutes."""
-    if len(FAILS) > 10000:  # ponytail: forget keys not locked right now; a real store if this ever faces a botnet
+def failed(user):
+    """5 misses in a row lock that username (from every address) for 60 s, doubling with each further miss up to 15 minutes."""
+    if len(FAILS) > 10000:  # ponytail: forget names not locked right now
         for k in [k for k, f in FAILS.items() if f[1] < time.time()]:
             del FAILS[k]
-    for k in keys:
-        f = FAILS.setdefault(k, [0, 0])
-        f[0] += 1
-        if f[0] >= 5:
-            f[1] = time.time() + min(60 * 2 ** min(f[0] - 5, 10), 900)
+    f = FAILS.setdefault("u:" + user, [0, 0])
+    f[0] += 1
+    if f[0] >= 5:
+        f[1] = time.time() + min(60 * 2 ** min(f[0] - 5, 10), 900)
 
 
 def pair_code():
@@ -2031,8 +2041,6 @@ class Handler(SimpleHTTPRequestHandler):
             if wait:
                 return self.too_many(wait)
             if not self.local() and not hmac.compare_digest(re.sub(r"[^0-9]", "", str(b.get("code") or "")), code.replace("-", "")):
-                with LOCK:
-                    failed(ip)
                 return self.reply(403, {"error": "wrong or missing setup code — the server prints it when it starts"})
             try:
                 f = fields({"username": None, "password": None, **b}, ("username", "display_name", "password"))
@@ -2051,7 +2059,6 @@ class Handler(SimpleHTTPRequestHandler):
                         else:
                             aid = create_account(role="admin", **f)
                         AUTH.execute("DELETE FROM meta WHERE k='setup_code'")
-                        FAILS.pop(ip, None)
                         s, out = new_login(aid), account(aid)
                     except sqlite3.IntegrityError:
                         out = {"error": "that username is taken"}
@@ -2067,7 +2074,7 @@ class Handler(SimpleHTTPRequestHandler):
                     only = AUTH.execute("SELECT username FROM accounts WHERE password IS NOT NULL").fetchall()
                     user = only[0][0] if len(only) == 1 else ""
                 r = AUTH.execute("SELECT id, password FROM accounts WHERE username=?", (user,)).fetchone()
-                wait = 0 if need else wait_for(ip, "u:" + user)
+                wait = 0 if need else wait_for(ip, user)
             if need:
                 return self.reply(409, {"error": "not set up yet", "setup_needed": True})
             if wait:
@@ -2080,9 +2087,8 @@ class Handler(SimpleHTTPRequestHandler):
                 ok = hash_password(pw) and False  # the same work for an unknown name: timing doesn't tell which exist
             with LOCK:
                 if not ok:
-                    failed(ip, "u:" + user)
+                    failed(user)
                 else:
-                    FAILS.pop(ip, None)
                     FAILS.pop("u:" + user, None)
                     s, out = new_login(r[0]), account(r[0])
             if not ok:
@@ -2145,17 +2151,17 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.reply(400, {"error": "the new password needs at least 8 characters"})
             ip = self.ip()
             with LOCK:
-                wait = wait_for(ip, "u:" + who["username"])
+                wait = wait_for(ip, who["username"])
                 stored = AUTH.execute("SELECT password FROM accounts WHERE id=?", (me,)).fetchone()[0]
             if wait:
                 return self.too_many(wait)
             if not (isinstance(b.get("current"), str) and check_password(b["current"], stored)):
                 with LOCK:
-                    failed(ip, "u:" + who["username"])
+                    failed(who["username"])
                 return self.reply(403, {"error": "the current password is wrong"})
             h = hash_password(new)
             with LOCK:
-                FAILS.pop(ip, None)
+                FAILS.pop("u:" + who["username"], None)
                 set_password(me, h, keep=who["login"])
             return self.reply(200, {"ok": True})
         if (method, p) == ("PATCH", "/api/me"):  # your own name and colour
@@ -2225,6 +2231,8 @@ class Handler(SimpleHTTPRequestHandler):
                 code, out = 404, {"error": "no such account"}
             elif cur["role"] == "admin" and admins() == 1 and (method == "DELETE" or f.get("role") == "member"):
                 code, out = 409, {"error": "this is the last admin — make someone else an admin first"}
+            elif method == "PATCH" and "password" in f and aid == me:  # yours needs your current one: /api/auth/password
+                code, out = 403, {"error": "to change your own password, use Settings → Account — it asks for your current one"}
             elif method == "DELETE" and str(qs.get("confirm", "")).lower() != cur["username"]:
                 code, out = 400, {"error": "deleting an account deletes its memory: send ?confirm=<its username>"}
             elif method == "DELETE":
@@ -2234,8 +2242,8 @@ class Handler(SimpleHTTPRequestHandler):
                 try:
                     if f:
                         AUTH.execute(f"UPDATE accounts SET {', '.join(k + '=?' for k in f)} WHERE id=?", (*f.values(), aid))
-                    if "password" in f:  # reset by an admin: that account's browsers are signed out (not this one)
-                        AUTH.execute("DELETE FROM logins WHERE account=? AND hash IS NOT ?", (aid, who["login"]))
+                    if "password" in f:  # reset by an admin: that account's browsers are signed out
+                        AUTH.execute("DELETE FROM logins WHERE account=?", (aid,))
                     code, out = 200, account(aid)
                 except sqlite3.IntegrityError:
                     code, out = 409, {"error": "that username is taken"}
@@ -2513,7 +2521,7 @@ def authcheck():
     state = call("GET", "/api/auth/state", cookie=a)[2]
     assert state["authed"] and state["account"]["username"] == "maya" and not state["setup_needed"], state
     assert state["profiles"] == [{"username": "maya", "display_name": "Maya", "color": COLORS[0]}], state
-    # login: wrong passwords lock the IP out, even for the right one; one account needs no username
+    # login: wrong passwords lock the name out, even for the right one; one account needs no username
     FAILS.clear()
     for _ in range(5):
         assert st("POST", "/api/auth/login", {"password": "wrong password"}) == 401
@@ -2598,7 +2606,7 @@ def authcheck():
     assert poll() == {"status": "expired"} and st("POST", "/api/pair/approve", {"code": pr["code"]}, cookie=a) == 404
     assert st("POST", "/api/pair/start", {"name": "x", "kind": "toaster"}) == 400 and not call("GET", "/api/pair/pending", cookie=a)[2]
     # password change keeps this session and signs out the others; logout-all ends every session, tokens stay
-    ATTEMPTS.clear()
+    TRIES.clear()
     assert st("POST", "/api/auth/password", {"current": "wrong one!", "new": "battery staple"}, cookie=a) == 403
     assert st("POST", "/api/auth/password", {"current": "correct horse", "new": "short"}, cookie=a) == 400
     assert st("POST", "/api/auth/password", {"current": "correct horse", "new": "battery staple"}, cookie=a) == 200
@@ -2617,7 +2625,7 @@ def authcheck():
     assert call("GET", "/health", token=got["token"])[2]["authed"] and check_password("x" * 8, hash_password("x" * 8))
 
     # ---- accounts: an admin adds people; each one's memory is theirs alone ----------------------------------------------
-    ATTEMPTS.clear()
+    TRIES.clear()
     s, _, sam = call("POST", "/api/accounts", {"username": "Sam", "password": "sam's secret", "display_name": "Sam"}, cookie=a)
     assert s == 200 and sam["username"] == "sam" and sam["role"] == "member" and not sam["hidden"] and sam["color"] == COLORS[1], sam
     assert st("POST", "/api/accounts", {"username": "sam", "password": "another one"}, cookie=a) == 409
@@ -2711,6 +2719,8 @@ def authcheck():
     assert st("PATCH", "/api/accounts/999", {"hidden": False}, cookie=a) == 404 and st("GET", "/api/accounts/1", cookie=a) == 404
     assert st("PATCH", f"/api/accounts/{sam['id']}", {"password": "sam new pass"}, cookie=a) == 200
     assert st("GET", "/graph", cookie=b) == 401 and st("GET", "/export", token=sam_full) == 200, "reset: signed out, devices stay"
+    assert st("PATCH", f"/api/accounts/{maya}", {"password": "no current pw"}, cookie=a) == 403, "your own needs the current one"
+    assert st("GET", "/graph", cookie=a) == 200 and st("POST", "/api/auth/login", {"username": "maya", "password": "no current pw"}) == 401
     b = login("sam", "sam new pass")
     # the last admin can't be demoted or deleted
     assert st("PATCH", f"/api/accounts/{maya}", {"role": "member"}, cookie=a) == 409
@@ -2733,13 +2743,30 @@ def authcheck():
     assert new["id"] > kim["id"] and "typewriter" not in txt("GET", "/export", cookie=login("kim", "kim password")), "ids never reused"
     # throttling per username: misses spread over many addresses still lock that name, and only that name
     FAILS.clear()
-    ATTEMPTS.clear()
+    TRIES.clear()
     for i in range(5):
         assert st("POST", "/api/auth/login", {"username": "sam", "password": "nope nope"}, X_Forwarded_For=f"198.51.100.{i}") == 401
     assert st("POST", "/api/auth/login", {"username": "sam", "password": "sam new pass"}, X_Forwarded_For="198.51.100.99") == 429
     assert st("POST", "/api/auth/login", {"username": "maya", "password": pw}, X_Forwarded_For="198.51.100.98") == 200
+    # ...and from the same computer: Sam's typos never lock Maya out of it
+    assert st("POST", "/api/auth/login", {"username": "maya", "password": pw}, X_Forwarded_For="198.51.100.0") == 200
+    # no install-wide limit: 40 misses from 40 addresses don't block anyone else
+    for i in range(40):
+        assert st("POST", "/api/auth/login", {"username": f"nobody{i}", "password": "nope nope"}, X_Forwarded_For=f"203.0.113.{i}") == 401
+    assert st("POST", "/api/auth/login", {"username": "maya", "password": pw}, X_Forwarded_For="198.51.100.97") == 200
+    # per address: 20 tries in 15 minutes, right or wrong, so signing in to your own account never buys more guesses
     FAILS.clear()
-    ATTEMPTS.clear()
+    TRIES.clear()
+    for i in range(20):
+        assert st("POST", "/api/auth/login", {"username": "maya", "password": pw} if i % 4 == 3 else
+                  {"username": f"guess{i}", "password": "nope nope"}, X_Forwarded_For="192.0.2.66") == (200 if i % 4 == 3 else 401)
+    s, h, _ = call("POST", "/api/auth/login", {"username": "maya", "password": pw}, X_Forwarded_For="192.0.2.66")
+    assert s == 429 and 0 < int(h["Retry-After"]) <= TRY_S, s
+    assert st("POST", "/api/auth/login", {"username": "maya", "password": pw}, X_Forwarded_For="192.0.2.67") == 200
+    TRIES["192.0.2.66"] = deque(t - TRY_S for t in TRIES["192.0.2.66"])      # 15 minutes later
+    assert st("POST", "/api/auth/login", {"username": "maya", "password": pw}, X_Forwarded_For="192.0.2.66") == 200
+    FAILS.clear()
+    TRIES.clear()
 
     # ---- migration: a single-owner mindbaton.db, and an old memgraph.db without auth, become the admin's memory ----------
     old = os.path.join(tmp, "owner")
@@ -2752,7 +2779,9 @@ def authcheck():
     g.db.execute("INSERT INTO tokens(id, name, kind, scope, hash, created) VALUES(7, 'Old laptop', 'mcp', 'full', ?, ?)", (sha("mb_legacy"), time.time()))
     g.db.execute("INSERT INTO logins VALUES(?,?,?)", (sha("old-session"), time.time(), time.time() + 86400))
     g.db.close()
+    open(os.path.join(old, "access.log"), "w").write('{"tool": "recall"}\n')
     aid = open_data(old)
+    assert not os.path.exists(os.path.join(old, "access.log")) and "recall" in open(os.path.join(acct_dir(aid), "access.log")).read()
     assert aid and local_account() == aid and account(aid)["username"] == "admin" and account(aid)["role"] == "admin" and not setup_needed()
     assert os.path.exists(os.path.join(old, "mindbaton.db.pre-accounts.bak")) and not os.path.exists(os.path.join(old, "mindbaton.db"))
     mem = sqlite3.connect(os.path.join(acct_dir(aid), "memory.db"))
