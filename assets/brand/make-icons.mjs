@@ -48,16 +48,17 @@ const pngs = [
   ['extension/icon16.png', tiny, 16], ['extension/icon48.png', small, 48], ['extension/icon128.png', appIcon, 128],
   ['site/favicon-32.png', small, 32], ['site/apple-touch-icon.png', square, 180],
 ];
-// Terminal art. A terminal cell is ~1:2, so one cell = two square pixels stacked (▀ with fg = top, bg = bottom),
-// or 2×4 braille dots. Sizes are cell rows; width follows the art's own aspect. Colours are pre-blended (anti-aliased
-// edges): `palette` = white ink over BG for dark terminals, `paletteLight` = BG-coloured ink over white for light ones
-// (same indices). Fully clear pixels stay transparent (null) so the terminal's own background shows.
-const TERM = { mark: [6, 8, 10, 12, 16], lockup: [5, 6, 8, 10, 12] };
+// Terminal art. A terminal cell is ~1:2, so a cell is 2×2 pixels of a raster squashed 2:1 (quadrant glyphs ▘▝▖▗▀▄▌▐▛…
+// with fg + bg colours) or 2×4 braille dots. Sizes are cell rows; width follows the art's own aspect. `palette` is the
+// art in white ink for dark terminals, `paletteLight` the same pixels in BG-coloured ink for light ones (same indices);
+// clear pixels stay transparent (null) so the terminal's own background shows.
+const TERM = { mark: [6, 8, 10, 12, 16], lockup: [6, 8, 10, 12] }; // 5 and 7 rows break letters up
 const geist = readFileSync(join(repo, 'assets/fonts/Geist-Variable.woff2')).toString('base64');
 const lockupSvg = wordmark.replace('<svg', '<svg width="121" height="24"');
 const markSvg = withAttrs('width="24" height="24"');
 const XTERM = [0, 95, 135, 175, 215, 255];
 const hex = c => '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
+const rgb = h => h.match(/\w\w/g).map(v => parseInt(v, 16)), dist = (a, b) => a.reduce((e, v, j) => e + (v - b[j]) ** 2, 0);
 const to256 = ([r, g, b]) => { // nearest xterm-256 colour (6×6×6 cube or grey ramp), plain RGB distance
   const d = c => (c[0] - r) ** 2 + (c[1] - g) ** 2 + (c[2] - b) ** 2;
   let best = 16, bd = Infinity;
@@ -105,38 +106,42 @@ try {
   for (const [name, inner, W] of [['mark', markSvg, 24], ['lockup', lockupSvg, 121]]) {
     const vb = await tight(inner, W, 24);
     art[name] = [];
+    // The art's solid colours: each covering ≥ 1% of the opaque pixels of a big render, near-duplicates merged.
+    const solids = async ink => {
+      const p = await raster(inner, vb, Math.round(vb[2] * 16), Math.round(vb[3] * 16), ink), n = {};
+      let total = 0;
+      for (let i = 3; i < p.length; i += 4) if (p[i] > 250) { const h = hex(p.slice(i - 3, i)); n[h] = (n[h] || 0) + 1; total++; }
+      const out = [];
+      for (const h of Object.keys(n).sort((a, b) => n[b] - n[a]))
+        if (n[h] >= total / 100 && !out.some(c => dist(c, rgb(h)) < 300)) out.push(rgb(h));
+      return out;
+    };
+    const sd = await solids('#fff'), sl = await solids(BG);
     for (const rows of TERM[name]) {
       const cols = Math.round(rows * 2 * vb[2] / vb[3]), W2 = cols * 2;
       const px = await raster(inner, vb, W2, rows * 2), pxL = await raster(inner, vb, W2, rows * 2, BG), keys = [];
-      const blend = (p, i, bg) => [0, 1, 2].map(j => p[i + j] * p[i + 3] / 255 + bg[j] * (1 - p[i + 3] / 255));
-      const mean = (s, f) => [0, 1, 2].map(j => Math.round(s.reduce((a, p) => a + p[f][j], 0) / s.length));
-      const idx = s => { // palette index of the set's mean colour (dark + light variant under one index)
-        const k = hex(mean(s, 'd')) + hex(mean(s, 'l'));
-        return keys.includes(k) ? keys.indexOf(k) : keys.push(k) - 1;
-      };
-      // Each cell is 2×2 pixels drawn with a quadrant glyph (bit 1 top-left, 2 top-right, 4 bottom-left, 8 bottom-right)
-      // in its best two-colour fit. Clear pixels stay the terminal's own background, so a cell with any clear pixel is
-      // one ink colour over nothing; only fully inked cells get a second (bg) colour.
+      // At cell size an anti-aliased edge reads as dirt, not smoothness: a pixel is ink (coverage ≥ ½) or clear, and ink
+      // snaps to the nearest of the art's solid colours (white + accent today; a multi-colour logo keeps its colours).
+      const snap = (S, c) => hex(S.length ? S.reduce((b, s) => dist(s, c) < dist(b, c) ? s : b) : c);
+      const rank = k => sd.findIndex(c => hex(c) === k.slice(0, 7));
+      const idx = k => keys.includes(k) ? keys.indexOf(k) : keys.push(k) - 1; // palette index of a dark+light colour pair
+      // Each cell is 2×2 pixels drawn with a quadrant glyph (bit 1 top-left, 2 top-right, 4 bottom-left, 8 bottom-right).
+      // Clear pixels are the terminal's own background, so a cell with a clear pixel has one ink (its majority colour);
+      // a fully inked cell can show two (fg for the glyph's quadrants, bg for the rest).
       const QUAD = ' ▘▝▀▖▌▞▛▗▚▐▜▄▙▟█', cells = [];
       for (let y = 0; y < rows; y++) {
         const row = [];
         for (let x = 0; x < cols; x++) {
           const q = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([dx, dy]) => {
             const i = ((2 * y + dy) * W2 + 2 * x + dx) * 4;
-            return { a: px[i + 3], d: blend(px, i, [10, 10, 11]), l: blend(pxL, i, [255, 255, 255]) };
+            return px[i + 3] >= 128 ? snap(sd, px.slice(i, i + 3)) + snap(sl, pxL.slice(i, i + 3)) : null;
           });
-          let m = q.reduce((m, p, b) => p.a >= 64 ? m | 1 << b : m, 0);
-          if (m === 15) { // fully inked: the split with the least colour error (15 = one flat colour)
-            const err = s => { const c = mean(s, 'd'); return s.reduce((e, p) => e + p.d.reduce((a, v, j) => a + (v - c[j]) ** 2, 0), 0); };
-            const part = k => [q.filter((_, b) => k >> b & 1), q.filter((_, b) => !(k >> b & 1))];
-            let best = Infinity;
-            for (let k = 1; k <= 15; k++) {
-              const [A, B] = part(k), e = err(A) + (B.length ? err(B) : 0) + (k < 15 ? 800 : 0); // a split must earn its seam
-              if (e < best) best = e, m = k;
-            }
-            const [A, B] = part(m);
-            row.push([QUAD[m], idx(A), B.length ? idx(B) : null]);
-          } else row.push(m ? [QUAD[m], idx(q.filter((_, b) => m >> b & 1)), null] : [' ', null, null]);
+          const m = q.reduce((m, k, b) => k ? m | 1 << b : m, 0), n = {};
+          q.forEach(k => k && (n[k] = (n[k] || 0) + 1));
+          const [A, B] = Object.keys(n).sort((a, b) => n[b] - n[a] || rank(a) - rank(b)); // ties: the art's main colour
+          if (!m) row.push([' ', null, null]);
+          else if (m === 15 && B) { const f = q.reduce((f, k, b) => k === A ? f | 1 << b : f, 0); row.push([QUAD[f], idx(A), idx(B)]); }
+          else row.push([QUAD[m], idx(A), null]);
         }
         cells.push(row);
       }
