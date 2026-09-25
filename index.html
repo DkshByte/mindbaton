@@ -248,6 +248,14 @@ a.btn { text-decoration: none; }
 .agent-h .ok { margin-left: auto; font-size: 12px; color: var(--ok); display: inline-flex; gap: 5px; align-items: center; }
 .agent-h .ok i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
 .agent small { color: var(--fg-3); font-size: 12px; }
+.imp { display: grid; gap: 12px; }
+.imp-ais { flex-wrap: wrap; margin: 0; }
+.imp-ais button img, .imp-ais button .dot { width: 14px; height: 14px; }
+.imp-prompt { margin-top: 8px; } .imp-prompt pre { max-height: 132px; overflow-y: auto; }
+.imp-text { height: auto; min-height: 120px; padding: 10px 12px; margin-top: 8px; font: 12.5px/1.5 var(--mono); resize: vertical; }
+.imp-list { display: grid; gap: 10px; max-height: 360px; overflow-y: auto; padding: 12px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--bg); }
+.imp-list input:disabled + span { color: var(--fg-3); }
+.imp-go { display: flex; gap: 8px; }
 .keyform { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .keyform select, .keyform input { height: 34px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg); color: var(--fg); padding: 0 10px; font: 13px var(--sans); }
 .keyform input { flex: 1; min-width: 220px; font-family: var(--mono); }
@@ -1065,7 +1073,11 @@ async function renderSetup() {
         : `<div class="keybar"><div><b>${st.connector.configured ? "Need the address again?" : "Make your connector address"}</b><p>${st.connector.configured
           ? "It's only shown once. Make a new one, and revoke the old one in Devices." : "It opens only your memory, with read and add rights — no forgetting or exporting."}</p></div>
           <button class="btn primary sm" data-mkkey="connector">Create address</button></div>`)}
+    ${step(IC_IMPORT, false, "Bring your old memory — ChatGPT, Claude, Gemini and more",
+      "Ask each AI for what it remembers about you and paste its answer here. You check every fact before it's saved.",
+      `<div class="imp" id="imp"><p class="set-note">Loading…</p></div>`)}
     </div></div>`;
+  wireImport();
   if ($("#keyform")) $("#keyform").onsubmit = async ev => {
     ev.preventDefault();
     const f = new FormData(ev.target), btn = ev.target.querySelector("button");
@@ -1073,6 +1085,62 @@ async function renderSetup() {
     try { const r = await api("/settings/ai-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.fromEntries(f)) });
       toast(`${r.saved} key saved — the AI is on`); renderSetup(); }
     catch (e) { toast(e.message); btn.disabled = false; btn.textContent = "Test and save"; }
+  };
+}
+
+// ---------- import your old memory (Setup) ----------
+const IC_IMPORT = '<svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg>';
+let impInfo = null, impAI = null, impFacts = null;
+async function wireImport() {
+  const el = $("#imp");
+  if (!el) return;
+  try { impInfo = impInfo || await api("/import"); } catch { el.innerHTML = `<p class="set-note">Can't load the import right now.</p>`; return; }
+  impAI = impAI || impInfo.ais[0].source;
+  const ai = impInfo.ais.find(a => a.source === impAI);
+  el.innerHTML = `<div class="segs imp-ais" role="group" aria-label="Which AI">${impInfo.ais.map(a =>
+      `<button type="button" data-imp-ai="${esc(a.source)}" aria-pressed="${a.source === impAI}">${aiLogo(a.name)}${esc(a.name)}</button>`).join("")}</div>
+    <p class="set-note">${esc(ai.tip)}</p>
+    ${!ai.memory ? "" : `<ol>
+      <li>Copy this prompt and send it to <b>${esc(ai.name)}</b> in a normal chat:
+        <div class="cmd imp-prompt"><pre>${esc(impInfo.prompt)}</pre><button class="btn sm" data-copy="${esc(impInfo.prompt)}">Copy</button></div></li>
+      <li>Paste its whole answer here. If it ends with <b>MORE</b>, reply “continue” and paste that too.
+        <textarea class="inp imp-text" id="imp-text" rows="6" spellcheck="false" aria-label="${esc(ai.name)}'s answer"
+          placeholder="MINDBATON EXPORT v1 · ${esc(ai.name)}&#10;identity | - | saved | I live in …"></textarea></li>
+      <li>Want more? Send the follow-up too: <button class="btn sm" data-copy="${esc(impInfo.more)}">Copy the follow-up prompt</button></li></ol>
+    <div class="imp-go"><button class="btn primary sm" id="imp-preview" type="button">Preview</button></div>
+    <div id="imp-out"></div>`}`;
+  el.onclick = async ev => {
+    const b = ev.target.closest("[data-imp-ai], #imp-preview, #imp-save");
+    if (!b) return;
+    if (b.dataset.impAi) { impAI = b.dataset.impAi; impFacts = null; return wireImport(); }
+    const text = $("#imp-text").value.trim();
+    if (b.id === "imp-preview") {
+      if (!text) { $("#imp-text").focus(); return toast(`Paste ${ai.name}'s answer first`); }
+      b.disabled = true; b.textContent = "Reading…";
+      try {
+        const r = await send("/import", { source: impAI, text, preview: true });
+        impFacts = r.facts;
+        const fresh = r.facts.filter(f => f.new).length;
+        $("#imp-out").innerHTML = !r.count ? `<p class="set-note">No facts found in that answer. Paste the whole reply, including the code block.</p>` : `
+          <p class="set-note"><b>${r.count}</b> facts found · <b>${fresh}</b> new. Untick anything you don't want saved.</p>
+          <div class="imp-list">${r.facts.map((f, i) => `<label class="check"><input type="checkbox" data-i="${i}" ${f.new ? "checked" : "disabled"}>
+            <span>${esc(f.text)}<small>${[f.cat, f.origin === "chat" ? "learned from chats" : f.origin === "saved" ? "saved memory" : "",
+              f.new ? "" : "already in Mindbaton"].filter(Boolean).map(esc).join(" · ")}</small></span></label>`).join("")}</div>
+          ${fresh ? `<div class="imp-go"><button class="btn primary sm" id="imp-save" type="button">Import ${fresh} into Mindbaton</button></div>` : ""}`;
+        $("#imp-out").onchange = () => { const n = el.querySelectorAll(".imp-list input:checked").length, s = $("#imp-save");
+          if (s) { s.disabled = !n; s.textContent = `Import ${n} into Mindbaton`; } };
+      } catch (e) { toast(e.message); }
+      b.disabled = false; b.textContent = "Preview";
+    } else if (b.id === "imp-save" && impFacts) {
+      const facts = [...el.querySelectorAll(".imp-list input:checked")].map(c => impFacts[+c.dataset.i]).map(f => ({ text: f.text, ts: f.ts }));
+      b.disabled = true; b.textContent = "Importing…";
+      try {
+        const r = await send("/import", { source: impAI, facts });
+        toast(`${r.imported} memories imported from ${r.ai}`);
+        impFacts = null; $("#imp-text").value = ""; $("#imp-out").innerHTML = `<p class="set-note">Done: <b>${r.imported}</b> saved from ${esc(r.ai)}${r.skipped ? `, ${r.skipped} already there` : ""}. They're in the topic “${esc(r.chat)}”.</p>`;
+        load(true);
+      } catch (e) { toast(e.message); b.disabled = false; b.textContent = "Try again"; }
+    }
   };
 }
 

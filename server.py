@@ -222,6 +222,9 @@ def parse_export(text):
         parts = [p.strip() for p in line.split("|")]
         if len(parts) >= 2 and parts[0].lower().strip("[]") in CATS:
             cat = parts.pop(0).lower().strip("[]")
+        elif len(parts) >= 4 and parts[2].lower() in ("saved", "chat") and re.fullmatch(r"[\w &/-]{1,30}", parts[0]):
+            parts.pop(0)  # a category the prompt didn't list ("hobby"): the line is still ours
+            cat = "other"
         if len(parts) >= 2 and (parts[0] in ("-", "?", "") or DATE.match(parts[0]) or parts[0].lower() == "unknown"):
             ts = when(parts.pop(0))
         if len(parts) >= 2 and parts[0].lower() in ("saved", "chat"):
@@ -2670,6 +2673,7 @@ Projects include a garden planner app\nThat's everything I have stored.""")
         ("other", None, "I have a dog named Biscuit"), ("other", None, "I am a vegetarian"),
         ("other", None, "Projects include a garden planner app")], got                    # a noun first is no verb
     assert [bool(f["ts"]) for f in got[:7]] == [True, False, True, False, False, True, False], "dates only when real, never guessed"
+    assert parse_export("hobby | - | chat | I am training for a half marathon") == [{"text": "I am training for a half marathon", "ts": None, "cat": "other", "origin": "chat"}]  # an unlisted category
     assert len(parse_export("x | y\n" * 5000 + "".join(f"I own {i} hats\n" for i in range(4000)))) == 3000
     name, facts = note_facts("---\nname: tools\ndescription: How the user likes to work\n---\n- Runs the tests before every push\n"
                              "- The user prefers tabs over spaces\n", "file")
