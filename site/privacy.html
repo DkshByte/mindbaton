@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy · Mindbaton</title>
+<meta name="description" content="Mindbaton's privacy policy: your memory stays on a computer you own. The project collects nothing.">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="legal.css">
+</head>
+<body>
+<header class="bar"><div><a href="./"><img src="favicon.svg" alt="">Mindbaton</a><span class="led" aria-hidden="true"></span></div></header>
+<main>
+<p class="runhead"><span>Owner's manual</span><span>Privacy</span></p>
+<h1>Privacy</h1>
+<p class="lede">Your memory lives on a computer you own. We never see it.</p>
+<p class="date">Last updated: 25 September 2026</p>
+
+<div class="box"><p><b>In short:</b> Mindbaton is software you run yourself. The Mindbaton project runs no servers that
+receive your memories, chats, keys or usage. There are no accounts with us, no analytics, no ads and no tracking.</p></div>
+
+<h2>Who this covers</h2>
+<p>This policy covers the Mindbaton website (this site), the Mindbaton server and web app you install, the terminal
+installer, and the Mindbaton browser extension. Mindbaton is an open-source project published by DkshByte at
+<a href="https://github.com/DkshByte/mindbaton">github.com/DkshByte/mindbaton</a>.</p>
+
+<h2>The website</h2>
+<ul>
+<li>It sets <b>no cookies</b> and uses <b>no analytics, trackers or third-party scripts</b>. Fonts and images are served from this site.</li>
+<li>The site is hosted on GitHub Pages. GitHub may log technical data such as your IP address to run and protect its service; see
+<a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a>.</li>
+</ul>
+
+<h2>Mindbaton on your computer</h2>
+<ul>
+<li>Everything Mindbaton remembers (facts, chats, hand-off packs, topics) is stored in files in <b>your own data folder</b>, on the
+computer where you installed it. It is not sent to us or anyone else.</li>
+<li>Each person on an install has their own account and their own separate memory. Whoever runs the install (its admin) is
+responsible for it and for the people they add.</li>
+<li>Passwords are stored only as salted hashes. Anything that looks like a password, API key or card number is redacted
+before it is saved.</li>
+<li>You can forget any memory, export everything, or delete an account at any time from the app.</li>
+</ul>
+
+<h2>Cookies in the app</h2>
+<p>The web app on your own server uses one cookie, <code>mb_session</code>, to keep you signed in (HttpOnly, SameSite=Lax,
+up to 30 days). It is strictly necessary for signing in, is set by your own server and is never used for tracking. No
+consent banner is needed for it.</p>
+
+<h2>Optional AI features</h2>
+<p>Mindbaton works fully offline. If you choose to add a free <b>Google Gemini</b> or <b>Groq</b> API key, your server sends
+the text needed for summaries, topic names and search answers to that provider, under their terms and privacy policy.
+Remove the key and this stops. Without a key, nothing leaves your computer.</p>
+
+<h2>The browser extension</h2>
+<ul>
+<li>On AI chat sites it supports (such as ChatGPT, Claude and Gemini), it reads what you type and, in Live mode, the
+conversation on the page, and sends it <b>only to the Mindbaton server address you entered</b>, using a key that your
+server issued to your browser.</li>
+<li>It stores your server's address, that key and any messages waiting to be sent in your browser's local extension storage.</li>
+<li>It does not sell or share data, does not use it for advertising or credit decisions, and does not send it to the
+Mindbaton project. You can pause saving at any time, and removing the extension deletes its stored data.</li>
+</ul>
+
+<h2>Coding agents and imports</h2>
+<p>The installer can connect coding agents (such as Claude Code, Codex, Gemini CLI and OpenCode) to your server, and can
+import their memory files or an export you paste from a chatbot. It asks first, shows what it found, and reads only
+those files. Everything goes to your own server.</p>
+
+<h2>Children</h2>
+<p>Mindbaton is not directed at children under 13, and the project collects no data from anyone.</p>
+
+<h2>Your rights</h2>
+<p>Because your data is on your own computer, you control it directly: see, export, correct and delete it in the app.
+The project holds no personal data about you to request. Laws such as India's Digital Personal Data Protection Act and
+the EU's GDPR give you rights over data held about you; the person or organisation running your Mindbaton install is
+the one holding it.</p>
+
+<h2>Changes and contact</h2>
+<p>Changes to this policy are published on this page and in the project's history on GitHub. Questions: open an issue
+on <a href="https://github.com/DkshByte/mindbaton/issues">GitHub</a>. For security problems, follow
+<a href="https://github.com/DkshByte/mindbaton/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+</main>
+<footer><div><a href="./">Mindbaton</a> · <a href="terms.html">Terms</a> · <a href="https://github.com/DkshByte/mindbaton">Source on GitHub</a></div></footer>
+</body>
+</html>

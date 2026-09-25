@@ -122,3 +122,7 @@ Each device gets its own token, which you can see and revoke any time under **Se
 
 Mindbaton is free software under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0). You can use,
 change and share it; if you run a changed version for other people over a network, you must offer them its source too.
+
+ChatGPT, Claude, Gemini and other product names and logos are trademarks of their owners. Mindbaton is an independent
+project, not affiliated with or endorsed by them. [Privacy](https://dkshbyte.github.io/mindbaton/privacy.html) ·
+[Terms](https://dkshbyte.github.io/mindbaton/terms.html)

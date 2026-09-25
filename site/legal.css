@@ -1,0 +1,33 @@
+/* Privacy and terms: a printed page of the owner's manual. Shares the site's fonts and ink. */
+@font-face { font-family: "Archivo"; src: url(fonts/Archivo-Variable.woff2) format("woff2"); font-weight: 100 900; font-stretch: 62% 125%; font-display: swap; }
+@font-face { font-family: "Fragment Mono"; src: url(fonts/FragmentMono-Regular.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+:root { --paper: #F7F8FA; --ink: #0A0A0B; --ink2: #3f3f46; --rule: #d9dce1; --amber: #FFB21A; }
+* { box-sizing: border-box; }
+html { background: #000; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 400 17px/1.6 "Archivo", system-ui, sans-serif; }
+.bar { background: #000; color: #F7F8FA; padding: 14px 16px; }
+.bar div { max-width: 760px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+.bar a { color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 10px; font-weight: 650; font-stretch: 125%;
+  text-transform: uppercase; letter-spacing: .1em; font-size: 13px; }
+.bar img { width: 28px; height: 28px; }
+.bar .led { width: 9px; height: 9px; border-radius: 50%; background: var(--amber); margin-left: auto; }
+main { max-width: 760px; margin: 0 auto; padding: 48px 16px 80px; }
+.runhead { display: flex; justify-content: space-between; border-bottom: 1px solid var(--ink); padding-bottom: 8px; font-weight: 650;
+  font-stretch: 125%; text-transform: uppercase; letter-spacing: .1em; font-size: 12px; color: var(--ink2); }
+h1 { font-weight: 820; font-stretch: 125%; text-transform: uppercase; font-size: clamp(36px, 8vw, 56px); line-height: .95; margin: 32px 0 12px; }
+.lede { font-size: 20px; color: var(--ink2); margin: 0 0 8px; }
+.date { font: 13px "Fragment Mono", monospace; color: var(--ink2); }
+h2 { font-weight: 750; font-stretch: 112%; font-size: 21px; margin: 40px 0 8px; padding-top: 16px; border-top: 1px solid var(--rule); }
+p, li { max-width: 68ch; }
+.runhead, .box p { max-width: none; }
+ul { padding-left: 20px; }
+li + li { margin-top: 6px; }
+code { font: 14px "Fragment Mono", monospace; background: #e9ebee; padding: 1px 5px; border-radius: 4px; }
+a { color: var(--ink); text-underline-offset: 3px; }
+a:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; border-radius: 2px; }
+.box { border: 1.5px solid var(--ink); border-radius: 8px; padding: 14px 18px; margin: 24px 0; }
+.box p { margin: 0; }
+footer { background: #000; color: #b4b4bb; font-size: 13px; padding: 20px 16px; }
+footer div { max-width: 760px; margin: 0 auto; }
+footer a { color: #F7F8FA; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
