@@ -37,7 +37,7 @@ No cloud, no account, no subscription. It's a small Python program and one datab
 
 - **Works with the AIs you already use** — ChatGPT, Claude, Gemini, Perplexity, DeepSeek, Grok, Copilot, Poe, Mistral
   and Google AI Studio in the browser; Claude Code, Codex, Cursor, Windsurf, VS Code, Gemini CLI, Antigravity, Cline,
-  Zed and Claude Desktop over MCP; the Claude and ChatGPT apps as a custom connector.
+  Zed, OpenCode and Claude Desktop over MCP; the Claude and ChatGPT apps as a custom connector.
 - **Whole chats, not just snippets** — which AI and which model answered, and how full the chat's context window is.
 - **Hand-offs** — one click turns a chat into a hand-off pack another AI continues from.
 - **Topics that make sense** — the same subject talked about in two apps becomes one topic.
@@ -47,6 +47,11 @@ No cloud, no account, no subscription. It's a small Python program and one datab
 - **Works offline** — understanding is plain rules, no AI needed. Add a free Gemini or Groq key if you'd like nicer
   hand-off summaries and topic names.
 - **Phone app** — install it on your phone; on Android, share things into it from any app.
+- **Bring your old memory** — paste what ChatGPT, Claude, Gemini and others remember about you (one ready-made prompt),
+  check every fact, import. Coding agents' memory files (Claude Code, Codex, Gemini CLI, OpenCode…) come in when you connect them.
+- **Everyone gets their own memory** — add the people you live with; each account is private and separate.
+- **Install it where it lives** — the installer sets it up on this computer, gives you the command for your server, or
+  finds a Mindbaton already running on your network and links to it.
 - **Yours to take** — export everything as JSON, Neo4j Cypher or GraphML.
 
 <table>
@@ -90,8 +95,8 @@ everything that isn't. More detail, Windows, and what the setup code is for: [do
 
 | You use | How it connects | Guide |
 |---|---|---|
-| ChatGPT, Claude, Gemini, Perplexity, DeepSeek, Grok, Copilot, Poe, Mistral (in the browser) | Browser extension — press `Alt+M` in any chat to bring your memory in | [Extension](docs/connect.md#browser-extension) |
-| Claude Code, Codex, Cursor, Windsurf, VS Code, Gemini CLI, Antigravity | MCP over HTTP, with a device token | [Coding agents](docs/connect.md#coding-agents-and-editors) |
+| ChatGPT, Claude, Gemini, Perplexity, DeepSeek, Grok, Copilot, Poe, Mistral (in the browser) | Browser extension — press `Alt+M` in any chat to bring your memory in. It connects to your Mindbaton with a pairing code | [Extension](docs/connect.md#browser-extension) |
+| Claude Code, Codex, Cursor, Windsurf, VS Code, Gemini CLI, Antigravity, OpenCode | MCP over HTTP, with a device token | [Coding agents](docs/connect.md#coding-agents-and-editors) |
 | Claude Desktop | MCP through the small `mcp_stdio.py` bridge | [Claude Desktop](docs/connect.md#claude-desktop) |
 | Claude and ChatGPT apps (web and phone) | Custom connector — needs an HTTPS address | [Connectors](docs/connect.md#claude-and-chatgpt-apps) |
 | Your phone | Install Mindbaton as an app, then share into it | [Phone](docs/connect.md#phone) |
