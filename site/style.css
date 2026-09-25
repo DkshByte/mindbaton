@@ -287,18 +287,19 @@ h1 .offer { display: block; font-weight: 650; font-stretch: 100%; font-size: cla
 .xpl svg { width: 100%; height: auto; overflow: visible; }
 .xpl .layer { --ink: var(--white); }
 .xpl .top { fill: var(--blue); }
-.xpl .side { fill: var(--seam-2); }
+.xpl .side { fill: #111114; }  /* dark slab edges: the stack reads as black plates, not grey bricks */
 .xpl :is(.top, .side, .holes, .vents, .keyhole, .drum, .blank, .port) { stroke: var(--ink); stroke-width: 1.5; stroke-linejoin: round; transition: stroke .3s; }
 .xpl :is(.vents, .keyhole, .blank) { fill: none; }
 .xpl :is(.holes, .port) { fill: var(--black); }
 .xpl .drum { fill: var(--blue); }
 .xpl .blank { stroke-dasharray: 5 4; }
 .xpl .iso { fill: var(--ink); font: 650 15px var(--sans); font-stretch: 125%; letter-spacing: .06em; text-transform: uppercase; transition: fill .3s; }
-.xpl .callout path { fill: none; stroke: var(--ink); stroke-width: 1; transition: stroke .3s; }
-.xpl .callout circle { fill: var(--ink); transition: fill .3s; }
-.xpl .callout .dot { fill: var(--amber); }
-.xpl .callout text { fill: var(--blue); font: 700 15px var(--sans); text-anchor: middle; dominant-baseline: central; }
-@media (max-width: 699px), (max-height: 699px) { .xpl .callout circle:not(.dot) { r: 19px; } .xpl .callout text { font-size: 24px; } }  /* the drawing is small there */
+.xpl .co { --ink: var(--white); transition: opacity .35s; }
+.xpl .co path { fill: none; stroke: var(--ink); stroke-width: 1.25; stroke-dasharray: 2 4; stroke-linecap: round; transition: stroke .3s; }
+.xpl .co .dot { fill: var(--ink); transition: fill .3s; }
+.xpl .co .disc { fill: var(--ink); transition: fill .3s; }
+.xpl .co text { fill: var(--black); font: 750 16px var(--sans); text-anchor: middle; dominant-baseline: central; }
+@media (max-width: 699px), (max-height: 699px) { .xpl .co .disc { r: 22px; } .xpl .co text { font-size: 24px; } }  /* the drawing is small there */
 .xpl .lf { transition: transform .45s var(--ease); }
 .xpl figcaption { margin-top: 12px; }
 .xpl .end { color: var(--white); transition: opacity .45s; }
@@ -320,7 +321,14 @@ h1 .offer { display: block; font-weight: 650; font-stretch: 100%; font-size: cla
 .parts.pin .xpl { height: 100%; display: flex; flex-direction: column; }
 .parts.pin .xpl svg { flex: 1; min-height: 0; padding-top: 48px; }
 .parts.pin .layer.dim { --ink: var(--silk3); }
-.parts.pin .co.on { --ink: var(--amber); }
+.parts.pin .layer.dim .co { --ink: var(--silk3); }
+.parts.pin .layer.act .top { fill: color-mix(in srgb, var(--amber) 8%, #000); }
+.xpl .top { transition: fill .35s; }
+.xpl .iso { transition: fill .3s, opacity .35s; }
+/* closed box (before it opens, after it closes): just the stack; labels and numbers only while it's apart */
+.parts.pin:is([data-step="0"], [data-step="9"]) .xpl :is(.co, .iso) { opacity: 0; }
+.parts.pin .co.on, .parts.pin .layer.dim .co.on { --ink: var(--amber); }
+.parts.pin .co.on path { stroke-dasharray: none; }
 .parts.pin .above .lf { transform: translateY(-48px); }
 .parts.pin:not([data-step="9"]) .xpl .end { opacity: 0; }
 @media (max-width: 999px), (max-height: 699px) {
@@ -334,6 +342,7 @@ h1 .offer { display: block; font-weight: 650; font-stretch: 100%; font-size: cla
   .parts.pin:not([data-step="0"]):not([data-step="9"]) .parts-text .silk-p { opacity: 0; }
   .parts.pin .partlist li:not(.on), .parts.pin figcaption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .parts.pin .co:not(.on) { opacity: 0; }
+  .parts.pin .blankplate { display: none; }
 }
 @media (max-height: 799px) { .parts.pin .blankplate { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
 

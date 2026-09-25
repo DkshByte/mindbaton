@@ -303,7 +303,7 @@ function partsFrame() {
   const a = n % 9 ? PART_LAYER[n - 1] : -1;  // the plate being shown; the ones above it lift out of the way
   items.forEach((li, i) => li.classList.toggle('on', i + 1 === n));
   cos.forEach(c => c.classList.toggle('on', +c.dataset.n === n));
-  for (const v of L) { v.g.classList.toggle('dim', a >= 0 && v.l !== a); v.g.classList.toggle('above', v.l < a); }
+  for (const v of L) { v.g.classList.toggle('dim', a >= 0 && v.l !== a); v.g.classList.toggle('above', v.l < a); v.g.classList.toggle('act', v.l === a); }
 }
 const partY = n => { const r = parts.getBoundingClientRect(); return r.top + scrollY + (E + SW * (n - .5)) * (r.height - innerHeight); };
 document.addEventListener('click', e => {  // the Parts chips on the sheets land on their step, not on the closed box
