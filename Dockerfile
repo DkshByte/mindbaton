@@ -2,9 +2,8 @@
 #   docker build -t mindbaton . && docker run -d -p 3004:3004 -v mindbaton-data:/data --name mindbaton mindbaton
 FROM python:3.13-slim
 
-# brain.py tells real words from names with the system word list; no pip packages are needed.
-RUN apt-get update && apt-get install -y --no-install-recommends wamerican && rm -rf /var/lib/apt/lists/* \
- && useradd --system --uid 10001 --home-dir /data mindbaton && mkdir -m 700 /data && chown mindbaton /data
+# No pip packages and no system packages: the English word list ships in assets/words.
+RUN useradd --system --uid 10001 --home-dir /data mindbaton && mkdir -m 700 /data && chown mindbaton /data
 
 WORKDIR /app
 COPY . .

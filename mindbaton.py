@@ -2234,7 +2234,7 @@ def make_ui(steps, o, word):
 
 INSTALL_STEPS = ['Welcome', 'Check', 'Account', 'AI keys', 'Your AI tools', 'Connect', 'Memories', 'Start', 'Done']
 CONNECT_STEPS = ['Welcome', 'Pair', 'Your AI tools', 'Connect', 'Memories', 'Done']
-WORDS = ('/usr/share/dict/american-english', '/usr/share/dict/british-english', '/usr/share/dict/words')
+WORDS = (str(HERE / 'assets/words/american-english.gz'), '/usr/share/dict/american-english', '/usr/share/dict/british-english', '/usr/share/dict/words')
 USERNAME = re.compile(r'[a-z0-9._-]{2,32}')
 CLI = 'python3 ~/.mindbaton/mindbaton.py'  # how the person runs this later (install_client puts it there)
 START_HINT = None  # set when setup ends with Mindbaton not running: how to start it

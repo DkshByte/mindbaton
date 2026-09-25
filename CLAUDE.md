@@ -20,7 +20,7 @@ The app's visual system: `DESIGN.md`. How to contribute: `CONTRIBUTING.md`. What
 
 ## How the brain works — keep it this way
 
-- **Rules decide, AI only words things.** Understanding (`brain.py`, rules + the system word list in `/usr/share/dict`)
+- **Rules decide, AI only words things.** Understanding (`brain.py`, rules + the bundled SCOWL word list in `assets/words`)
   and topic assignment (`Graph.cluster`) are deterministic and offline. Improve them with general rules, never
   one-off string matches.
 - **Everything that arrives goes through `brain.scrub()`** (agent harness wrappers, Gemini's hidden "You said",

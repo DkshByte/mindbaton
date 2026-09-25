@@ -21,8 +21,6 @@ jobs:
         run: |
           v=$(python3 -c "import re; print(re.search(r'^VERSION = \"(.+)\"', open('server.py').read(), re.M)[1])")
           [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "Tag $GITHUB_REF_NAME but server.py says $v"; exit 1; }
-      - name: Word list (brain.py reads /usr/share/dict)
-        run: test -f /usr/share/dict/american-english || { sudo apt-get update -qq && sudo apt-get install -y -qq wamerican; }
       - run: python3 server.py --check
       - run: python3 bench.py
 

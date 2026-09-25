@@ -17,9 +17,6 @@ package manager, python.org or Homebrew, or use [Docker](getting-started.md#dock
 
 **"Mindbaton needs Python 3.9 or newer"** — update Python, or use Docker.
 
-**"Mindbaton needs the system word list"** — Mindbaton uses `/usr/share/dict` to tell names from typos. Install it:
-`sudo apt install wamerican` (Debian/Ubuntu), `sudo dnf install words` (Fedora), `sudo pacman -S words` (Arch).
-
 **"Mindbaton didn't answer on port 3004"** — something else may already use that port. Set another one in
 `mindbaton.env` (`MINDBATON_PORT=3010`) and run `./install.sh` again.
 

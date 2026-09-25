@@ -12,8 +12,6 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
-      - name: Word list (brain.py reads /usr/share/dict)
-        run: test -f /usr/share/dict/american-english || { sudo apt-get update -qq && sudo apt-get install -y -qq wamerican; }
       - run: python3 server.py --check
       - run: python3 bench.py
       - name: Lint install.sh

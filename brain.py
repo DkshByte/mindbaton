@@ -12,7 +12,7 @@ The query side (`query`) expands synonyms and categories and works out which rel
 The system dictionary (/usr/share/dict) tells real words from names: "jellyfin" and "razorpay" are not English, so
 they are names even when typed in lower case. Without the file everything still works, just less sharp.
 """
-import calendar, math, re, time
+import calendar, gzip, math, os, re, time
 from collections import Counter
 from datetime import datetime, timedelta
 
@@ -21,10 +21,14 @@ from datetime import datetime, timedelta
 # lexicon
 # ---------------------------------------------------------------------------------------------------------------------
 def _load_dict():
+    """The English word list (SCOWL, assets/words): bundled, so every computer reads words the same way; the system's
+    /usr/share/dict only if the bundled file is missing."""
     words, proper = set(), {}
-    for path in ("/usr/share/dict/american-english", "/usr/share/dict/british-english", "/usr/share/dict/words"):
+    here = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "words", "american-english.gz")
+    for path in (here, "/usr/share/dict/american-english", "/usr/share/dict/british-english", "/usr/share/dict/words"):
         try:
-            with open(path, encoding="utf-8", errors="ignore") as f:
+            with (gzip.open(path, "rt", encoding="utf-8", errors="ignore") if path.endswith(".gz")
+                  else open(path, encoding="utf-8", errors="ignore")) as f:
                 for w in f:
                     w = w.strip()
                     if w and "'" not in w:
