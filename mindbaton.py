@@ -3295,7 +3295,18 @@ def cmd_update(o):
             return r.stdout
         ui.task('Latest version downloaded', pull, lambda out: 'already up to date' if 'Already up to date' in (out or '') else '')
         new = run(['git', '-C', HERE, 'rev-parse', 'HEAD']).stdout.strip()
-        ui.task('Self-test', self_test, lambda _: 'all good')
+        def tested():
+            try:
+                return self_test()
+            except Stop:
+                if old != new:  # never leave an untested version in place for the next restart
+                    back = run(['git', '-C', HERE, 'reset', '--keep', old])  # --keep: local edits stay, or it refuses
+                    raise Stop("The new version failed its self-test, so Mindbaton " + (
+                        "went back to the version you had. Nothing changed. " if not back.returncode else
+                        f"couldn't go back on its own: run git -C {shlex.quote(str(HERE))} reset --keep {old[:12]}. ") +
+                        f"Please open an issue with the details from {tilde(LOG)}.") from None
+                raise
+        ui.task('Self-test', tested, lambda _: 'all good')
         if CFG.exists():
             ui.task('Capture script updated', install_client)
         kind = service_kind()
