@@ -25,7 +25,7 @@ LOBE = {  # AI products: key -> LobeHub file (colour where it exists)
     "microsoft": "microsoft-color", "mistral": "mistral-color", "poe": "poe-color", "cursoride": "cursor", "cursor": "cursor",
     "windsurf": "windsurf", "ollama": "ollama", "huggingface": "huggingface-color", "midjourney": "midjourney",
     "comfyui": "comfyui-color", "stablediffusion": "stability-color", "n8n": "n8n-color", "llama": "meta-color",
-    "qwen": "qwen-color", "gemma": "gemma-color", "langchain": "langchain-color",
+    "qwen": "qwen-color", "gemma": "gemma-color", "langchain": "langchain-color", "opencode": "opencode",
 }
 DEVICON = {"vscode": "vscode/vscode-original", "windows": "windows11/windows11-original", "slack": "slack/slack-original",
            "aws": "amazonwebservices/amazonwebservices-original-wordmark", "azure": "azure/azure-original",
@@ -52,7 +52,7 @@ MODELS = [(r"^(rtx|gtx|quadro)", "nvidia"), (r"^arc ", "intel"), (r"^rx ", "amd"
           (r"^raspberry pi", "raspberrypi"), (r"^pixel", "google"), (r"^galaxy", "samsung"), (r"^oneplus", "oneplus")]
 AI_NAMES = {"ChatGPT": "chatgpt", "Claude": "claude", "Gemini": "gemini", "Perplexity": "perplexity", "DeepSeek": "deepseek",
             "Grok": "grok", "Copilot": "copilot", "Poe": "poe", "Mistral": "mistral", "Claude Code": "claude code", "Codex": "codex",
-            "Cursor": "cursor"}
+            "Cursor": "cursor", "OpenCode": "opencode"}
 
 
 def get(url):

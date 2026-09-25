@@ -268,3 +268,128 @@ addEventListener('hashchange', fromHash);
 fromHash();
 const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { io.unobserve(e.target); play(e.target); } }), { threshold: .6 });
 $$('.mode').forEach(m => io.observe(m));
+
+// ── the two pinned scroll stories: Parts (the exploded view) and New (the horizontal rail) ──
+// Pinned only when motion is welcome and the screen is tall enough; otherwise both stay plain sections (the static
+// drawing; a native snap scroller). Where scroll-driven animations exist (.sda) CSS moves the plates and the rail off the
+// main thread and this loop only sets the steps; elsewhere it writes the same curves itself. Scrubbed, never eased behind.
+const pinMQ = matchMedia('(prefers-reduced-motion: no-preference) and (min-height: 600px)');
+const sda = CSS.supports('animation-timeline: view()');
+const clamp01 = x => Math.min(1, Math.max(0, x)), smooth = t => t * t * (3 - 2 * t), lerp = (a, b, t) => a + (b - a) * t;
+const prog = el => { const r = el.getBoundingClientRect(); return clamp01(-r.top / (r.height - innerHeight)); };
+const pinned = el => el.classList.contains('pin');
+const unstyle = els => els.forEach(e => { e.style.translate = e.style.scale = e.style.opacity = ''; });
+
+// Parts: p 0–.12 lifts the plates apart, .12–.88 steps through parts 1–8 while the stack drifts with parallax, .88–1 closes it.
+const E = .12, R = .88, SW = (R - E) / 8, PART_LAYER = [0, 0, 1, 1, 2, 2, 3, 4];
+const parts = $('#parts'), ptext = $('.parts-text'), isos = $$('.xpl .iso'), items = $$('.partlist li'), cos = $$('.xpl .co');
+const L = $$('.xpl .layer').map(g => ({ g, l: +g.dataset.l, d: +g.dataset.d, co: g.classList.contains('callout') }));
+let amt = {}, lastP = -1, step = -1;
+const stackAt = (p, v) => p < E ? [lerp(v.d, v.a, smooth(p / E)), lerp(1, v.s, smooth(p / E)), lerp(v.o0, v.o, smooth(p / E))]
+  : p > R ? [lerp(-v.a, v.d, smooth((p - R) / (1 - R))), lerp(v.s, 1, smooth((p - R) / (1 - R))), lerp(v.o, v.o0, smooth((p - R) / (1 - R)))]
+  : [lerp(v.a, -v.a, (p - E) / (R - E)), v.s, v.o];  // the same curve as @keyframes stack in style.css
+function partsFrame() {
+  const p = prog(parts);
+  if (p === lastP) return;
+  lastP = p;
+  if (!sda) {
+    for (const v of L) { const [y, s, o] = stackAt(p, v); Object.assign(v.g.style, { translate: `0 ${y}px`, scale: s, opacity: o }); }
+    for (const t of isos) t.style.translate = `0 ${amt.fi * (1 - 2 * clamp01((p - E) / (R - E)))}px`;
+    ptext.style.translate = `0 ${amt.ft * (1 - 2 * p)}px`;
+  }
+  const n = p < E ? 0 : p >= R ? 9 : Math.min(8, Math.floor((p - E) / SW) + 1);  // 0 closed, 1–8 a part, 9 closed again
+  if (n === step) return;
+  step = parts.dataset.step = n;
+  const a = n % 9 ? PART_LAYER[n - 1] : -1;  // the plate being shown; the ones above it lift out of the way
+  items.forEach((li, i) => li.classList.toggle('on', i + 1 === n));
+  cos.forEach(c => c.classList.toggle('on', +c.dataset.n === n));
+  for (const v of L) { v.g.classList.toggle('dim', a >= 0 && v.l !== a); v.g.classList.toggle('above', v.l < a); }
+}
+const partY = n => { const r = parts.getBoundingClientRect(); return r.top + scrollY + (E + SW * (n - .5)) * (r.height - innerHeight); };
+document.addEventListener('click', e => {  // the Parts chips on the sheets land on their step, not on the closed box
+  const a = e.target.closest('a[href^="#part-"]');
+  if (!a || !pinned(parts)) return;
+  e.preventDefault();
+  history.pushState(null, '', a.hash);
+  scrollTo({ top: partY(+a.hash.slice(6)) });
+});
+const toPart = () => { const n = +/^#part-([1-8])$/.exec(location.hash)?.[1]; if (n && pinned(parts)) scrollTo({ top: partY(n), behavior: 'instant' }); };
+
+// New: pinned, 1px of scroll slides the rail 1px (the section is 100svh + that distance tall); the title drifts at .3.
+const news = $('#new'), rail = $('#rail'), cards = $$('.card', rail), title = $('.new-title');
+const rnum = $('#rnum'), rbar = $('#rbar'), [prev, next] = $$('.rbtn');
+let geo = [], edge = 0, railW = 0, maxX = 0, lastX = -1, cur = -1;
+const cardX = k => {  // the rail offset that shows card k: centred when pinned (where the parallax peaks), else at the snap edge
+  const [l, w] = geo[k];
+  return pinned(news) ? Math.max(0, Math.min(maxX, l + w / 2 - railW / 2)) : l + w <= railW ? 0 : l - edge;
+};
+function newsFrame() {
+  const pin = pinned(news), x = pin ? prog(news) * maxX : rail.scrollLeft, m = pin ? maxX : rail.scrollWidth - rail.clientWidth, W = railW;
+  if (x === lastX) return;
+  lastX = x;
+  if (pin && !sda) { rail.style.translate = `${-x}px 0`; title.style.translate = `${-.3 * x}px 0`; }
+  if (!reduce.matches) {
+    const g = innerWidth < 700 ? .5 : 1;  // gentler on phones
+    geo.forEach(([l, w], i) => {
+      const d = g * Math.max(-1, Math.min(1, (l + w / 2 - x - W / 2) / (W / 2)));  // -1 left edge … 0 centre … 1 right edge
+      cards[i].style.setProperty('--dx', d.toFixed(3));
+      cards[i].style.setProperty('--ax', Math.abs(d).toFixed(3));
+    });
+  }
+  rbar.style.scale = `${m > 0 ? clamp01(x / m) : 0} 1`;
+  const i = m > 2 && x >= m - 2 ? cards.length - 1 : geo.reduce((b, _, k) => Math.abs(cardX(k) - x) < Math.abs(cardX(b) - x) ? k : b, 0);
+  if (i === cur) return;
+  cur = i;
+  rnum.textContent = String(i + 1).padStart(2, '0');
+  prev.setAttribute('aria-disabled', i === 0);
+  next.setAttribute('aria-disabled', i === cards.length - 1);
+}
+function goTo(k) {
+  k = Math.max(0, Math.min(cards.length - 1, k));
+  if (pinned(news)) scrollTo({ top: news.getBoundingClientRect().top + scrollY + Math.min(cardX(k), maxX) });
+  else rail.scrollTo({ left: cardX(k), behavior: reduce.matches ? 'auto' : 'smooth' });
+}
+$$('.rbtn').forEach(b => b.addEventListener('click', () => { if (b.getAttribute('aria-disabled') !== 'true') goTo(cur + +b.dataset.go); }));
+rail.addEventListener('focusin', e => { const k = cards.indexOf(e.target); if (k >= 0 && e.target.matches(':focus-visible')) goTo(k); });  // Tab never lands off-screen
+rail.addEventListener('keydown', e => {
+  const k = cards.indexOf(e.target), d = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+  if (k < 0 || !d || !cards[k + d]) return;
+  e.preventDefault();
+  cards[k + d].focus({ preventScroll: true });
+});
+
+function setPin() {
+  const on = pinMQ.matches, small = innerWidth < 700;
+  parts.classList.toggle('pin', on);
+  news.classList.toggle('pin', on && innerWidth >= 900 && innerHeight >= 720);  // a card and the title need that much height
+  for (const s of [parts, news]) s.classList.toggle('sda', sda && pinned(s));
+  // Parts parallax: depth k = 1 for the top plate (nearest: drifts most, full size) … 0 for the computer (smaller, dimmer).
+  amt = small ? { A: 10, S: .02, O: .1, fi: 2, ft: 0 } : { A: 20, S: .04, O: .2, fi: 5, ft: 14 };
+  for (const v of L) {
+    const k = (4 - v.l) / 4, [ox, oy] = v.g.getAttribute('transform').match(/[\d.]+/g);
+    Object.assign(v, { a: amt.A * k * (v.co ? .8 : 1), s: 1 - amt.S * (1 - k), o: v.co ? 1 : 1 - amt.O * (1 - k), o0: v.co ? 0 : 1 });
+    v.g.style.cssText = `--y0:${v.d}px;--ya:${v.a}px;--yb:${-v.a}px;--s:${v.s};--o:${v.o};--o0:${v.o0};transform-origin:${ox}px ${oy}px`;
+  }
+  parts.style.setProperty('--fi', amt.fi + 'px');
+  parts.style.setProperty('--ft', amt.ft + 'px');
+  unstyle([ptext, rail, title, ...isos]);
+  cards.forEach(c => c.removeAttribute('style'));
+  geo = cards.map(c => [c.offsetLeft, c.offsetWidth]);
+  edge = rail.firstElementChild.offsetLeft;
+  railW = rail.clientWidth;
+  const [l, w] = geo.at(-1);
+  maxX = pinned(news) ? Math.max(0, l + w + edge - rail.clientWidth) : 0;
+  news.style.setProperty('--max', maxX);
+  lastP = lastX = step = cur = -1;
+  frame();
+}
+let raf = 0;
+const frame = () => { raf = 0; if (pinned(parts)) partsFrame(); newsFrame(); };
+const queue = () => { raf ||= requestAnimationFrame(frame); };
+addEventListener('scroll', queue, { passive: true });
+rail.addEventListener('scroll', queue, { passive: true });
+addEventListener('resize', setPin);
+pinMQ.addEventListener('change', setPin);
+addEventListener('hashchange', toPart);
+addEventListener('load', toPart);
+setPin();

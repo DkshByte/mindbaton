@@ -4,6 +4,11 @@
   "mono": true,
   "src": "si/1password.svg"
  },
+ "Antigravity": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/antigravity-color.svg"
+ },
  "ChatGPT": {
   "hex": null,
   "mono": true,
@@ -53,6 +58,11 @@
   "hex": null,
   "mono": false,
   "src": "lh/mistral-color.svg"
+ },
+ "OpenCode": {
+  "hex": null,
+  "mono": true,
+  "src": "lh/opencode.svg"
  },
  "Perplexity": {
   "hex": null,
@@ -148,6 +158,11 @@
   "hex": null,
   "mono": true,
   "src": "lh/anthropic.svg"
+ },
+ "antigravity": {
+  "hex": null,
+  "mono": false,
+  "src": "lh/antigravity-color.svg"
  },
  "apache": {
   "hex": "#D22128",
@@ -849,6 +864,11 @@
   "mono": true,
   "src": "lh/openai.svg"
  },
+ "opencode": {
+  "hex": null,
+  "mono": true,
+  "src": "lh/opencode.svg"
+ },
  "opencv": {
   "hex": null,
   "mono": true,
@@ -1353,15 +1373,5 @@
   "hex": "#F15A24",
   "mono": true,
   "src": "si/zsh.svg"
- },
- "Antigravity": {
-  "hex": null,
-  "mono": false,
-  "src": "lh/antigravity-color.svg"
- },
- "antigravity": {
-  "hex": null,
-  "mono": false,
-  "src": "lh/antigravity-color.svg"
  }
 }

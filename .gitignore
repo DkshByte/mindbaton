@@ -21,3 +21,8 @@ node_modules/
 .impeccable/review/
 shots-scratch/
 .DS_Store
+
+# Local only
+/fixed *
+/new branding/
+.impeccable/questions/

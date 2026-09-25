@@ -1,0 +1,24 @@
+I'm moving my memory into Mindbaton, my own private memory app. Export everything you know about me. This is a data export, so do not summarize, group or skip anything.
+
+Include, in this order:
+1. Every memory you have saved about me, word for word as it is stored.
+2. My custom instructions / personalization / "about me" settings, word for word.
+3. Everything else you have learned about me from our past conversations, even if it was never saved as a memory.
+
+Cover: how I want you to respond (tone, format, language, "always"/"never" rules, corrections I made); who I am (name, where I live, languages, family, pets, relationships); work and education; projects and goals; tools, apps, devices, programming languages and services I use; likes, dislikes, habits, diet, health, hobbies; important dates and events; anything else.
+
+Output rules:
+- One fact per line, in exactly this form:  category | date | origin | fact
+  - category: one of instruction, identity, work, project, preference, tool, goal, person, health, event, other
+  - date: when it was saved or said, as YYYY-MM-DD (or YYYY-MM, or YYYY). Write - if you don't know. Never guess a date.
+  - origin: saved (a stored memory or my custom instructions) or chat (learned from our conversations)
+  - fact: one short, standalone sentence in the first person, e.g. "I live in Lisbon" or "Always answer in British English". Keep my own words, names and spellings exactly; only change "the user" or "you" to "I".
+- Split a memory that holds several facts into several lines.
+- Only include what you actually have stored or what I actually told you. Do not invent, guess, or add personality judgements. If unsure, leave it out.
+- Leave out passwords, API keys, and card, bank or ID numbers.
+- Do not search the web.
+- No headings, bullets, numbering, blank lines or comments.
+- Put everything in ONE code block. Its first line is: MINDBATON EXPORT v1 · <your name, e.g. ChatGPT>. Its last line is: END
+- If you run out of space, stop after a complete line and write MORE instead of END. When I say "continue", carry on from the next fact in a new code block, with no header.
+
+After the code block, say in one sentence whether that was everything you have about me.

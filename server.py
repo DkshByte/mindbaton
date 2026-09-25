@@ -12,6 +12,8 @@ derived from them by brain.py, so improving the logic and bumping LOGIC_VERSION 
   DELETE /node/<id>             forget (and stay forgotten across rebuilds)
   POST   /rebuild               re-derive the graph from captures
   POST   /mcp                   Model Context Protocol (streamable HTTP): the same, as tools for Claude, Cursor, …
+  GET    /import                the fixed chatbot export prompt + where each AI keeps its memory (the app's import screen)
+  POST   /import    {"source", "text", "preview"}   <- a chatbot's memory export pasted in the app; an agent's memory file
 Everything but the app's files, /health, login and pairing needs a session cookie or a device token, and reaches only
 that account's memory: <data>/auth.db holds the accounts, sessions and tokens; <data>/accounts/<id>/memory.db each one's graph.
 
@@ -49,7 +51,7 @@ PUBLIC_URL = os.environ.get("MINDBATON_PUBLIC_URL", "").strip().rstrip("/") or N
 VERSION = "0.1.0"
 LOCK = threading.RLock()  # one request touches the databases at a time; threads only keep idle sockets from blocking others
 # ponytail: one lock for every account's graph; per-account locks if many people use one install at once
-LOGIC_VERSION = "14"  # 14: hand-off packs and briefings are marked [mindbaton]
+LOGIC_VERSION = "15"  # 15: "the user always runs / was born" -> "I always run / was born" (14: hand-off packs and briefings are marked [mindbaton])
 PERSONAL = brain.PERSONAL
 AI_SITE = {}  # "ChatGPT" -> "chatgpt.com"
 LINKISH = ("mentions", "about", "context")
@@ -58,13 +60,13 @@ SITES = {  # raw source (web host, local tool, MCP clientInfo.name) -> the AI's 
     "chatgpt.com": "ChatGPT", "chat.openai.com": "ChatGPT", "chat.com": "ChatGPT", "claude.ai": "Claude",
     "gemini.google.com": "Gemini", "aistudio.google.com": "Gemini", "www.perplexity.ai": "Perplexity", "perplexity.ai": "Perplexity",
     "chat.deepseek.com": "DeepSeek", "grok.com": "Grok", "copilot.microsoft.com": "Copilot", "copilot.com": "Copilot",
-    "www.copilot.com": "Copilot", "poe.com": "Poe", "chat.mistral.ai": "Mistral",  # web hosts first: AI_SITE maps back to them
+    "www.copilot.com": "Copilot", "poe.com": "Poe", "chat.mistral.ai": "Mistral", "meta.ai": "Meta AI",  # web hosts first: AI_SITE maps back to them
     "openai-mcp": "ChatGPT", "claude-ai": "Claude", "claude-desktop": "Claude",
     "claude-code": "Claude Code", "codex": "Codex", "codex-mcp-client": "Codex", "codex-cli": "Codex",
     "antigravity": "Antigravity", "antigravity-client": "Antigravity", "antigravity-cli": "Antigravity", "agy": "Antigravity",
     "cursor": "Cursor", "cursor-vscode": "Cursor", "windsurf": "Windsurf", "windsurf-client": "Windsurf",
     "visual-studio-code": "GitHub Copilot", "vscode": "GitHub Copilot", "github-copilot": "GitHub Copilot",
-    "gemini-cli": "Gemini CLI", "gemini-cli-mcp-client": "Gemini CLI", "cline": "Cline", "zed": "Zed",
+    "gemini-cli": "Gemini CLI", "gemini-cli-mcp-client": "Gemini CLI", "cline": "Cline", "zed": "Zed", "opencode": "OpenCode",
     "phone": "Phone", "agent": "agent", "mcp": "agent"}
 for _host, _ai in SITES.items():
     AI_SITE.setdefault(_ai, _host)
@@ -151,9 +153,181 @@ def third_to_first(text):
     t = re.sub(r"\b(?:the user|user)'s\b", "my", text, flags=re.I)
     t = re.sub(r"\b(?:the user|user)\s+is\b", "I am", t, flags=re.I)
     t = re.sub(r"\b(?:the user|user)\s+has\b", "I have", t, flags=re.I)
-    t = re.sub(r"\b(?:the user|user)\s+(\w+?s)\b", lambda m: "I " + base_verb(m[1]), t, flags=re.I)
+    t = re.sub(r"\b(?:the user|user)\s+((?:(?:always|never|often|also|still|sometimes|usually|rarely|just|really|\w+ly)\s+)*)(\w+?s)\b",
+               lambda m: "I " + m[1] + ({"is": "am", "was": "was"}.get(m[2].lower()) or base_verb(m[2])), t, flags=re.I)  # "always runs" -> "always run"
     t = re.sub(r"\bthe user\b", "I", t, flags=re.I)                       # "the user" is a person; "user service" is not
     return re.sub(r"(^|[.!?]\s+)user\b(?=\s+\w+s\b)", r"\1I", t, flags=re.I)
+
+
+# ---- importing what other AIs already remember: a chatbot's answer to the import prompt, pasted into the app, or a
+# coding agent's memory file sent by `mindbaton.py import`. Both end up as ordinary captures (redacted, scrubbed). -------------
+IMPORT_DIR = os.path.join(HERE, "assets", "import")  # prompt.txt, more.txt: the fixed chatbot prompt (the app and the docs use these)
+IMPORT_AIS = [  # (source, keeps a memory?, where it is): the chatbots the app offers, researched Sep 2026
+    ("chatgpt.com", True, "Use a normal chat, not a Temporary one, with Memory and “Reference chat history” on. Run it again "
+                          "inside each Project that has its own memory. If it stops with MORE, type “continue”."),
+    ("claude.ai", True, "Memory must be on. Run it again inside each Project, or paste Settings → Memory → “View and edit your "
+                        "memory” straight in."),
+    ("gemini.google.com", True, "Or open gemini.google.com/saved-info and paste the list. Gems' instructions aren't memories."),
+    ("www.perplexity.ai", True, "Turn on Memory in Settings → Personalize first, and don't use an incognito thread."),
+    ("grok.com", True, "Run it in a normal chat (not a private one) with Memory on."),
+    ("copilot.microsoft.com", True, "Run it in a normal chat with Memory on."),
+    ("meta.ai", True, "Run it in a one-to-one chat: Meta AI doesn't remember group chats."),
+    ("chat.mistral.ai", True, "Run it in a normal chat with Memories on."),
+    ("cursor", True, "Cursor keeps no memories any more: copy your User Rules (Settings → Rules) and paste them here."),
+    ("chat.deepseek.com", False, "DeepSeek keeps no memory between chats, so there's nothing to import."),
+]
+CATS = {"instruction", "identity", "work", "project", "preference", "tool", "goal", "person", "health", "event", "other"}
+DATE = re.compile(r"^\[?(\d{4})(?:-(\d\d))?(?:-(\d\d))?\]?$")
+DATED = re.compile(r"^(?:\[([^\]]{0,40})\]\s*[-–—:]?|(\d{4}(?:-\d\d){0,2})\s*[-–—:])\s+(.+)$")  # "[2025-02-01] - fact" (Anthropic's own export)
+CHATTER = re.compile(r"^(mindbaton export|end$|more$|#|here (is|are)\b|that'?s (all|everything)|this (is|was) (the )?(complete|everything))", re.I)
+
+
+def stamp(v):
+    """A client's timestamp if it's plausible (1990 until now), else None."""
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) and 631152000 <= v <= time.time() + 60 else None
+
+
+def when(d):
+    """'2025-03-14' / '2025-03' / '2025' -> a timestamp; a made-up or garbled date is dropped, never guessed."""
+    m = DATE.match((d or "").strip())
+    if not m:
+        return None
+    y, mo, day = int(m[1]), int(m[2] or 1), int(m[3] or 1)
+    return time.mktime((y, mo, day, 12, 0, 0, 0, 0, -1)) if 1990 <= y <= time.localtime().tm_year and 1 <= mo <= 12 and 1 <= day <= 31 else None
+
+
+def first_person(t, verb_first=False):
+    """'The user prefers X' -> 'I prefer X'. verb_first: a sentence with no subject is about the user (ChatGPT stores
+    "Is a nurse", "Has a dog named Biscuit"); not so in an agent's notes ("Runs on port 3004")."""
+    t = re.sub(r"\b(for|to|with|by|from|ask|tell|asked|told|let|help|remind|show)\s+(?:the\s+)?user\b", r"\1 me", t, flags=re.I)
+    w = t.split(" ", 1)[0].lower()
+    if verb_first and w in brain.VERB and w.endswith("s") and brain.VERB[w] != w:
+        t = "The user " + t[0].lower() + t[1:]
+    t = third_to_first(t).strip()
+    return t[:1].upper() + t[1:]
+
+
+def parse_export(text):
+    """A chatbot's answer to the import prompt -> [{text, ts, cat, origin}]. Tolerant: the prompt's 'category | date |
+    origin | fact' lines, Anthropic's '[date] - fact', or plain lines and bullets (a copied Saved-info page). Fences,
+    the header, END/MORE and chatter are dropped, duplicates kept once."""
+    out, seen = [], set()
+    for raw in (text or "").splitlines():
+        if raw.strip().startswith("```"):
+            continue
+        line = re.sub(r"^\s*(?:[-*•]|\d+[.)])\s+", "", raw).strip().strip("`").strip()
+        if len(line) < 4 or CHATTER.match(line):
+            continue
+        cat = ts = origin = None
+        parts = [p.strip() for p in line.split("|")]
+        if len(parts) >= 2 and parts[0].lower().strip("[]") in CATS:
+            cat = parts.pop(0).lower().strip("[]")
+        if len(parts) >= 2 and (parts[0] in ("-", "?", "") or DATE.match(parts[0]) or parts[0].lower() == "unknown"):
+            ts = when(parts.pop(0))
+        if len(parts) >= 2 and parts[0].lower() in ("saved", "chat"):
+            origin = parts.pop(0).lower()
+        fact = " | ".join(parts)  # a | inside the fact stays
+        if cat is None and (m := DATED.match(fact)):
+            ts, fact = when(m[1] or m[2]), m[3]
+        fact = first_person(re.sub(r"\s+", " ", fact), verb_first=True)
+        if len(fact) < 6 or fact.endswith(":") or fact.lower() in seen:
+            continue
+        seen.add(fact.lower())
+        out.append({"text": fact[:2000], "ts": ts, "cat": cat or "other", "origin": origin})
+    return out[:3000]  # ponytail: a hard cap per paste; paste the rest again
+
+
+def frontmatter(text):
+    m = re.match(r"---\n(.*?)\n---\n?", text, re.S)
+    meta = dict(re.findall(r"^[ \t]*(\w+):[ \t]*\"?(.*?)\"?[ \t]*$", m[1], re.M)) if m else {}   # nested keys too (metadata.type)
+    return meta, text[m.end():] if m else text
+
+
+def statements(body, description=""):
+    """Markdown -> short statements: one per bullet, long paragraphs split into sentence groups of ~350 chars."""
+    body = re.sub(r"\[\[([^\]]+)\]\]", r"\1", body)                        # [[wiki links]]
+    body = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", body)                   # [text](url)
+    body = re.sub(r"(\*\*|__|`)(.+?)\1", r"\2", body)                       # **bold**, `code`
+    out = [description] if len(description) > 12 else []
+    for block in re.split(r"\n\s*\n", body):
+        for item in re.split(r"\n(?=\s*(?:[-*]|\d+\.)\s)", block):
+            item = re.sub(r"^\s*(?:[-*]|\d+\.)\s+", "", item).replace("\n", " ").strip()
+            if len(item) < 12 or item.startswith("#"):
+                continue
+            cur = ""
+            for sent in re.split(r"(?<=[.!?])\s+(?=[A-Z(`])", item):
+                if cur and len(cur) + len(sent) > 350:
+                    out.append(cur)
+                    cur = sent
+                else:
+                    cur = (cur + " " + sent).strip()
+            if cur:
+                out.append(cur)
+    return out
+
+
+def note_facts(text, name):
+    """One memory file (Claude Code's auto memory, CLAUDE.md, GEMINI.md, AGENTS.md…) -> (its name, first-person statements)."""
+    meta, body = frontmatter(text.replace("\r\n", "\n"))
+    name = re.sub(r"\s+", " ", meta.get("name") or name).strip()[:80] or "notes"
+    facts = statements(body, meta.get("description", ""))
+    if meta.get("type") == "project":  # a project note means the owner works on it
+        title = next((w for w in re.findall(r"[A-Za-z][\w-]+", meta.get("description", "") + " " + body[:300])
+                      if w.lower() == name.lower().replace("-", "")), name.replace("-", " "))
+        facts.insert(0, f"I'm working on {title}")
+    return name, [first_person(s)[:2000] for s in facts][:3000]
+
+
+def import_info():
+    """GET /import: what the app's "Import your old memory" screen shows."""
+    read = lambda n: open(os.path.join(IMPORT_DIR, n), encoding="utf-8").read().strip()
+    return {"prompt": read("prompt.txt"), "more": read("more.txt"),
+            "ais": [{"source": s, "name": ai_of(s), "memory": has, "tip": tip} for s, has, tip in IMPORT_AIS]}
+
+
+def import_memory(g, b):
+    """POST /import. {source, text, preview?}: a chatbot's answer to the import prompt (kind "export", the default); or
+    {source, kind: "note", name, text, ts?, file?}: one memory file of a coding agent; or {source, facts: [{text, ts}]}: the rows
+    ticked in a preview. Each source lands in one topic ("Memory from ChatGPT", or the note's name). What an earlier import
+    already brought is skipped, so it is safe to run again. Nothing is stored with preview."""
+    source, kind = str(b.get("source") or "").strip().lower(), b.get("kind") or "export"
+    if source not in SITES or ai_of(source) in ("agent", "Phone"):
+        raise ValueError("source must be an AI Mindbaton knows, e.g. chatgpt.com, claude.ai or claude-code")
+    ai = ai_of(source)
+    meta = {"file": str(b["file"])[:300]} if kind == "note" and b.get("file") else None  # kept with each capture: where it came from
+    if kind == "note":
+        need_text(b)
+        chat, facts = note_facts(b["text"], str(b.get("name") or "notes"))
+        t0 = stamp(b.get("ts")) or time.time()
+        facts = [{"text": t, "ts": t0 + i, "cat": None, "origin": "saved"} for i, t in enumerate(facts)]
+        url = f"memory://{source}/{chat}"
+    elif kind == "export":
+        if isinstance(b.get("facts"), list):
+            facts = [{"text": re.sub(r"\s+", " ", str(f.get("text") or "")).strip()[:2000], "ts": stamp(f.get("ts")),
+                      "cat": f.get("cat") if f.get("cat") in CATS else None, "origin": f.get("origin") if f.get("origin") in ("saved", "chat") else None}
+                     for f in b["facts"][:3000] if isinstance(f, dict)]
+            facts = [f for f in facts if f["text"]]
+        else:
+            need_text(b)
+            facts = parse_export(b["text"])
+        chat, url = f"Memory from {ai}", f"memory://{source}/import"
+    else:
+        raise ValueError('kind must be "export" or "note"')
+    with LOCK:
+        done = {t for (t,) in g.db.execute("SELECT text FROM captures WHERE url=?", (url,))}
+    for f in facts:
+        key = brain.scrub(brain.redact(f["text"]))  # what ingest would store
+        f["new"] = bool(key) and key not in done
+        done.add(key)
+    if b.get("preview"):
+        return {"ai": ai, "chat": chat, "facts": facts, "count": len(facts), "new": sum(f["new"] for f in facts)}
+    n = mems = 0
+    for f in facts:
+        if f["new"]:
+            with LOCK:  # one fact at a time: a big import never holds up everyone else's requests
+                mems += len(g.ingest(f["text"], source, chat, url, f["ts"], meta=meta))
+            n += 1
+    return {"ai": ai, "chat": chat, "imported": n, "skipped": len(facts) - n, "memories": mems}
 
 
 class Graph:
@@ -1311,6 +1485,17 @@ MCP_INSTRUCTIONS = ("Mindbaton is the user's personal long-term memory, fed by t
                     "lasting fact about themselves, save it with `remember`. If they want to continue a chat from another AI, call "
                     "`handoff`. When this conversation grows long or nears your context limit, call `save_conversation` so it can be "
                     "continued elsewhere.")
+MCP_PROMPTS = {  # started by the user (a slash command in Claude Code and Gemini CLI): consent by design
+    "import_memory": ("Copy what this AI already remembers about you (its memory files, saved memories and custom instructions) "
+                      "into Mindbaton. It shows you the list first.",
+                      "I want to copy what you already know about me into Mindbaton, my long-term memory. Go through the memory "
+                      "you have loaded — my CLAUDE.md / GEMINI.md / AGENTS.md files, your saved or automatic memories, my custom "
+                      "instructions — and list every lasting fact about me as one short first-person sentence (\"I prefer tabs "
+                      "over spaces\", \"I work at Kestrel\"), including how I like you to work. Leave out passwords, keys and "
+                      "tokens, code and file paths, one-off tasks, and anything you're unsure of; don't invent anything. Show me "
+                      "the numbered list and ask which ones to keep. Then call Mindbaton's `remember` tool once for each fact I "
+                      "approve, and tell me how many you saved."),
+}
 MCP_SESSIONS = {}  # Mcp-Session-Id -> {account, name, version, seen}: each connected app is credited with its own saves
 
 
@@ -1380,12 +1565,19 @@ def mcp_handle(g, msg, connector=False, client=None):
             client.update(who)
         want = params.get("protocolVersion")
         return ok({"protocolVersion": want if want in MCP_VERSIONS else MCP_VERSIONS[0],
-                   "capabilities": {"tools": {"listChanged": False}},
+                   "capabilities": {"tools": {"listChanged": False}, "prompts": {"listChanged": False}},
                    "serverInfo": {"name": "mindbaton", "version": VERSION}, "instructions": MCP_INSTRUCTIONS})
     if method == "ping":
         return ok({})
     if method == "tools/list":
         return ok({"tools": [t for t in MCP_TOOLS if not (connector and t["name"] in CONNECTOR_DENY)]})
+    if method == "prompts/list":
+        return ok({"prompts": [{"name": n, "description": d} for n, (d, _) in MCP_PROMPTS.items()]})
+    if method == "prompts/get":
+        if params.get("name") not in MCP_PROMPTS:
+            return {"jsonrpc": "2.0", "id": mid, "error": {"code": -32602, "message": f"unknown prompt {params.get('name')!r}"}}
+        d, text = MCP_PROMPTS[params["name"]]
+        return ok({"description": d, "messages": [{"role": "user", "content": {"type": "text", "text": text}}]})
     if method == "tools/call":
         if connector and params.get("name") in CONNECTOR_DENY:
             return ok({"content": [{"type": "text", "text": "Not available through a connector — forget it in the "
@@ -1776,7 +1968,8 @@ def save_ai_key(provider, key):
     return {"saved": var.split("_")[0].title(), "ai": ai.status()}
 
 
-FILES = {"/", "/index.html", "/manifest.webmanifest", "/sw.js", "/share.html", "/mcp_stdio.py"}  # public, served as files
+FILES = {"/", "/index.html", "/manifest.webmanifest", "/sw.js", "/share.html", "/mcp_stdio.py", "/mindbaton.py"}  # public, served as files
+# (mindbaton.py: so another computer can fetch the CLI from its own server and `connect`; it holds no secrets)
 ASSETS = os.path.join(HERE, "assets") + os.sep
 SESSION_ONLY = {"/api/auth/logout", "/api/auth/logout-all", "/api/auth/password", "/api/tokens", "/api/pair/pending",
                 "/api/pair/approve", "/api/pair/deny", "/api/me", "/api/accounts"}  # and /api/tokens/<id>, /api/accounts/<id>:
@@ -1788,6 +1981,18 @@ SECURITY = (("Content-Security-Policy", CSP), ("X-Content-Type-Options", "nosnif
 FORWARDED = ("X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "Forwarded", "X-Real-IP", "CF-Connecting-IP",
              "Tailscale-Funnel-Request")
 SECRET_IN_URL = re.compile(r"(/t/|[?&](?:poll|code)=)[^/\s&]+")
+
+
+def lan_ip():
+    """This machine's address on its network (no packet is sent: connecting a UDP socket only picks the interface)."""
+    import socket
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("10.255.255.255", 1))
+            ip = s.getsockname()[0]
+        return None if ip.startswith("127.") else ip
+    except OSError:
+        return None
 
 
 def need_text(b):
@@ -2065,7 +2270,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not s:
                 return self.reply(409, out or {"error": "already set up — sign in instead"})
             self.set_cookie(s)
-            return self.reply(200, {"ok": True, "account": out})
+            return self.reply(200, {"ok": True, "account": out, "first_login": True})
         if (method, p) == ("POST", "/api/auth/login"):
             ip, user = self.ip(), str(b.get("username") or "").strip().lower()[:64]
             with LOCK:
@@ -2090,11 +2295,12 @@ class Handler(SimpleHTTPRequestHandler):
                     failed(user)
                 else:
                     FAILS.pop("u:" + user, None)
+                    first = account(r[0])["last_login"] is None  # never signed in before: the app plays its entrance once
                     s, out = new_login(r[0]), account(r[0])
             if not ok:
                 return self.reply(401, {"error": "wrong username or password"})
             self.set_cookie(s)
-            return self.reply(200, {"ok": True, "account": out})
+            return self.reply(200, {"ok": True, "account": out, "first_login": first})
         if (method, p) == ("POST", "/api/pair/start"):
             name, kind = b.get("name"), b.get("kind")
             if kind not in KINDS or not isinstance(name, str) or not name.strip():
@@ -2301,7 +2507,7 @@ class Handler(SimpleHTTPRequestHandler):
             "/path": lambda: live.path(self.g, num("from", 0), num("to", 0)),
             "/recall": lambda: self.g.recall(qs.get("q", ""), max(1, min(num("k", 8), 50)), qs.get("all") == "1"),
             "/context": lambda: self.g.context(qs.get("q") or None, max(300, min(num("budget", 1800), 8000))),
-            "/graph": self.g.graph, "/profile": self.g.profile,
+            "/graph": self.g.graph, "/profile": self.g.profile, "/import": import_info,
         }
         if p in routes:
             return self.api(routes[p])
@@ -2343,6 +2549,8 @@ class Handler(SimpleHTTPRequestHandler):
             return m
 
         routes = {"/capture": capture, "/remember": remember, "/rebuild": self.g.rebuild, "/session": session}
+        if p == "/import":  # takes the lock per fact itself
+            return self.api(lambda: import_memory(self.g, b), lock=False)
         if p == "/settings/ai-key":  # install-wide, so admins only; tests the key with the provider: never under the lock
             if self.me["role"] != "admin":
                 return self.reply(403, {"error": "only an admin can set the AI key"})
@@ -2424,6 +2632,9 @@ def selfcheck():
     assert g.recall("where do I live")["memories"][0]["text"] == "I live in Lisbon now"
     assert third_to_first("The user spells it hearthlnk and watches anime") == "I spell it hearthlnk and watches anime"
     assert third_to_first("PulseAudio runs as a user service") == "PulseAudio runs as a user service"
+    assert third_to_first("The user always runs lint and usually prefers tabs") == "I always run lint and usually prefers tabs"
+    assert third_to_first("The user was born in Porto and really is into chess") == "I was born in Porto and really is into chess"
+    assert third_to_first("The user really is into chess") == "I really am into chess"
     assert g.ingest("The user prefers tabs over spaces", "agent")
     assert ("likes", "tabs") in {(r["rel"], r["label"]) for r in g.profile()["relations"]}
     c = g.context("docker")["text"]
@@ -2440,6 +2651,29 @@ def selfcheck():
     out = mcp_handle(g, {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "recall", "arguments": {"query": "where do I live"}}})
     assert "Lisbon" in out["result"]["content"][0]["text"], out
     assert mcp_handle(g, {"jsonrpc": "2.0", "id": 4, "method": "nope"})["error"]["code"] == -32601
+    assert "prompts" in init["result"]["capabilities"]
+    assert [p["name"] for p in mcp_handle(g, {"jsonrpc": "2.0", "id": 5, "method": "prompts/list"})["result"]["prompts"]] == ["import_memory"]
+    got = mcp_handle(g, {"jsonrpc": "2.0", "id": 6, "method": "prompts/get", "params": {"name": "import_memory"}})["result"]
+    assert "`remember`" in got["messages"][0]["content"]["text"] and got["messages"][0]["role"] == "user", got
+    assert mcp_handle(g, {"jsonrpc": "2.0", "id": 7, "method": "prompts/get", "params": {"name": "x"}})["error"]["code"] == -32602
+    # importing what other AIs remember: a chatbot's answer to the import prompt, in any of the shapes they come back in
+    got = parse_export("""Here is everything:\n```plaintext\nMINDBATON EXPORT v1 · ChatGPT
+identity | 2025-03-14 | saved | I live in Lisbon\ninstruction | - | saved | Always answer in British English
+work | 2024 | chat | The user works as a nurse at a children's hospital\ntool | 2025-13-40 | chat | I use Obsidian | and Zotero
+identity | - | saved | I live in Lisbon\npreference | unknown | chat | Prefers metric units\nMORE\n```
+- [2025-02-01] - User prefers tea over coffee\n- [no date] - Has a dog named Biscuit\n3. Is a vegetarian
+Projects include a garden planner app\nThat's everything I have stored.""")
+    assert [(f["cat"], f["origin"], f["text"]) for f in got] == [
+        ("identity", "saved", "I live in Lisbon"), ("instruction", "saved", "Always answer in British English"),
+        ("work", "chat", "I work as a nurse at a children's hospital"), ("tool", "chat", "I use Obsidian | and Zotero"),
+        ("preference", "chat", "I prefer metric units"), ("other", None, "I prefer tea over coffee"),
+        ("other", None, "I have a dog named Biscuit"), ("other", None, "I am a vegetarian"),
+        ("other", None, "Projects include a garden planner app")], got                    # a noun first is no verb
+    assert [bool(f["ts"]) for f in got[:7]] == [True, False, True, False, False, True, False], "dates only when real, never guessed"
+    assert len(parse_export("x | y\n" * 5000 + "".join(f"I own {i} hats\n" for i in range(4000)))) == 3000
+    name, facts = note_facts("---\nname: tools\ndescription: How the user likes to work\n---\n- Runs the tests before every push\n"
+                             "- The user prefers tabs over spaces\n", "file")
+    assert name == "tools" and facts == ["How I like to work", "Runs the tests before every push", "I prefer tabs over spaces"], facts
     n0 = len(g.graph()["nodes"])
     g.ingest("[mindbaton handoff] I'm continuing...\n## About me\n- I live in Paris\n[/mindbaton handoff]", "chatgpt.com")
     assert len(g.graph()["nodes"]) == n0, "a pasted hand-off is not the user speaking"
@@ -2515,7 +2749,7 @@ def authcheck():
     s, h, d = call("POST", "/api/auth/setup", {**first, "code": code.replace("-", "")}, Host="192.0.2.7")
     c = h["Set-Cookie"]
     assert s == 200 and setup_code() is None and all(f in c for f in ("HttpOnly", "SameSite=Lax", "Path=/")) and "Secure" not in c, c
-    assert d["account"]["username"] == "maya" and d["account"]["role"] == "admin" and d["account"]["color"] == COLORS[0], d
+    assert d["account"]["username"] == "maya" and d["account"]["role"] == "admin" and d["account"]["color"] == COLORS[0] and d["first_login"], d
     a, maya = sess(h), d["account"]["id"]
     assert st("POST", "/api/auth/setup", {**first, "username": "someone"}) == 409
     state = call("GET", "/api/auth/state", cookie=a)[2]
@@ -2538,11 +2772,12 @@ def authcheck():
                     ("GET", "/api/accounts"), ("POST", "/capture"), ("POST", "/remember"), ("POST", "/mcp"), ("POST", "/rebuild"),
                     ("POST", "/session"), ("POST", "/settings/ai-key"), ("POST", "/api/tokens"), ("POST", "/api/auth/logout"),
                     ("POST", "/api/auth/password"), ("POST", "/api/pair/approve"), ("POST", "/api/accounts"), ("PATCH", "/api/me"),
-                    ("PATCH", "/api/accounts/1"), ("DELETE", "/api/accounts/1"), ("DELETE", "/node/1"), ("DELETE", "/api/tokens/1")]:
+                    ("PATCH", "/api/accounts/1"), ("DELETE", "/api/accounts/1"), ("DELETE", "/node/1"), ("DELETE", "/api/tokens/1"),
+                    ("GET", "/import"), ("POST", "/import")]:
         body = {} if m in ("POST", "PATCH") else None
         assert st(m, path, body) == 401 and st(m, path, body, token="mb_nope") == 401, path
         assert call(m, path, body)[2] == {"error": "login required"}, path
-    for path in ("/", "/index.html", "/health", "/api/auth/state", "/manifest.webmanifest", "/mcp_stdio.py"):
+    for path in ("/", "/index.html", "/health", "/api/auth/state", "/manifest.webmanifest", "/mcp_stdio.py", "/mindbaton.py"):
         assert st("GET", path) == 200, path
     assert st("GET", "/assets/%2e%2e/server.py") == 401 and st("GET", "/data/auth.db") == 401            # no way out of assets/
     _, h, _ = call("GET", "/")
@@ -2632,7 +2867,10 @@ def authcheck():
     assert st("POST", "/api/accounts", {"username": "x", "password": "another one"}, cookie=a) == 400
     assert st("POST", "/api/accounts", {"username": "kim"}, cookie=a) == 400
     assert st("POST", "/api/auth/login", {"password": "sam's secret"}) == 401          # two people: say who you are
-    b = login("SAM", "sam's secret")
+    s, h, d = call("POST", "/api/auth/login", {"username": "SAM", "password": "sam's secret"})
+    assert s == 200 and d["first_login"], d                                              # a new person's first sign-in: the entrance
+    b = sess(h)
+    assert not call("POST", "/api/auth/login", {"username": "sam", "password": "sam's secret"})[2]["first_login"]  # once only
     assert call("GET", "/api/auth/state", cookie=b)[2]["account"]["username"] == "sam"
     # both use every way in; Quillbeam is Maya's, Brassmoth is Sam's
     for who_c, word in ((a, "Quillbeam"), (b, "Brassmoth")):
@@ -2653,6 +2891,34 @@ def authcheck():
     assert "quillbeam" in txt("GET", f"/session/summary?id={ma}", cookie=a) and "quillbeam" in txt("GET", f"/handoff?session={ma}", cookie=a)
     assert "quillbeam" not in txt("GET", f"/session/summary?id={sa}", cookie=b) + txt("GET", f"/handoff?session={sa}", cookie=b)
     mine = call("GET", "/recall?q=quillbeam", cookie=a)[2]["memories"]
+    # importing old memories: a preview stores nothing; each fact once; secrets redacted; only into the caller's memory
+    info = call("GET", "/import", cookie=a)[2]
+    assert info["prompt"].startswith("I'm moving my memory into Mindbaton") and "continue" in info["prompt"] and info["more"], info
+    assert {"source": "chatgpt.com", "name": "ChatGPT"}.items() <= info["ais"][0].items() and not info["ais"][-1]["memory"]
+    paste = {"source": "chatgpt.com", "text": "MINDBATON EXPORT v1 · ChatGPT\nidentity | - | saved | I sail a boat called Zephyrine\n"
+             "other | 2025-05-01 | chat | My wifi password=hunter2x! is on the fridge\nEND"}
+    n0 = call("GET", "/health", cookie=a)[2]["captures"]
+    pv = call("POST", "/import", {**paste, "preview": True}, cookie=a, Origin=url)[2]
+    assert pv["count"] == 2 and pv["new"] == 2 and pv["ai"] == "ChatGPT" and pv["chat"] == "Memory from ChatGPT", pv
+    assert call("GET", "/health", cookie=a)[2]["captures"] == n0, "a preview stores nothing"
+    assert st("POST", "/import", paste, cookie=a, Origin="https://evil.example") == 403 and st("POST", "/import", paste, token=conn["token"]) == 403
+    assert st("POST", "/import", {**paste, "source": "evil.example"}, cookie=a) == 400 and st("POST", "/import", {"source": "claude.ai"}, cookie=a) == 400
+    got = call("POST", "/import", paste, cookie=a)[2]
+    assert got["imported"] == 2 and got["skipped"] == 0 and got["memories"] >= 1, got
+    assert call("POST", "/import", paste, cookie=a)[2]["imported"] == 0 and not call("POST", "/import", {**paste, "preview": True}, cookie=a)[2]["new"]
+    z = call("GET", "/recall?q=zephyrine", cookie=a)[2]["memories"]
+    assert "Zephyrine" in z[0]["text"] and z[0]["ais"] == ["ChatGPT"], z
+    assert "hunter2x" not in txt("GET", "/export", cookie=a), "secrets never land"
+    ticked = {"source": "claude.ai", "facts": [{"text": "I brew kombucha named Zephyrine Fizz", "ts": time.time() - 86400}, {"text": " "}]}
+    assert call("POST", "/import", ticked, cookie=a)[2]["imported"] == 1
+    note = {"source": "claude-code", "kind": "note", "name": "habits", "ts": time.time() - 3600,
+            "text": "---\nname: habits\n---\n- The user always runs Zephyrine lint before pushing\n"}
+    mcp_tok = call("POST", "/api/tokens", {"name": "Import", "kind": "mcp"}, cookie=a)[2]["token"]
+    assert call("POST", "/import", {**note, "preview": True}, token=mcp_tok)[2]["facts"][0]["text"] == "I always run Zephyrine lint before pushing"
+    assert call("POST", "/import", {**note, "file": "~/.claude/habits.md"}, token=mcp_tok)[2]["imported"] == 1
+    assert call("POST", "/import", note, token=mcp_tok)[2]["skipped"] == 1
+    assert json.loads(graph(maya).db.execute("SELECT extra FROM captures WHERE url='memory://claude-code/habits'").fetchone()[0])["file"] == "~/.claude/habits.md"
+    assert "Claude Code" in {a_ for m in call("GET", "/recall?q=zephyrine%20lint", cookie=a)[2]["memories"] for a_ in m["ais"]}
     assert mine and "Quillbeam" in mine[0]["text"], mine
     sam_full, sam_conn = call("POST", "/api/tokens", {"name": "Sam's laptop", "kind": "mcp"}, cookie=b)[2]["token"], call("POST", "/api/tokens", {"name": "Sam's Claude", "kind": "connector"}, cookie=b)[2]["token"]
     init = {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18", "clientInfo": {"name": "cursor"}}}
@@ -2664,7 +2930,7 @@ def authcheck():
                      "/neighbors?id=5&depth=3", "/path?from=1&to=9", "/export", "/export?format=cypher", "/export?format=graphml",
                      "/ask?q=quillbeam", "/session/summary?id=1", "/status", "/health", "/ai", "/api/auth/state"):
             out = txt("GET", path, **cred)
-            assert "quillbeam" not in out and "dark mode" not in out, (path, out[:300])
+            assert "quillbeam" not in out and "dark mode" not in out and "zephyrine" not in out, (path, out[:300])
         assert "brassmoth" in txt("GET", "/export", **cred) and "brassmoth" in txt("GET", "/recall?q=brassmoth", **cred)
     assert "quillbeam" not in txt("GET", "/api/auth/state", cookie=b)                    # profiles: names only, no memory
     for tool, args in (("context", {}), ("context", {"topic": "quillbeam"}), ("recall", {"query": "quillbeam"}), ("profile", {}),
@@ -2821,7 +3087,11 @@ if __name__ == "__main__":
         selfcheck()
         authcheck()
         sys.exit()
-    link = lambda code: f"{PUBLIC_URL or f'http://{HOST if HOST not in ('0.0.0.0', '::', '') else 'localhost'}:{PORT}'}/?code={code}"
+    def link(code):  # read in a log on another computer, "localhost" would be wrong when it listens on every address
+        host = HOST
+        if HOST in ("0.0.0.0", "::", ""):
+            host = "<this server's address>" if os.path.exists("/.dockerenv") else lan_ip() or "localhost"
+        return f"{PUBLIC_URL or f'http://{host}:{PORT}'}/?code={code}"
     moved = open_data(DATA)
     if moved:
         print("Moved the single-owner database into the first admin account (username: admin)" if not setup_needed() else

@@ -2,7 +2,9 @@
 """Mindbaton on the command line: the installer, the connector for other computers and the capture hooks. Stdlib only.
 
   ./install.sh   (= python3 mindbaton.py install)     set Mindbaton up on this computer
-  python3 mindbaton.py connect <address>             connect this computer's AI tools to a Mindbaton on another one
+  python3 mindbaton.py connect [address]             connect this computer's AI tools to a Mindbaton on another one
+                                                     (no address: find it on this network or Tailscale)
+  python3 mindbaton.py import [--dry-run]            copy what your AI tools already remember (their memory files) in
   python3 mindbaton.py doctor                        check the server, your token and every connected tool; fix problems
   python3 mindbaton.py update                        get the latest version, test it and restart
   python3 mindbaton.py keys                          add, replace or remove the free Gemini / Groq keys
@@ -13,13 +15,14 @@
 
 Without a terminal (CI, Docker) or with --yes nothing is asked; answers come from flags:
   install --yes --username maya --password-file pw.txt [--display-name Maya] [--gemini-key K] [--groq-key K]
-          [--tools claude,codex|all|none] [--port 3004] [--no-service] [--foreground] [--replace-old]
+          [--tools claude,codex|all|none] [--port 3004] [--no-service] [--foreground] [--replace-old] [--import-memories]
 Everything it does is written to ~/.mindbaton/install.log (secrets masked).
 """
 import argparse
 import atexit
 import getpass
 import hashlib
+import ipaddress
 import json
 import os
 import re
@@ -860,6 +863,12 @@ def claude_json():
     return Path(os.environ['CLAUDE_CONFIG_DIR']) / '.claude.json' if os.environ.get('CLAUDE_CONFIG_DIR') else _home() / '.claude.json'
 
 
+def opencode_json():
+    """OpenCode's global config (it reads ~/.config/opencode on every OS); the .jsonc one when that's what exists."""
+    d = _xdg() / 'opencode'
+    return d / 'opencode.jsonc' if (d / 'opencode.jsonc').exists() and not (d / 'opencode.json').exists() else d / 'opencode.json'
+
+
 def codex_toml():
     return Path(os.environ.get('CODEX_HOME') or _home() / '.codex') / 'config.toml'
 
@@ -891,9 +900,10 @@ TOOLS = {
     'claude-desktop': ('Claude Desktop', [], lambda: [claude_desktop_json().parent], 'Claude.app', False),
     'cline': ('Cline', ['cline'], lambda: [_home() / '.cline'], None, False),
     'continue': ('Continue', ['cn'], lambda: [_home() / '.continue'], None, False),
+    'opencode': ('OpenCode', ['opencode'], lambda: [_xdg() / 'opencode'], None, False),
 }
 SITE = {'claude': 'claude-code', 'codex': 'codex', 'gemini': 'gemini-cli', 'antigravity': 'antigravity', 'cursor': 'cursor',
-        'windsurf': 'windsurf', 'vscode': 'vscode'}  # how the server names each source (server.SITES)
+        'windsurf': 'windsurf', 'vscode': 'vscode', 'cline': 'cline', 'opencode': 'opencode'}  # how the server names each source (server.SITES)
 
 
 def detect(t):
@@ -925,7 +935,8 @@ def json_targets(t):
             'claude-desktop': [(claude_desktop_json(), 'mcpServers', 'stdio')],
             'cline': [(Path(os.environ.get('CLINE_DATA_DIR') or h / '.cline/data') / 'settings/cline_mcp_settings.json',
                        'mcpServers', 'cline')],
-            'continue': [(h / '.continue/mcpServers/mindbaton.json', 'mcpServers', 'http')]}.get(t, [])
+            'continue': [(h / '.continue/mcpServers/mindbaton.json', 'mcpServers', 'http')],
+            'opencode': [(opencode_json(), 'mcp', 'opencode')]}.get(t, [])
 
 
 def entry(style, url, token):
@@ -933,6 +944,7 @@ def entry(style, url, token):
     return {'http': {'type': 'http', 'url': url + '/mcp', 'headers': h},
             'url': {'url': url + '/mcp', 'headers': h},
             'agy': {'serverUrl': url + '/mcp', 'headers': h, 'disabled': False},
+            'opencode': {'type': 'remote', 'url': url + '/mcp', 'headers': h, 'enabled': True},
             'cline': {'type': 'streamableHttp', 'url': url + '/mcp', 'headers': h, 'disabled': False, 'autoApprove': []},
             'stdio': {'command': sys.executable, 'args': [str(MB / 'mcp_stdio.py')],  # absolute: GUI apps get no PATH
                       'env': {'MINDBATON_URL': url, 'MINDBATON_TOKEN': token}}}[style]
@@ -1853,7 +1865,7 @@ class TUI:
         self.hidden = 0
         body = self.body_lines(W, avail, items + list(extra), tail)
         if focus is not None:
-            focus += len(body) - len(self.body_lines(W, avail, items))  # focus counts from the end of the static body
+            focus += len(self.body_lines(W, avail, items))  # focus counts from the end of the static body
         if len(body) > avail:  # while working: the newest rows (or the focused field)
             start = len(body) - avail if focus is None else max(0, min(focus - avail // 2, len(body) - avail))
             body = body[start:start + avail]
@@ -2220,8 +2232,8 @@ def make_ui(steps, o, word):
 
 # ── Install ────────────────────────────────────────────────────────────────────────────────────────────────
 
-INSTALL_STEPS = ['Welcome', 'Check', 'Account', 'AI keys', 'Your AI tools', 'Connect', 'Start', 'Done']
-CONNECT_STEPS = ['Welcome', 'Pair', 'Your AI tools', 'Connect', 'Done']
+INSTALL_STEPS = ['Welcome', 'Check', 'Account', 'AI keys', 'Your AI tools', 'Connect', 'Memories', 'Start', 'Done']
+CONNECT_STEPS = ['Welcome', 'Pair', 'Your AI tools', 'Connect', 'Memories', 'Done']
 WORDS = ('/usr/share/dict/american-english', '/usr/share/dict/british-english', '/usr/share/dict/words')
 USERNAME = re.compile(r'[a-z0-9._-]{2,32}')
 CLI = 'python3 ~/.mindbaton/mindbaton.py'  # how the person runs this later (install_client puts it there)
@@ -2628,7 +2640,7 @@ def step_connect(ui, o, chosen, step, url, mint, local_admin=False, revoke=None)
 
 
 def step_start(ui, ctx, o):
-    ui.page(6, 'Keep Mindbaton running', 'Your AIs can only reach it while it runs.')
+    ui.page(7, 'Keep Mindbaton running', 'Your AIs can only reach it while it runs.')
     base = ctx['base']
     kind = None if o.no_service else service_kind()
     if ctx.get('running'):
@@ -2691,9 +2703,9 @@ def step_done(ui, ctx, chosen):
     ctx['urls'] = local, lan
     first = acc['display_name'].split()[0]
     if failed:
-        ui.page(7, f'Almost done, {first}.', 'Mindbaton works, but a few things need another try.')
+        ui.page(8, f'Almost done, {first}.', 'Mindbaton works, but a few things need another try.')
     else:
-        ui.page(7, f"You're all set, {first}.", 'Everything you tell your connected AIs now lands in one private memory.')
+        ui.page(8, f"You're all set, {first}.", 'Everything you tell your connected AIs now lands in one private memory.')
     not_set_up(ui, failed, 'run ./install.sh')
     if failed:
         ui.gap()
@@ -2720,34 +2732,72 @@ def step_done(ui, ctx, chosen):
     works = [t for t in chosen if TOOLS[t][0] not in failed]
     ui.row('info', f'Tell {TOOLS[works[0]][0] if works else "an AI"} “remember I like tea”')
     ui.row('info', 'Browser extension: Settings → Devices')
+    if lan:
+        ui.row('info', 'Your other computers', f'curl -fsSLO {lan}/mindbaton.py && python3 mindbaton.py connect')
     ui.row('info', f'Health check: {CLI} doctor')
     ui.wait('finish')
+
+
+REPO = 'https://github.com/DkshByte/mindbaton'
+
+
+def step_where(ui):
+    """The welcome's question. → 'here', 'link' (it runs elsewhere: connect this computer to it) or None (quit)."""
+    ui.page(0, 'Where should your memory live?', 'On one computer that stays on. Your other devices link to it.')
+    i = ui.choose([('On this computer', 'recommended', 'Sets Mindbaton up here: your account, your AI tools and a link for your phone.'),
+                   ('On my server', '', 'A home server, NAS, Raspberry Pi or VPS. Shows what to run there, then links this computer.'),
+                   ('Link to my Mindbaton', '', "It already runs on another computer: find it and connect this computer's AI tools.")])
+    return server_page(ui) if i == 1 else ('here', None, 'link')[i]
+
+
+def server_page(ui):
+    """"On my server": the commands to run there, then what's next (fits an 80 × 24 terminal). → 'link' or None."""
+    ui.page(0, 'Install Mindbaton on your server', 'On the server (after  ssh you@your-server), run:')
+    ui.link(f'git clone {REPO}', '  ')
+    ui.link('cd mindbaton && ./install.sh', '  ')
+    ui.text('Or with Docker (Synology, Unraid, TrueNAS…), instead of ./install.sh:', 'fg3')
+    ui.link('docker compose up -d', '  ')
+    ui.link('docker compose exec mindbaton python3 server.py --setup-code', '  ')
+    ui.gap()
+    ui.head('Then link each computer that has AI tools')
+    ui.text('This one: choose below. The others:', 'fg2')
+    ui.link('curl -fsSLO http://<server address>:3004/mindbaton.py', '  ')
+    ui.link('python3 mindbaton.py connect', '  ')
+    ui.gap()
+    return ('link', None)[ui.choose([("It's running: link this computer", 'recommended'), ('Quit for now', 'run ./install.sh again any time')])]
 
 
 def cmd_install(o):
     ctx = {'server': None, 'mode': None, 'failed': [], 'urls': (None, None)}
     log('── install', 'from', HERE)
     ui = make_ui(INSTALL_STEPS, o, 'setup')
+    where = 'here'
     try:
         if ui.interactive:
-            ui.welcome('Mindbaton keeps one private memory for all your AIs, on this computer. This sets it up: your '
+            ui.welcome('Mindbaton keeps one private memory for all your AIs, on a computer you own. This sets it up: your '
                        'account, your AI tools and a link for your phone. It takes about two minutes.', 'Start setup')
-        step_check(ui, ctx, o)
-        step_account(ui, ctx, o)
-        step_keys(ui, ctx, o)
-        chosen = step_tools(ui, o, 4)
-        st = http('GET', ctx['base'] + '/status', cookie=ctx['cookie'])[1]
-        local_admin = bool((st.get('server') or {}).get('local_sources')) and setting('MINDBATON_WATCH_CLAUDE', '1') != '0'
-        ctx['failed'] += step_connect(ui, o, chosen, 5, ctx['base'], lambda t: mint_token(ctx, t), local_admin,
-                                      lambda tid: http('DELETE', f"{ctx['base']}/api/tokens/{tid}", cookie=ctx['cookie']))
-        step_start(ui, ctx, o)
-        step_done(ui, ctx, chosen)
+            where = step_where(ui)
+        if where == 'here':
+            step_check(ui, ctx, o)
+            step_account(ui, ctx, o)
+            step_keys(ui, ctx, o)
+            chosen = step_tools(ui, o, 4)
+            st = http('GET', ctx['base'] + '/status', cookie=ctx['cookie'])[1]
+            local_admin = bool((st.get('server') or {}).get('local_sources')) and setting('MINDBATON_WATCH_CLAUDE', '1') != '0'
+            ctx['failed'] += step_connect(ui, o, chosen, 5, ctx['base'], lambda t: mint_token(ctx, t), local_admin,
+                                          lambda tid: http('DELETE', f"{ctx['base']}/api/tokens/{tid}", cookie=ctx['cookie']))
+            step_memories(ui, o, [t for t in chosen if TOOLS[t][0] not in ctx['failed']], 6, ctx['base'], load_cfg().get('token'))
+            step_start(ui, ctx, o)
+            step_done(ui, ctx, chosen)
     finally:
         ui.close()
         if ctx.get('cookie'):  # the installer's own sign-in isn't left open for 30 days
             http('POST', ctx['base'] + '/api/auth/logout', {}, cookie=ctx['cookie'])
         if ctx.get('server') and ctx.get('mode') != 'existing':
             stop_server(ctx['server'])
+    if where != 'here':
+        log('install: linking instead' if where else 'install: quit at the start')
+        return cmd_connect(o, welcome=False) if where == 'link' else print(f'\n  Run ./install.sh again any time.\n')
     local, lan = ctx['urls']
     print(f"\n  Mindbaton  {local}" + (f"\n  Phone      {lan}" if lan else '') +
           (f"\n  Start it   {START_HINT}" if ctx['mode'] == 'manual' else '') +
@@ -2787,14 +2837,102 @@ def normalize(url):
     return f'{u.scheme}://{u.netloc}{u.path.rstrip("/")}'
 
 
-def cmd_connect(o):
-    url = normalize(o.url)
-    log('── connect', url)
+NOPROXY = urllib.request.build_opener(urllib.request.ProxyHandler({}))  # a look around the network never goes through a proxy
+
+
+def probe(base):
+    """One unauthenticated GET /health, straight to it: its answer if it is a Mindbaton, else None. Nothing else is sent."""
+    u = urlparse(base)
+    try:
+        socket.create_connection((u.hostname, u.port or (443 if u.scheme == 'https' else 80)), 0.3).close()
+        with NOPROXY.open(urllib.request.Request(base + '/health', headers={'User-Agent': 'mindbaton-cli/1.0'}), timeout=1.5) as r:
+            d = json.loads(r.read(4096))
+    except (OSError, ValueError):
+        return None
+    return d if isinstance(d, dict) and d.get('name') == 'mindbaton' else None
+
+
+def sweep(ip):
+    """The other addresses of this computer's /24, only when it is on a private network (a home or office LAN): never the
+    internet, never Tailscale's range (its peers come from Tailscale itself)."""
+    # ponytail: assumes a /24 (the stdlib can't read the netmask everywhere); covers home routers, type the address otherwise
+    try:
+        a = ipaddress.ip_address(ip or '')
+    except ValueError:
+        return []
+    if a.version != 4 or not a.is_private or a.is_loopback or a.is_link_local:
+        return []
+    return [str(h) for h in ipaddress.ip_network(f'{ip}/24', strict=False).hosts() if str(h) != ip]
+
+
+def discover(port, scan=True):
+    """[(base URL, its /health)] of the Mindbatons nearby: the saved address, this computer, then (scan) Tailscale peers and
+    the local network, one port each, 64 at a time, a few seconds in all."""
+    from concurrent.futures import ThreadPoolExecutor
+    urls = [load_cfg().get('url'), f'http://127.0.0.1:{port}']
+    if scan:
+        ts = run(['tailscale', 'status', '--json'], 4) if shutil.which('tailscale') else None
+        try:
+            peers = [x for x in (json.loads(ts.stdout).get('Peer') or {}).values() if x.get('Online')][:50] if ts and not ts.returncode else []
+        except (ValueError, AttributeError):
+            peers = []
+        urls += [f"http://{(x.get('DNSName') or '').rstrip('.') or (x.get('TailscaleIPs') or [''])[0]}:{port}" for x in peers]
+        urls += [f'http://{ip}:{port}' for ip in sweep(lan_ip())]
+    urls = [u for u in dict.fromkeys(urls) if u and urlparse(u).hostname]
+    with ThreadPoolExecutor(64) as ex:
+        return [(u, h) for u, h in zip(urls, ex.map(probe, urls)) if h]
+
+
+def check_address(v, _):
+    try:
+        url = normalize(v)
+    except Stop:
+        return 'Type an address like 192.168.1.20:3004 or https://mindbaton.example.com'
+    return None if health(url, 4) else f"No Mindbaton answers at {urlparse(url).netloc}. Check the address, and that it's running."
+
+
+def pick_server(ui, o):
+    """Link, step one: find the Mindbatons nearby, or take a typed address. → the chosen one's base URL."""
+    port = int(setting('MINDBATON_PORT', 3004))
+    scan = not getattr(o, 'no_scan', False)
+    while True:
+        ui.page(1, 'Find your Mindbaton', f'Looking on this computer, on Tailscale and on your network: it asks nearby devices on port '
+                                          f'{port} only "are you Mindbaton?", and sends nothing else.' if scan else '')
+        found = ui.task('Looking for Mindbaton', lambda: discover(port, scan), lambda f: f'{len(f)} found' if f else 'none found')
+        ui.gap()
+        if found:
+            ui.text('Pick yours. Only link to a Mindbaton you know: you will approve this computer from its app.', 'fg2')
+        opts = [(urlparse(u).netloc, 'not set up yet' if h.get('setup_needed') else 'ready', f"Mindbaton {h.get('version', '')} at {u}")
+                for u, h in found] + [('Type its address', ''), ('Look again', '')]
+        i = ui.choose(opts)
+        if i == len(found) + 1:
+            continue
+        if i < len(found):
+            url, h = found[i]
+        else:
+            ui.clear()
+            v = ui.form([field('Address', '', check=check_address, placeholder='e.g. 192.168.1.20:3004')], cancel=True, submit='use it')
+            if not v:
+                continue
+            url = normalize(v['Address'])
+            h = health(url) or {}
+        while h.get('setup_needed'):  # nobody could approve the pairing yet
+            ui.page(1, 'Create your account there first', f'This Mindbaton is new. Open it in a browser, create your account '
+                                                          f'with the setup code from its log, then come back.')
+            ui.link(url, '')
+            ui.wait('check again')
+            h = health(url) or {}
+        return url
+
+
+def cmd_connect(o, welcome=True):
+    url = normalize(o.url) if getattr(o, 'url', None) else None
+    log('── connect', url or '(find it)')
     global ART
     if not ART.exists():  # only the script on this computer: the server hands out the logo art too
         mine = MB / 'assets/brand/terminal-logo.json'
         try:
-            if not mine.exists():
+            if not mine.exists() and url:  # no address yet: the text logo until it is known
                 req = urllib.request.Request(url + '/assets/brand/terminal-logo.json', headers={'User-Agent': 'mindbaton-cli/1.0'})
                 with urllib.request.urlopen(req, timeout=4) as r:
                     write_file(mine, json.dumps(json.load(r)))
@@ -2804,9 +2942,14 @@ def cmd_connect(o):
     ui = make_ui(CONNECT_STEPS, o, 'connect')
     failed = []
     try:
-        if ui.interactive:
-            ui.welcome(f'Connect the AI tools on this computer to your Mindbaton at {urlparse(url).netloc}. '
+        if not url and not ui.interactive:
+            raise Stop('Give the address of your Mindbaton, for example: python3 mindbaton.py connect http://192.168.1.20:3004 '
+                       '(in a terminal, leave it out and Mindbaton is found for you).')
+        if ui.interactive and welcome:
+            ui.welcome(f'Connect the AI tools on this computer to your Mindbaton{" at " + urlparse(url).netloc if url else ""}. '
                        'You approve it once from the app, and each tool can then read and save memories.', 'Start')
+        url = url or pick_server(ui, o)
+        log('connect to', url)
         ui.page(1, 'Pair this computer', 'Approve it from Mindbaton on your phone or in any browser where you are signed in.')
         ui.task(f'Mindbaton found at {urlparse(url).netloc}', lambda: health(url, 6) or (_ for _ in ()).throw(RuntimeError(
             "no answer. Check the address, and that this computer is on the same network (or Tailscale)")))
@@ -2845,12 +2988,14 @@ def cmd_connect(o):
         ui.pause(1)
         chosen = step_tools(ui, o, 2)
         failed = step_connect(ui, o, chosen, 3, url, lambda t: (p['id'], p['token']))
+        step_memories(ui, o, [t for t in chosen if TOOLS[t][0] not in failed], 4, url, p['token'])
         works = [TOOLS[t][0] for t in chosen if TOOLS[t][0] not in failed]
-        ui.page(4, 'Almost connected' if failed else 'This computer is connected',
+        ui.page(5, 'Almost connected' if failed else 'This computer is connected',
                 f'Its AI tools now share the memory at {urlparse(url).netloc}.' if works else '')
         if works:
             ui.row('ok', ', '.join(works))
         not_set_up(ui, failed, f'run {CLI} connect {url}')
+        ui.row('info', 'Your other computers', f'curl -fsSLO {url}/mindbaton.py && python3 mindbaton.py connect')
         ui.gap()
         ui.row('info', f'Check on it any time: {CLI} doctor')
         ui.wait('finish')
@@ -2858,6 +3003,174 @@ def cmd_connect(o):
         ui.close()
     if failed:
         sys.exit(2)
+
+
+# ── Your AI tools' own memories ────────────────────────────────────────────────────────────────────────────
+# What each tool keeps about you on disk (researched Sep 2026): notes, saved facts and your own instruction files, at user
+# level only. Never chats, transcripts, credentials or settings files. Cursor's memories went away in 2.1 and its database
+# holds your login, so it is never read (the app's "Import your old memory" takes its pasted User Rules instead).
+
+MEMORY_FILES = {
+    'claude': lambda: [(claude_dir(), 'CLAUDE.md'), (claude_dir(), 'rules/*.md'), (claude_dir(), 'projects/*/memory/*.md')],
+    'codex': lambda: [(codex_toml().parent, n) for n in ('AGENTS.md', 'memories/memory_summary.md', 'memories/MEMORY.md')],
+    'gemini': lambda: [(_home() / '.gemini', 'GEMINI.md')],  # what save_memory writes, plus your own instructions
+    'antigravity': lambda: [(_home() / '.gemini', 'GEMINI.md')],  # the same file: read once
+    'windsurf': lambda: [(_home() / '.codeium/windsurf/memories', '*')],
+    'vscode': lambda: [(copilot_home(), 'copilot-instructions.md')],
+    'cline': lambda: [(_home() / 'Documents/Cline/Rules', '*.md'), (_home() / '.cline/rules', '*.md')],
+    # OpenCode falls back to ~/.claude/CLAUDE.md when it has no AGENTS.md; read once if Claude Code is picked too
+    'opencode': lambda: [(_xdg() / 'opencode', 'AGENTS.md')] + ([] if (_xdg() / 'opencode/AGENTS.md').exists() else [(claude_dir(), 'CLAUDE.md')]),
+}
+SECRET_LINE = re.compile(r'\b(mb_|gsk_|AIza|sk-|gh[pousr]_|xox[abprs]-|AKIA)[\w\-]{6,}|Bearer\s+\S|-----BEGIN|'
+                         r'\b(password|passwd|passphrase|secret|api[ _-]?key|token|pin)s?\b\s*[:=]', re.I)
+
+
+def memory_files(tools):
+    """{tool: [(path, text, mtime)]}, read with care: regular files inside the tool's own folder (a symlink out of it is
+    skipped), UTF-8 text only, at most 256 KB each and 2 MB per tool. Lines that look like a password or key are dropped
+    here, before anything leaves this computer (the server redacts again)."""
+    out, seen = {}, set()
+    for t in tools:
+        files, total = [], 0
+        for root, pattern in MEMORY_FILES.get(t, lambda: [])():
+            top = os.path.realpath(root)
+            for p in sorted(Path(root).glob(pattern)):
+                real = os.path.realpath(p)
+                if real in seen or not real.startswith(top + os.sep) or not os.path.isfile(real) or \
+                        (t == 'claude' and p.name == 'MEMORY.md'):  # Claude Code's index of its other notes
+                    continue
+                try:
+                    size = os.path.getsize(real)
+                    text = Path(real).read_bytes().decode('utf-8') if size <= 256_000 and total + size <= 2_000_000 else ''
+                except (OSError, UnicodeDecodeError):
+                    text = ''
+                if re.search(r'[\x00-\x08\x0e-\x1f]', text):  # binary (older Windsurf builds wrote protobuf)
+                    continue
+                seen.add(real)
+                total += size
+                text = '\n'.join(line for line in text.splitlines() if not SECRET_LINE.search(line)).strip()
+                if text:
+                    files.append((p, text, os.path.getmtime(real)))
+        if files:
+            out[t] = files
+    return out
+
+
+def about(text):
+    """About how many memories a file makes (the server's rule: one per bullet or paragraph, headings skipped)."""
+    body = re.sub(r'\A---\n.*?\n---\n', '', text, flags=re.S)
+    return sum(1 for x in re.split(r'\n\s*\n|\n(?=\s*(?:[-*]|\d+\.)\s)', body) if len(x.strip()) >= 12 and not x.lstrip().startswith('#'))
+
+
+def plural(n, word):
+    return f"{n} {word}{'' if n == 1 else 's'}"
+
+
+def fingerprint(text):
+    return hashlib.sha1(text.encode()).hexdigest()
+
+
+def send_memories(url, token, found):
+    """Each file to the server's /import (it makes the statements, redacts and skips what it has). → {tool: [imported, skipped]}"""
+    cfg, out = load_cfg(), {}
+    for t, files in found.items():
+        for p, text, mtime in files:
+            s, d, _ = http('POST', url + '/import', {'source': SITE[t], 'kind': 'note', 'name': p.name if p.stem.isupper() else p.stem,
+                                                     'text': text, 'ts': mtime, 'file': tilde(p)}, token=token, timeout=180)
+            if s == 404:
+                raise RuntimeError('this Mindbaton is too old to import memories: update it first (mindbaton.py update, on its computer)')
+            if s != 200:
+                raise RuntimeError(err_text(d, f"Mindbaton didn't take {tilde(p)} ({s or 'no answer'})"))
+            n = out.setdefault(t, [0, 0])
+            n[0], n[1] = n[0] + d['imported'], n[1] + d['skipped']
+            cfg.setdefault('imported', {}).setdefault(url, {})[str(p)] = fingerprint(text)
+            save_cfg(cfg)  # after each file: an interrupted import picks up where it stopped
+    return out
+
+
+def show_memories(ui, found, step):
+    """"Show me first": exactly what would leave this computer, file by file."""
+    ui.page(step, 'What would be copied', 'Exactly this is sent to your Mindbaton, which turns it into memories.')
+    for t, files in found.items():
+        for p, text, _ in files:
+            ui.head(f'{TOOLS[t][0]} · {tilde(p)}')
+            for line in text.splitlines():
+                if line.strip():
+                    ui.text(line, 'fg2')
+            ui.gap()
+    ui.wait('go back')
+
+
+def step_memories(ui, o, tools, step, url, token, asked=False):
+    """"Your old memories": what the tools just connected already remember, copied into Mindbaton only if the person says
+    so. Nothing is sent before that. The default is Not now; unattended it needs --import-memories (asked: `import` was run
+    on purpose). Files imported before, unchanged, aren't offered again."""
+    done = (load_cfg().get('imported') or {}).get(url) or {}
+    found = {t: [f for f in files if done.get(str(f[0])) != fingerprint(f[1])] for t, files in memory_files(tools).items()}
+    found = {t: files for t, files in found.items() if files}
+    if not found:
+        if asked:
+            ui.page(step, 'Your old memories')
+            ui.row('ok', 'Nothing new to import', 'your AI tools keep no memory files here, or they are in Mindbaton already')
+            ui.wait('close')
+        return
+    if not url or not token:
+        return ui.row('warn', "Your AI tools' memories weren't imported", f'this computer has no Mindbaton token: {CLI} doctor')
+    dry = getattr(o, 'dry_run', False)
+    while True:
+        ui.page(step, 'Your old memories', 'Your AI tools already remember things about you. Copy them into Mindbaton, so '
+                                           'every AI knows them?')
+        for t, files in found.items():
+            roots = sorted({tilde(p.parent) for p, _, _ in files})
+            ui.row('info', TOOLS[t][0], f"about {plural(sum(about(x) for _, x, _ in files), 'fact')} in {plural(len(files), 'file')}"
+                                        f" · {', '.join(roots[:2])}{' …' if len(roots) > 2 else ''}")
+        ui.gap()
+        ui.text('Only their notes, saved facts and your instruction files are read: never your chats, keys or settings. '
+                'Lines that look like a password or key are left out.', 'fg3')
+        if dry:
+            return show_memories(ui, found, step)
+        ui.gap()
+        if ui.interactive:
+            i = ui.choose([('Import them', 'into your Mindbaton'), ('Show me first', 'nothing is sent'),
+                           ('Not now', f'later: {CLI} import')], default=2)
+        else:
+            i = 0 if asked or getattr(o, 'import_memories', False) else 2
+        if i != 1:
+            break
+        show_memories(ui, found, step)
+    ui.clear()
+    if i == 2:
+        ui.row('info', 'Not imported', f'any time: {CLI} import')
+        return ui.pause(1) if ui.interactive else None
+    try:
+        got = ui.task('Copying them into Mindbaton', lambda: send_memories(url, token, found),
+                      lambda r: f"{plural(sum(n[0] for n in r.values()), 'new fact')}")
+    except Exception as e:  # never blocks setup: the row already says why
+        log('import failed:', repr(e))
+        return ui.wait()
+    ui.retitle('Your old memories', 'Copied. Every AI connected to Mindbaton can use them now.')
+    for t, (n, skipped) in got.items():
+        ui.row('ok', TOOLS[t][0], f"{plural(n, 'fact')} imported" + (f' · {skipped} it already had' if skipped else ''))
+    ui.wait('close' if asked else 'continue')
+
+
+def cmd_import(o):
+    """`mindbaton.py import`: the same offer, any time, for the tools on this computer (--tools to pick)."""
+    cfg = load_cfg()
+    if not cfg.get('url') or not cfg.get('token'):
+        raise Stop("This computer isn't linked to a Mindbaton yet: run ./install.sh here, or python3 mindbaton.py connect.")
+    tools = [t.strip() for t in o.tools.split(',')] if o.tools else [t for t in MEMORY_FILES if detect(t)]
+    for t in tools:
+        if t not in MEMORY_FILES:
+            raise Stop(f"--tools: {t!r} keeps no memory files Mindbaton reads. These do: {', '.join(MEMORY_FILES)}.")
+    ui = make_ui(None, o, 'import')
+    try:
+        if not ui.interactive and not (o.yes or o.dry_run):
+            raise Stop('This copies your AI tools\' memories into Mindbaton. Run it in a terminal to be asked, or pass --yes '
+                       '(or --dry-run to see what would be sent).')
+        step_memories(ui, o, tools, None, cfg['url'], cfg['token'], asked=True)
+    finally:
+        ui.close()
 
 
 # ── Doctor ─────────────────────────────────────────────────────────────────────────────────────────────────
@@ -3186,7 +3499,8 @@ def selfcheck():
         ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b']
 
     home = Path(tempfile.mkdtemp(prefix='mindbaton-check-'))
-    saved = {k: os.environ.get(k) for k in ('HOME', 'PATH', 'XDG_CONFIG_HOME', 'CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'COPILOT_HOME', 'CLINE_DATA_DIR')}
+    saved = {k: os.environ.get(k) for k in ('HOME', 'PATH', 'XDG_CONFIG_HOME', 'CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'COPILOT_HOME', 'CLINE_DATA_DIR',
+                                            'http_proxy')}
     old_globals = MB, CFG, LOG, QUEUE
     try:
         for k in saved:
@@ -3204,6 +3518,7 @@ def selfcheck():
             home / '.gemini/config/mcp_config.json': {'mcpServers': {'remote-mcp': {'serverUrl': 'http://localhost:3004/mcp'},
                                                                      'elsewhere': {'serverUrl': 'http://10.0.0.2:3004/mcp'}}},
             home / '.codeium/windsurf/hooks.json': {},
+            home / '.config/opencode/opencode.json': {'$schema': 'https://opencode.ai/config.json', 'theme': 'x'},
         }
         for path, d in seed.items():
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -3233,6 +3548,8 @@ def selfcheck():
         assert os.stat(home / '.cursor/mcp.json').st_mode & 0o777 == 0o600 and os.stat(toml).st_mode & 0o777 == 0o600
         cs = json.loads((home / '.claude/settings.json').read_text())
         assert cs['model'] == 'opus' and len(cs['hooks']['UserPromptSubmit']) == 2 and cs['hooks']['Stop'][0]['hooks'][0]['async']
+        oc = json.loads((home / '.config/opencode/opencode.json').read_text())
+        assert oc['theme'] == 'x' and oc['mcp']['mindbaton'] == {'type': 'remote', 'url': url + '/mcp', 'headers': {'Authorization': 'Bearer ' + tok}, 'enabled': True}, oc
         assert '// keep me' in zed.read_text() and jsonc(zed.read_text())['context_servers']['mindbaton']['url'] == url + '/mcp'
         t2 = toml.read_text()
         assert t2.startswith('notify = [') and 'hook", "codex"]' in t2 and states['codex']['notify_prev'] == ['say', 'done']
@@ -3276,6 +3593,60 @@ def selfcheck():
         assert friendly(e) == "Mindbaton can't write ~/.cursor/mcp.json (no permission). Fix that folder's permissions, then run this again."
         assert all(callable(getattr(Plain, m, None)) for m in ('page', 'retitle', 'row', 'text', 'gap', 'qr', 'big', 'head', 'link',
                                                                'clear', 'task', 'busy', 'pause', 'wait', 'choose', 'checklist', 'form'))
+
+        # the tools' own memories: only the researched files, never out through a symlink, never binary, secrets dropped
+        (home / '.claude/CLAUDE.md').write_text('- I prefer small commits\n- api_key = sk-abcdefghijklmnop\n')
+        mem = home / '.claude/projects/-w/memory'
+        mem.mkdir(parents=True)
+        (mem / 'MEMORY.md').write_text('- [prefs](prefs.md)\n')
+        (mem / 'prefs.md').write_text('---\nname: prefs\n---\n- The user likes green tea\n')
+        (home / '.claude/projects/-w/chat.jsonl').write_text('{"a chat": 1}\n')
+        (home / '.claude/.credentials.json').write_text('{"token": "x"}')
+        (home / 'diary.md').write_text('- my private diary\n')
+        (home / '.claude/rules').mkdir()
+        (home / '.claude/rules/link.md').symlink_to(home / 'diary.md')
+        (home / '.codex/memories').mkdir(parents=True)
+        (home / '.codex/memories/raw_memories.md').write_text('- scratch\n')
+        (home / '.codex/memories/MEMORY.md').write_text('- The user deploys with Docker\n')
+        (home / '.gemini/GEMINI.md').write_text('## Gemini Added Memories\n- My dog is called Biscuit\n')
+        (home / '.codeium/windsurf/memories').mkdir(parents=True)
+        (home / '.codeium/windsurf/memories/m.pb').write_bytes(b'\x08\x01\x12\x03abc')
+        got = memory_files(['claude', 'codex', 'gemini', 'antigravity', 'windsurf', 'cursor', 'zed'])
+        names = {t: [str(p.relative_to(home)) for p, _, _ in fs] for t, fs in got.items()}
+        assert names == {'claude': ['.claude/CLAUDE.md', '.claude/projects/-w/memory/prefs.md'], 'codex': ['.codex/memories/MEMORY.md'],
+                         'gemini': ['.gemini/GEMINI.md']}, names
+        assert got['claude'][0][1] == '- I prefer small commits' and about(got['claude'][1][1]) == 1
+        assert about('# Title\n\n- one fact here\n- another fact here\n\nshort\n') == 2 and set(MEMORY_FILES) <= set(SITE)
+        # looking for a Mindbaton: one unauthenticated GET /health, never through a proxy, only a private /24
+        assert len(sweep('192.168.1.20')) == 253 and '192.168.1.20' not in sweep('192.168.1.20') and '192.168.1.1' in sweep('192.168.1.20')
+        assert sweep('100.101.102.103') == sweep('8.8.8.8') == sweep('127.0.0.1') == sweep('169.254.3.4') == sweep(None) == sweep('fd00::1') == []
+        from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+
+        class Fake(BaseHTTPRequestHandler):
+            def do_GET(self):
+                body = json.dumps({'name': self.server.who, 'version': '9'} if self.path == '/health' else {}).encode()
+                self.send_response(200)
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *a):
+                pass
+        fakes = []
+        for who in ('mindbaton', 'something-else'):
+            f = ThreadingHTTPServer(('127.0.0.1', 0), Fake)
+            f.who = who
+            threading.Thread(target=f.serve_forever, daemon=True).start()
+            fakes.append(f)
+        os.environ['http_proxy'] = 'http://127.0.0.1:9'  # a proxy would fail: it is never used
+        try:
+            mb, other = (f'http://127.0.0.1:{f.server_address[1]}' for f in fakes)
+            assert probe(mb)['version'] == '9' and probe(other) is None and probe('http://127.0.0.1:9') is None
+            save_cfg({'url': mb})
+            assert discover(9, scan=False) == [(mb, {'name': 'mindbaton', 'version': '9'})]
+        finally:
+            for f in fakes:
+                f.shutdown()
 
         cfg = {'url': 'http://127.0.0.1:9', 'token': tok, 'tools': {'cursor': {'capture': True}}}
         tr = home / 't.jsonl'
@@ -3348,10 +3719,17 @@ def parse(argv):
     i.add_argument('--no-service', action='store_true', help="don't install a login service")
     i.add_argument('--foreground', action='store_true', help='with --yes --no-service: run the server here afterwards')
     i.add_argument('--replace-old', action='store_true', help="replace old 'memgraph' MCP entries")
+    i.add_argument('--import-memories', action='store_true', help="with --yes: also copy the tools' own memory files in")
+    i.add_argument('--no-scan', action='store_true', help="linking instead: don't look around the network for it")
     c = sub.add_parser('connect', parents=[common], help="connect this computer's AI tools to a Mindbaton elsewhere")
-    c.add_argument('url')
+    c.add_argument('url', nargs='?', help='its address; leave it out to find it on your network')
     c.add_argument('--tools')
     c.add_argument('--replace-old', action='store_true')
+    c.add_argument('--no-scan', action='store_true', help="don't look around the network; only the saved address and this computer")
+    c.add_argument('--import-memories', action='store_true', help="with --yes: also copy the tools' own memory files in")
+    im = sub.add_parser('import', parents=[common], help="copy what your AI tools already remember into Mindbaton")
+    im.add_argument('--tools', help='claude,codex,… (default: every one found here)')
+    im.add_argument('--dry-run', action='store_true', help='only show what would be sent')
     d = sub.add_parser('doctor', parents=[common], help='check everything, fix problems')
     d.add_argument('--fix', action='store_true')
     sub.add_parser('update', parents=[common], help='get the latest version, test it, restart')
@@ -3379,7 +3757,7 @@ def main(argv):
         return p.print_help()
     try:
         {'install': cmd_install, 'connect': cmd_connect, 'doctor': cmd_doctor, 'update': cmd_update, 'keys': cmd_keys,
-         'models': cmd_models, 'uninstall': cmd_uninstall}[o.cmd](o)
+         'models': cmd_models, 'uninstall': cmd_uninstall, 'import': cmd_import}[o.cmd](o)
     except KeyboardInterrupt:
         log('stopped with Ctrl-C')
         again = "Run ./install.sh again any time — it's safe to repeat." if o.cmd == 'install' else ''
