@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.1
+
+- Browser extension 5.0.1: you can type in the Connect page's address box again (every key was being cancelled).
+- Update: if a new version fails its self-test, Mindbaton goes back to the version you had.
+- Landing page: the exploded view shows its plates in Firefox.
+
+## 0.1.0
 
 First public release.
 

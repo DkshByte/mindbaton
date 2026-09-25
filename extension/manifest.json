@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mindbaton",
-  "version": "5.0",
+  "version": "5.0.1",
   "description": "Remembers what you tell every AI, keeps whole chats in Live mode, and hands a full chat to another AI",
   "permissions": [
     "storage",

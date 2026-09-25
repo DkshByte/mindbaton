@@ -121,7 +121,7 @@ function connect(key) {
 }
 if (TAB && location.hash.length > 1) $("addr").value = decodeURIComponent(location.hash.slice(1));
 $("go").onclick = () => connect();
-$("addr").onkeydown = e => e.key === "Enter" && connect();
+$("addr").onkeydown = e => { if (e.key === "Enter") connect(); };  // a handler that returns false would cancel every key
 $("usekey").onclick = () => connect($("key").value.trim());
 $("approve").onclick = () => chrome.storage.local.get({ pairing: null }, s => s.pairing && chrome.tabs.create({ url: s.pairing.approve_url }));
 $("cancel").onclick = () => chrome.storage.local.set({ pairing: null });
