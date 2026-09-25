@@ -287,7 +287,7 @@ h1 .offer { display: block; font-weight: 650; font-stretch: 100%; font-size: cla
 .xpl svg { width: 100%; height: auto; overflow: visible; }
 .xpl .layer { --ink: var(--white); }
 .xpl .top { fill: var(--blue); }
-.xpl .side { fill: #111114; }  /* dark slab edges: the stack reads as black plates, not grey bricks */
+.xpl .side { fill: #1a1a1e; }  /* dark grey slab edges, so each plate reads as a tile */
 .xpl :is(.top, .side, .holes, .vents, .keyhole, .drum, .blank, .port) { stroke: var(--ink); stroke-width: 1.5; stroke-linejoin: round; transition: stroke .3s; }
 .xpl :is(.vents, .keyhole, .blank) { fill: none; }
 .xpl :is(.holes, .port) { fill: var(--black); }
