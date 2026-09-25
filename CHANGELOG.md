@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.3
+
+- Automatic updates, opt-in, every night. Each update is tested; a version that fails is rolled back and skipped until
+  a newer release. Installer: `python3 mindbaton.py autoupdate on`. Docker: `scripts/auto-update.ps1 -Install`
+  (Windows, Task Scheduler) or `sh scripts/auto-update.sh --install` (Linux, macOS, NAS: cron).
+- Uninstall also removes the nightly update job.
+
 ## 0.1.2
 
 - "Update available" notice for admins: the server checks GitHub once a day and the app shows what's new and the exact

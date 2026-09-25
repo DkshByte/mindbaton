@@ -27,3 +27,7 @@ shots-scratch/
 /new branding/
 .impeccable/questions/
 .impeccable/
+
+# auto-update (scripts/auto-update.*)
+auto-update.log
+.auto-update-skip

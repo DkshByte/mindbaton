@@ -553,6 +553,92 @@ WantedBy=default.target
         must(['launchctl', 'bootstrap', f'gui/{os.getuid()}', PLIST], 'launchctl bootstrap')
 
 
+# Nightly automatic update (opt-in): a timer that runs `mindbaton update`, which self-tests and goes back on failure.
+UP_UNIT = Path.home() / '.config/systemd/user/mindbaton-update.service'
+UP_TIMER = Path.home() / '.config/systemd/user/mindbaton-update.timer'
+UP_PLIST = Path.home() / 'Library/LaunchAgents/ai.mindbaton.update.plist'
+
+
+def autoupdate_on(kind):
+    if kind == 'systemd':
+        return UP_TIMER.exists() and run(['systemctl', '--user', 'is-enabled', 'mindbaton-update.timer'], 10).stdout.strip() == 'enabled'
+    return kind == 'launchd' and UP_PLIST.exists()
+
+
+def autoupdate_set(kind, on):
+    py, me = sys.executable, HERE / 'mindbaton.py'
+    if kind == 'systemd':
+        if not on:
+            run(['systemctl', '--user', 'disable', '--now', 'mindbaton-update.timer'])
+            for f in (UP_TIMER, UP_UNIT):
+                f.unlink(missing_ok=True)
+            return run(['systemctl', '--user', 'daemon-reload'])
+        write_file(UP_UNIT, f"""[Unit]
+Description=Update Mindbaton (self-tested; goes back to this version if the new one fails)
+
+[Service]
+Type=oneshot
+WorkingDirectory={HERE}
+ExecStart="{py}" "{me}" update --yes --no-motion
+""", 0o644)
+        write_file(UP_TIMER, """[Unit]
+Description=Update Mindbaton every night
+
+[Timer]
+OnCalendar=*-*-* 04:00
+RandomizedDelaySec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+""", 0o644)  # Persistent: a night the computer was off catches up at the next start; the delay spreads GitHub's load
+        for cmd in (['daemon-reload'], ['enable', '--now', 'mindbaton-update.timer']):
+            must(['systemctl', '--user', *cmd], 'systemctl ' + cmd[0])
+    elif kind == 'launchd':
+        label = f'gui/{os.getuid()}/ai.mindbaton.update'
+        run(['launchctl', 'bootout', label])
+        if not on:
+            return UP_PLIST.unlink(missing_ok=True)
+        logs = Path.home() / 'Library/Logs/mindbaton-update.log'
+        logs.parent.mkdir(parents=True, exist_ok=True)
+        write_file(UP_PLIST, f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>ai.mindbaton.update</string>
+  <key>ProgramArguments</key><array><string>{py}</string><string>{me}</string><string>update</string><string>--yes</string><string>--no-motion</string></array>
+  <key>WorkingDirectory</key><string>{HERE}</string>
+  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>4</integer><key>Minute</key><integer>{17 + os.getuid() % 40}</integer></dict>
+  <key>StandardOutPath</key><string>{logs}</string>
+  <key>StandardErrorPath</key><string>{logs}</string>
+</dict>
+</plist>
+""", 0o644)
+        must(['launchctl', 'bootstrap', f'gui/{os.getuid()}', UP_PLIST], 'launchctl bootstrap')
+
+
+def cmd_autoupdate(o):
+    ui = make_ui(None, o, 'autoupdate')
+    try:
+        ui.page(None, 'Automatic updates', 'Every night Mindbaton gets the newest version, tests it, and keeps the old one if '
+                'the test fails. Your memories are never touched.')
+        kind = service_kind()
+        if not ((HERE / 'server.py').exists() and (HERE / '.git').exists()):
+            ui.row('info', 'This copy updates another way', 'Docker: sh scripts/auto-update.sh --install (Windows: '
+                   'scripts\\auto-update.ps1 -Install). See docs/backup-and-upgrade.md')
+        elif not kind:
+            ui.row('info', 'No background service on this computer', 'run python3 mindbaton.py update now and then')
+        elif o.state == 'status':
+            ui.row('ok' if autoupdate_on(kind) else 'info', 'On: every night around 4:00' if autoupdate_on(kind) else 'Off',
+                   '' if autoupdate_on(kind) else 'turn on: python3 mindbaton.py autoupdate on')
+        else:
+            ui.task('Automatic updates ' + o.state, lambda: autoupdate_set(kind, o.state == 'on'))
+            log('autoupdate', o.state)
+        ui.wait('close')
+    finally:
+        ui.close()
+
+
 def restart_service(kind):
     if kind == 'systemd':
         must(['systemctl', '--user', 'restart', 'mindbaton'], 'systemctl restart')
@@ -3459,7 +3545,7 @@ def cmd_uninstall(o):
                 except Exception as e:
                     log('uninstall', t, repr(e))
         if kind and (UNIT.exists() or PLIST.exists()):
-            ui.task('Background service removed', lambda: remove_service(kind))
+            ui.task('Background service removed', lambda: (autoupdate_set(kind, False), remove_service(kind)))
         if data and o.purge:
             if not ((data / 'auth.db').exists() or (data / 'accounts').is_dir() or (data / 'mindbaton.db').exists()):
                 ui.row('warn', f'{tilde(data)} does not look like Mindbaton data, so it was kept')
@@ -3751,6 +3837,8 @@ def parse(argv):
     m = sub.add_parser('models', parents=[common], help='pick the free AI model')
     m.add_argument('--gemini-model', help='a model id, or auto')
     m.add_argument('--groq-model', help='a model id, or auto')
+    au = sub.add_parser('autoupdate', parents=[common], help='update by itself every night (self-tested, goes back on failure)')
+    au.add_argument('state', nargs='?', choices=['on', 'off', 'status'], default='status')
     u = sub.add_parser('uninstall', parents=[common], help='remove what Mindbaton added; keeps your memories')
     u.add_argument('--purge', action='store_true', help='also delete the memories (asks to confirm)')
     return p, p.parse_args(argv)
@@ -3768,7 +3856,7 @@ def main(argv):
         return p.print_help()
     try:
         {'install': cmd_install, 'connect': cmd_connect, 'doctor': cmd_doctor, 'update': cmd_update, 'keys': cmd_keys,
-         'models': cmd_models, 'uninstall': cmd_uninstall, 'import': cmd_import}[o.cmd](o)
+         'models': cmd_models, 'uninstall': cmd_uninstall, 'import': cmd_import, 'autoupdate': cmd_autoupdate}[o.cmd](o)
     except KeyboardInterrupt:
         log('stopped with Ctrl-C')
         again = "Run ./install.sh again any time — it's safe to repeat." if o.cmd == 'install' else ''

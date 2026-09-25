@@ -86,7 +86,8 @@ git clone https://github.com/DkshByte/mindbaton && cd mindbaton && docker compos
 docker compose logs mindbaton | grep "Setup code"      # Windows PowerShell: use findstr instead of grep
 ```
 
-To update later: `docker compose pull` then `docker compose up -d` (your data stays in its volume).
+To update later: `docker compose pull` then `docker compose up -d` (your data stays in its volume), or let it update
+itself every night: see [Automatic updates](docs/backup-and-upgrade.md#automatic-updates).
 
 Open `http://<this computer>:3004/?code=<the code>` and choose your password.
 

@@ -48,7 +48,7 @@ DATA = os.path.expanduser(os.environ.get("MINDBATON_DATA") or os.path.join(HERE,
 DB = os.path.join(DATA, "mindbaton.db")  # before accounts: one owner's memory and auth in one file (migrated on start)
 LEGACY = ("mindbaton.db", "memgraph.db")
 PUBLIC_URL = os.environ.get("MINDBATON_PUBLIC_URL", "").strip().rstrip("/") or None  # e.g. https://mindbaton.example.com
-VERSION = "0.1.2"
+VERSION = "0.1.3"
 REPO = "DkshByte/mindbaton"
 LATEST = {}  # the newest release on GitHub: update_watch() checks once a day in the running server (never in tests)
 

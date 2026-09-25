@@ -2137,7 +2137,8 @@ async function checkUpdate() {
     ${u.cmd ? `<button class="link" type="button" id="up-how" aria-expanded="false">How to update</button>`
       : `<a class="link" href="https://github.com/DkshByte/mindbaton/blob/main/docs/backup-and-upgrade.md#upgrade" target="_blank" rel="noopener">How to update ↗</a>`}
     <span class="spacer"></span><button class="btn-quiet" type="button" id="up-skip">Not now</button>
-    ${u.cmd ? `<p class="set-note" id="up-note" hidden>${how} Your memories stay.${u.kind === "git" ? " If the new version fails its self-test, it goes back to this one." : ""}</p>
+    ${u.cmd ? `<p class="set-note" id="up-note" hidden>${how} Your memories stay.${u.kind === "git" ? " If the new version fails its self-test, it goes back to this one." : ""}
+        <a class="link" href="https://github.com/DkshByte/mindbaton/blob/main/docs/backup-and-upgrade.md#automatic-updates" target="_blank" rel="noopener">Update automatically every night ↗</a></p>
       <div class="cmd" id="up-cmd" hidden><pre>${esc(u.cmd)}</pre><button class="btn sm" data-copy="${esc(u.cmd)}">Copy</button></div>` : ""}`;
   b.hidden = false;
   if ($("#up-how")) $("#up-how").onclick = e => { const open = $("#up-cmd").hidden; $("#up-cmd").hidden = $("#up-note").hidden = !open; e.target.setAttribute("aria-expanded", open); };

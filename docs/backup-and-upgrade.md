@@ -76,6 +76,25 @@ That fetches the newest published image (`ghcr.io/dkshbyte/mindbaton`) and resta
 `mindbaton-data` volume. Started with plain `docker run` instead? Then `docker pull ghcr.io/dkshbyte/mindbaton`, remove
 the old container (`docker rm -f mindbaton`) and run the same `docker run` command again: the volume keeps everything.
 
+### Automatic updates
+
+Let Mindbaton update itself every night. Each update is tested first, and if the new version fails, you stay on (or go
+back to) the one you had, and that release is skipped until a newer one comes out. Your memories are never touched.
+
+- **Installed with `install.sh`** (Linux, macOS): `python3 mindbaton.py autoupdate on` (a systemd timer or launchd job,
+  around 4:00 each night; a night the computer was off runs at the next start). `autoupdate off` stops it;
+  `autoupdate status` shows it.
+- **Docker on Windows** (PowerShell, in the folder with `compose.yaml`):
+  `powershell -ExecutionPolicy Bypass -File scripts\auto-update.ps1 -Install` adds a Task Scheduler job for 04:00
+  (`-Remove` takes it away; without a switch it updates once, now).
+- **Docker on Linux, macOS or a NAS:** `sh scripts/auto-update.sh --install` adds one line to your crontab (`--remove`
+  takes it away).
+
+What each run did is in `auto-update.log` next to `compose.yaml` (Docker) or `~/.mindbaton/install.log`.
+
+Why not Watchtower? It was archived in December 2025, and it needs full control of Docker to work. These scripts only
+update Mindbaton's own container.
+
 **Your folder is from before 25 September 2026?** The project's history was rewritten once that day, so `git pull`
 refuses in older copies. Run this once in the folder (your data and `mindbaton.env` aren't touched):
 
