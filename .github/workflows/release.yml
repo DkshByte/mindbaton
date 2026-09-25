@@ -1,0 +1,70 @@
+name: Release
+# Push a tag like v0.1.0 (it must match VERSION in server.py): the checks run, then a GitHub Release is made from
+# that version's CHANGELOG section and a Docker image is published to ghcr.io/<owner>/mindbaton (amd64 + arm64).
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Tag matches VERSION in server.py
+        run: |
+          v=$(python3 -c "import re; print(re.search(r'^VERSION = \"(.+)\"', open('server.py').read(), re.M)[1])")
+          [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "Tag $GITHUB_REF_NAME but server.py says $v"; exit 1; }
+      - name: Word list (brain.py reads /usr/share/dict)
+        run: test -f /usr/share/dict/american-english || { sudo apt-get update -qq && sudo apt-get install -y -qq wamerican; }
+      - run: python3 server.py --check
+      - run: python3 bench.py
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Release notes from CHANGELOG.md
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          awk -v v="$v" '/^## /{on = index($0, "## " v) == 1; next} on' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "See CHANGELOG.md." > notes.md
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "Mindbaton ${GITHUB_REF_NAME#v}" --notes-file notes.md --verify-tag
+
+  docker:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/mindbaton
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

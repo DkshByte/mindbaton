@@ -88,6 +88,13 @@ docker compose logs mindbaton | grep "Setup code"
 
 Open `http://<this computer>:3004/?code=<the code>` and choose your password.
 
+Or skip the clone and run the published image (amd64 and arm64, so Raspberry Pi and most NAS boxes too):
+
+```sh
+docker run -d --name mindbaton -p 3004:3004 -v mindbaton-data:/data --restart unless-stopped ghcr.io/dkshbyte/mindbaton
+docker logs mindbaton | grep "Setup code"
+```
+
 Then open the **Setup** page: it shows a green tick for everything connected and the exact copy-paste step for
 everything that isn't. More detail, Windows, and what the setup code is for: [docs/getting-started.md](docs/getting-started.md).
 
