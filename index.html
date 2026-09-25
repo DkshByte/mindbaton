@@ -1020,7 +1020,7 @@ async function renderSetup() {
         <li><a class="btn sm primary" href="/mindbaton-extension.zip" download>Download the extension</a> and unzip it.</li>
         <li>Open <b>chrome://extensions</b> ${`<button class="btn sm" data-copy="chrome://extensions">Copy</button>`}, turn on <b>Developer mode</b> (top right).</li>
         <li>Click <b>Load unpacked</b> and pick the unzipped folder.</li>
-        <li>Make a key for it in <button class="link" data-go="devices">Settings → Devices</button> and paste it into the extension. Done: chat with any AI and it shows up here.</li></ol>`)}
+        <li>A Connect page opens: type the address above, press <b>Connect</b> and approve the code it shows. (Or make a key in <button class="link" data-go="devices">Settings → Devices</button> and paste it in.) Done: chat with any AI and it shows up here.</li></ol>`)}
     ${step(3, st.agents.ok, "Coding agents and desktop apps",
       st.agents.ok ? "Connected: " + esc([st.agents.claude_code?.chats ? "Claude Code" : null, ...Object.keys(st.agents.apps || {})].filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(", "))
         : "Give Claude Code, Codex, Cursor and friends your memory: they read it, add to it, and continue chats.",

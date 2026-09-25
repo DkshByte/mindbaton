@@ -1,15 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Mindbaton",
-  "version": "4.4",
+  "version": "5.0",
   "description": "Remembers what you tell every AI, keeps whole chats in Live mode, and hands a full chat to another AI",
   "permissions": [
     "storage",
     "scripting"
   ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
   "host_permissions": [
-    "http://192.168.1.20:3004/*",
-    "http://100.64.0.1:3004/*",
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
     "https://claude.ai/*",

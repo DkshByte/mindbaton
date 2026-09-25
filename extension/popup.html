@@ -87,11 +87,43 @@
     color: var(--text); font: 11px ui-monospace, monospace; }
   input[type=text]:focus { outline: none; border-color: rgba(255,255,255,.5); box-shadow: 0 0 0 3px rgba(255,255,255,.13); }
   button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* connecting (the Connect form runs in a tab: Chrome's permission prompt can close a popup) */
+  body.tab { margin: 48px auto; border: 1px solid var(--line); border-radius: 14px; }
+  [hidden] { display: none !important; }
+  .connect, #ask, #wait, #done { display: grid; gap: 10px; }
+  .connect .code { margin: 2px 0 4px; }
+  .connect h2 { margin: 0; font-size: 15px; font-weight: 600; }
+  .connect p { margin: 0; color: var(--muted); font-size: 12px; }
+  .connect input { margin-top: 0; }
+  .connect .code { font: 600 18px ui-monospace, monospace; letter-spacing: .12em; color: var(--text); }
+  .mono { font-family: ui-monospace, monospace; font-size: 11px; color: var(--text); word-break: break-all; }
+  .quiet { background: none; border: 0; color: var(--muted); font: inherit; font-size: 11px; cursor: pointer; padding: 0; text-decoration: underline; }
+  input[type=password] { width: 100%; height: 30px; padding: 0 9px; border-radius: 7px; border: 1px solid var(--line2); background: var(--panel);
+    color: var(--text); font: 11px ui-monospace, monospace; }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 <header><span class="mark"><svg viewBox="0 0 96 96" fill="currentColor"><path fill-rule="evenodd" d="M38.83 19.27A23 23 0 0 1 77.84 43.65L57.17 76.73A23 23 0 0 1 18.16 52.35ZM53.63 39.08A4.3 4.3 0 0 1 46.34 34.52L50 28.67A4.3 4.3 0 0 1 57.29 33.23ZM67.63 47.82A4.3 4.3 0 0 1 60.33 43.27L63.99 37.41A4.3 4.3 0 0 1 71.28 41.97Z"/></svg></span><b>Mindbaton</b>
   <span class="pill"><span class="dot" id="dot"></span><span id="conn">Checking…</span></span></header>
 <main>
+  <section class="connect" id="connect" hidden>
+    <div id="ask">
+      <h2>Connect to your Mindbaton</h2>
+      <p>Type the address from Mindbaton → Setup (for example <span class="mono">http://192.168.1.20:3004</span>).</p>
+      <input type="text" id="addr" spellcheck="false" autocomplete="url" aria-label="Your Mindbaton address" placeholder="http://192.168.1.20:3004">
+      <button class="primary" id="go">Connect</button>
+      <details><summary>I have a key from Settings → Devices</summary>
+        <input type="password" id="key" spellcheck="false" autocomplete="off" aria-label="Device key" placeholder="mb_…">
+        <button class="primary" id="usekey" style="margin-top:8px">Use this key</button></details>
+    </div>
+    <div id="wait" hidden>
+      <h2>Approve this browser</h2>
+      <p>In Mindbaton (signed in), approve the request with this code:</p>
+      <div class="code" id="code"></div>
+      <button class="primary" id="approve">Open the approval page</button>
+      <button class="quiet" id="cancel">Cancel</button>
+    </div>
+    <div id="done" hidden><h2>Connected ✓</h2><p>Chat with ChatGPT, Claude, Gemini or any AI: what you tell them is saved to your Mindbaton. You can close this tab.</p></div>
+  </section>
   <section class="chat" id="chat"></section>
   <div class="opts">
     <div class="row"><label for="enabled">Save what I send<small>Facts, preferences and plans from every AI</small></label>
@@ -104,5 +136,5 @@
   <button class="primary" id="insert">Insert my memory <kbd>Alt</kbd><kbd>M</kbd></button>
 </main>
 <footer><a id="open" href="#">Open Mindbaton ↗</a>
-  <details><summary>Server</summary><input type="text" id="server" spellcheck="false" aria-label="Server address"></details></footer>
+  <details><summary>Server</summary><p id="where" class="mono" style="margin:8px 0 6px"></p><button class="quiet" id="disconnect">Disconnect this browser</button></details></footer>
 <script src="popup.js"></script>

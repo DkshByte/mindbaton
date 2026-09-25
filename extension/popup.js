@@ -1,5 +1,6 @@
 const $ = id => document.getElementById(id);
-const DEFAULT = "http://192.168.1.20:3004";
+const TAB = location.search.includes("tab");  // opened as a tab: the Connect form (first install, or from the popup)
+if (TAB) document.body.classList.add("tab");
 const ago = ms => { const s = (Date.now() - ms) / 1000; return s < 60 ? "just now" : s < 3600 ? Math.floor(s / 60) + "m ago" : s < 86400 ? Math.floor(s / 3600) + "h ago" : Math.floor(s / 86400) + "d ago"; };
 // host → [name, logo]; logos are the real marks, bundled in logos/
 const AI = { "chatgpt.com": ["ChatGPT", "chatgpt"], "chat.openai.com": ["ChatGPT", "chatgpt"], "claude.ai": ["Claude", "claude"],
@@ -12,8 +13,19 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "
 const fmt = n => n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1000 ? Math.round(n / 1000) + "k" : String(n || 0);
 
 function render() {
-  chrome.storage.local.get({ live: true, enabled: true, server: DEFAULT, queue: [], sent: 0, error: "", lastSaved: null }, s => {
-    if (document.activeElement.tagName !== "INPUT") { $("enabled").checked = s.enabled; $("live").checked = s.live; $("server").value = s.server; }
+  chrome.storage.local.get({ live: true, enabled: true, server: "", token: "", pairing: null, queue: [], sent: 0, error: "", lastSaved: null }, s => {
+    const paired = !!(s.server && s.token);
+    $("connect").hidden = paired && !TAB;
+    $("done").hidden = !(paired && TAB);
+    for (const id of ["chat", "insert"]) $(id).hidden = !paired;
+    document.querySelector(".opts").hidden = !paired;
+    $("ask").hidden = !!s.pairing || paired; $("wait").hidden = !s.pairing || paired;
+    if (s.pairing) $("code").textContent = s.pairing.code;
+    $("where").textContent = s.server || "Not connected";
+    $("disconnect").hidden = !s.token;
+    if (!$("addr").value && (s.server || s.pairing)) $("addr").value = (s.pairing || s).server;
+    if (document.activeElement.tagName !== "INPUT") { $("enabled").checked = s.enabled; $("live").checked = s.live; }
+    if (!paired) { $("status").textContent = ""; $("warn").hidden = !s.error; $("warn").textContent = s.error; return; }
     const l = s.lastSaved;
     $("status").innerHTML = !s.enabled ? "Paused — nothing you send is saved." :
       `<b>${s.sent}</b> saved` + (l ? ` · last ${ago(l.ts)} from ${AI[l.site] ? logo(l.site) + " <b>" + AI[l.site][0] + "</b>" : "a chat"}` : "");
@@ -23,9 +35,9 @@ function render() {
 }
 function health() {
   chrome.runtime.sendMessage({ health: true }, r => {
-    const ok = r && r.ok;
+    const ok = r && r.ok && r.authed;
     $("dot").className = "dot " + (ok ? "on" : "off");
-    $("conn").textContent = ok ? "Connected" : "Offline";
+    $("conn").textContent = ok ? "Connected" : r && (r.ok || r.unpaired) ? "Not connected" : "Offline";
     $("conn").title = ok ? `${r.captures} captures on the server` : "Can't reach the Mindbaton server";
   });
 }
@@ -85,14 +97,40 @@ function summary(id, tries = 0) {  // the AI summary of this chat; while it's be
 
 $("enabled").onchange = e => chrome.storage.local.set({ enabled: e.target.checked });
 $("live").onchange = e => { chrome.storage.local.set({ live: e.target.checked }); setTimeout(chat, 100); };
-$("server").oninput = e => chrome.storage.local.set({ server: e.target.value.trim() || DEFAULT });  // saved as you type: the popup can close first
-$("server").onchange = health;
-$("open").onclick = e => { e.preventDefault(); chrome.storage.local.get({ server: DEFAULT }, s => chrome.tabs.create({ url: s.server })); };
+$("open").onclick = e => {
+  e.preventDefault();
+  chrome.storage.local.get({ server: "" }, s => chrome.tabs.create({ url: s.server || "https://github.com/DkshByte/mindbaton#readme" }));
+};
+// Connect: only the address you type gets permission, only after you allow it; then pairing (background.js) or a pasted key
+function address() {
+  let v = $("addr").value.trim();
+  if (!v) return null;
+  if (!/^https?:\/\//i.test(v)) v = "http://" + v;
+  try { const u = new URL(v); return /^https?:$/.test(u.protocol) && u.hostname ? u : null; } catch { return null; }
+}
+function connect(key) {
+  if (!TAB) return chrome.tabs.create({ url: chrome.runtime.getURL("popup.html?tab#" + encodeURIComponent($("addr").value.trim())) });  // the prompt can close a popup
+  const u = address(), warn = t => { $("warn").hidden = false; $("warn").textContent = t; };
+  if (!u) return warn("Type your Mindbaton's address, like http://192.168.1.20:3004");
+  if (key !== undefined && !/^mb_[\w-]{20,}$/.test(key)) return warn("A key starts with mb_ — make one in Settings → Devices");
+  chrome.permissions.request({ origins: [`${u.protocol}//${u.hostname}/*`] }, ok => {
+    if (!ok) return warn("Mindbaton needs permission to reach that address.");
+    $("warn").hidden = true;
+    chrome.runtime.sendMessage({ pair: { server: u.origin, key } }, r => { if (r && r.error) warn(r.error); });
+  });
+}
+if (TAB && location.hash.length > 1) $("addr").value = decodeURIComponent(location.hash.slice(1));
+$("go").onclick = () => connect();
+$("addr").onkeydown = e => e.key === "Enter" && connect();
+$("usekey").onclick = () => connect($("key").value.trim());
+$("approve").onclick = () => chrome.storage.local.get({ pairing: null }, s => s.pairing && chrome.tabs.create({ url: s.pairing.approve_url }));
+$("cancel").onclick = () => chrome.storage.local.set({ pairing: null });
+$("disconnect").onclick = () => chrome.runtime.sendMessage({ unpair: true });
 $("insert").onclick = async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   try { await chrome.tabs.sendMessage(tab.id, { insert: true }); window.close(); }
   catch { $("warn").hidden = false; $("warn").textContent = "Open ChatGPT, Claude, Gemini or another AI chat first."; }
 };
-chrome.storage.onChanged.addListener(render);
+chrome.storage.onChanged.addListener(c => { render(); if (c.token) health(); });
 chrome.runtime.sendMessage({ flush: true }, () => { render(); health(); });  // retry anything waiting whenever the popup opens
 render(); chat();
