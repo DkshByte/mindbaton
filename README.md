@@ -83,8 +83,10 @@ The installer checks Python, runs a self-test, starts Mindbaton as a background 
 
 ```sh
 git clone https://github.com/DkshByte/mindbaton && cd mindbaton && docker compose up -d
-docker compose logs mindbaton | grep "Setup code"
+docker compose logs mindbaton | grep "Setup code"      # Windows PowerShell: use findstr instead of grep
 ```
+
+To update later: `docker compose pull` then `docker compose up -d` (your data stays in its volume).
 
 Open `http://<this computer>:3004/?code=<the code>` and choose your password.
 

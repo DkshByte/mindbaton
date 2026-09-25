@@ -2,8 +2,8 @@
 # The setup code for the first visit is in:  docker compose logs mindbaton
 services:
   mindbaton:
-    build: .
-    image: mindbaton
+    image: ghcr.io/dkshbyte/mindbaton:latest   # update: docker compose pull && docker compose up -d
+    build: .                                   # or build this folder yourself: docker compose up -d --build
     restart: unless-stopped
     ports:
       - "3004:3004"          # to use another port, change the left number only

@@ -62,20 +62,27 @@ it to forget stays forgotten. A backup first never hurts.
 
 ```sh
 cd ~/mindbaton
-git pull
-./install.sh            # runs the self-test and restarts the service
+python3 mindbaton.py update   # downloads, runs the self-test (goes back if it fails), restarts the service
 ```
 
-**Docker:**
+**Docker** (Windows, macOS, Linux, NAS), in the folder with `compose.yaml`:
 
 ```sh
-cd ~/mindbaton
-git pull
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
-Mindbaton builds its image from this folder, so `git pull` + `--build` is the upgrade (there's no separate image to
-`docker pull`). Your data stays in the `mindbaton-data` volume.
+That fetches the newest published image (`ghcr.io/dkshbyte/mindbaton`) and restarts on it. Your data stays in the
+`mindbaton-data` volume. Started with plain `docker run` instead? Then `docker pull ghcr.io/dkshbyte/mindbaton`, remove
+the old container (`docker rm -f mindbaton`) and run the same `docker run` command again: the volume keeps everything.
+
+**Your folder is from before 25 September 2026?** The project's history was rewritten once that day, so `git pull`
+refuses in older copies. Run this once in the folder (your data and `mindbaton.env` aren't touched):
+
+```sh
+git fetch origin
+git reset --hard origin/main
+```
 
 After upgrading, reload the browser extension if it changed: download `/mindbaton-extension.zip` again, unzip it over the
 old folder, and press the reload button on it in `chrome://extensions`.
