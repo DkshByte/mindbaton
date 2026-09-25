@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2
+
+- "Update available" notice for admins: the server checks GitHub once a day and the app shows what's new and the exact
+  command for how Mindbaton is installed (Docker or the installer). Turn it off with `MINDBATON_UPDATE_CHECK=0`.
+- Docker: `compose.yaml` uses the published image, so updating is `docker compose pull` then `docker compose up -d`.
+
 ## 0.1.1
 
 - Browser extension 5.0.1: you can type in the Connect page's address box again (every key was being cancelled).

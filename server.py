@@ -48,7 +48,43 @@ DATA = os.path.expanduser(os.environ.get("MINDBATON_DATA") or os.path.join(HERE,
 DB = os.path.join(DATA, "mindbaton.db")  # before accounts: one owner's memory and auth in one file (migrated on start)
 LEGACY = ("mindbaton.db", "memgraph.db")
 PUBLIC_URL = os.environ.get("MINDBATON_PUBLIC_URL", "").strip().rstrip("/") or None  # e.g. https://mindbaton.example.com
-VERSION = "0.1.1"
+VERSION = "0.1.2"
+REPO = "DkshByte/mindbaton"
+LATEST = {}  # the newest release on GitHub: update_watch() checks once a day in the running server (never in tests)
+
+
+def vtuple(v):
+    return tuple(int(x) for x in re.findall(r"\d+", v or "")[:3])
+
+
+def update_info(admin):
+    """For the app's banner: the running version, and for admins a newer release with how to install it here."""
+    out = {"current": VERSION}
+    new = LATEST.get("version")
+    if admin and new and vtuple(new) > vtuple(VERSION):
+        how = ({"kind": "docker", "cmd": "docker compose pull\ndocker compose up -d"} if os.path.exists("/.dockerenv") else
+               {"kind": "git", "cmd": f"python3 {os.path.join(HERE, 'mindbaton.py')} update"} if os.path.isdir(os.path.join(HERE, ".git")) else
+               {"kind": "download", "cmd": None})
+        out.update(latest=new, url=LATEST.get("url"), notes=(LATEST.get("notes") or "")[:2000], **how)
+    return out
+
+
+def update_watch():
+    """Once a day, ask GitHub for the latest release (GitHub sees this server's address; MINDBATON_UPDATE_CHECK=0 = never)."""
+    import urllib.request
+
+    def check():
+        while True:
+            try:
+                req = urllib.request.Request(f"https://api.github.com/repos/{REPO}/releases/latest",
+                                             headers={"User-Agent": f"mindbaton/{VERSION}", "Accept": "application/vnd.github+json"})
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    d = json.load(r)
+                LATEST.update(version=str(d["tag_name"]).lstrip("v"), url=d.get("html_url"), notes=d.get("body") or "")
+            except Exception:  # offline, rate-limited or GitHub changed: say nothing, try again tomorrow
+                pass
+            time.sleep(86400)
+    threading.Thread(target=check, daemon=True).start()
 LOCK = threading.RLock()  # one request touches the databases at a time; threads only keep idle sockets from blocking others
 # ponytail: one lock for every account's graph; per-account locks if many people use one install at once
 LOGIC_VERSION = "15"  # 15: "the user always runs / was born" -> "I always run / was born" (14: hand-off packs and briefings are marked [mindbaton])
@@ -2501,6 +2537,7 @@ class Handler(SimpleHTTPRequestHandler):
         routes = {
             "/ai": ai.status,
             "/status": lambda: setup_status(self.g, self.base()),
+            "/update": lambda: update_info(self.me["role"] == "admin"),
             "/sessions": lambda: live.sessions(self.g, num("limit", 40)),
             "/session": lambda: live.transcript(self.g, live.find(self.g, qs.get("id"))) or {},
             "/handoff": lambda: live.make_handoff(self.g, qs.get("session"), max(200, min(num("budget", 1500), 12000)), qs.get("to")),
@@ -2954,6 +2991,14 @@ def authcheck():
     assert "Mcp-Session-Id" not in call("POST", "/mcp", {"jsonrpc": "2.0", "id": 2, "method": "ping"}, cookie=a, Mcp_Session_Id=sam_mcp)[1]
     assert "Cursor" in call("GET", "/status", cookie=b)[2]["agents"]["apps"] and "Cursor" not in call("GET", "/status", cookie=a)[2]["agents"]["apps"]
     assert call("GET", "/status", cookie=a)[2]["server"]["local_sources"] and not call("GET", "/status", cookie=b)[2]["server"]["local_sources"]
+    # the update banner: admins see a newer release and how to install it; members only the version; nothing when current
+    LATEST.update(version="99.0.0", url="https://github.com/DkshByte/mindbaton/releases/tag/v99.0.0", notes="- better")
+    up = call("GET", "/update", cookie=a)[2]
+    assert up["latest"] == "99.0.0" and up["current"] == VERSION and up["kind"] in ("git", "docker", "download"), up
+    assert call("GET", "/update", cookie=b)[2] == {"current": VERSION} and st("GET", "/update") == 401
+    LATEST.update(version=VERSION)
+    assert "latest" not in call("GET", "/update", cookie=a)[2] and vtuple("v0.10.0") > vtuple("0.9.9")
+    LATEST.clear()
     # tokens are per account: Sam's list and revocations never touch Maya's devices
     sam_rows = call("GET", "/api/tokens", cookie=b)[2]
     assert [r["name"] for r in sam_rows] == ["Sam's laptop", "Sam's Claude"], sam_rows
@@ -3114,6 +3159,8 @@ if __name__ == "__main__":
         sys.exit(print(f"Setup code: {code} — open {link(code)}" if code else "Mindbaton already has accounts. Forgot a "
                        "password? Run: python3 server.py --reset-password [username]"))
     NAMING = True  # only the running server asks the AI for topic names (never tests or the benchmark)
+    if os.environ.get("MINDBATON_UPDATE_CHECK", "1") != "0":
+        update_watch()
     code = setup_code()
     if code:
         print(f"Setup code: {code} — open {link(code)}", flush=True)

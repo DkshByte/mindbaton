@@ -48,6 +48,11 @@ before it is saved.</li>
 up to 30 days). It is strictly necessary for signing in, is set by your own server and is never used for tracking. No
 consent banner is needed for it.</p>
 
+<h2>Update check</h2>
+<p>Once a day your Mindbaton server asks GitHub whether a newer version has been released, so admins can see an
+"update available" notice. Like any website visit, GitHub sees your server's IP address; nothing about you or your
+memories is sent. Turn it off with <code>MINDBATON_UPDATE_CHECK=0</code>.</p>
+
 <h2>Optional AI features</h2>
 <p>Mindbaton works fully offline. If you choose to add a free <b>Google Gemini</b> or <b>Groq</b> API key, your server sends
 the text needed for summaries, topic names and search answers to that provider, under their terms and privacy policy.

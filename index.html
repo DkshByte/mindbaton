@@ -259,6 +259,10 @@ a.btn { text-decoration: none; }
 .keyform { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .keyform select, .keyform input { height: 34px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg); color: var(--fg); padding: 0 10px; font: 13px var(--sans); }
 .keyform input { flex: 1; min-width: 220px; font-family: var(--mono); }
+.banner.update { background: var(--panel-2); color: var(--fg-2); border-bottom-color: var(--line-2); flex-wrap: wrap; row-gap: 8px; }
+.banner.update b { color: var(--fg); font-weight: 600; }
+.banner.update .spacer { flex: 1; }
+.banner.update .cmd, .banner.update .set-note { flex-basis: 100%; }
 .banner { display: flex; align-items: center; gap: 10px; padding: 9px 20px; background: var(--danger-soft); color: #ffb3b6; border-bottom: 1px solid rgba(255, 99, 105, .3); font-size: 13px; }
 dialog.help { background: var(--panel); color: var(--fg); border: 1px solid var(--line-2); border-radius: var(--r); padding: 20px 22px; max-width: 380px; width: 90vw; }
 dialog.help::backdrop { background: rgba(0, 0, 0, .55); }
@@ -603,6 +607,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
   </aside>
 
   <div class="main">
+    <div class="banner update" id="update" role="status" hidden></div>
     <div class="banner" id="offline" role="alert" hidden><svg class="i" viewBox="0 0 24 24"><path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/></svg>
       <span>Can't reach the Mindbaton server. It may be restarting — this page reconnects on its own.</span></div>
     <header class="top">
@@ -2114,8 +2119,29 @@ async function startApp(acct) {
   $(".app").hidden = false;
   anim($(".app"), { opacity: [0, 1] }, { duration: .35 });
   await logoReady; await load(true);
+  checkUpdate();
   if (!route(location.hash.slice(1)) && !memories().length) show("setup");  // first run: nothing remembered yet
   if (view !== "settings") quietFocus($("#page-title"));  // keyboard users start at the top, not on <body>
+}
+
+// ---- a newer release (admins; the server checks GitHub once a day) ----
+async function checkUpdate() {
+  let u;
+  try { u = await api("/update"); } catch { return; }
+  const skip = (() => { try { return localStorage.getItem("mb-skip-update"); } catch { return null; } })();
+  const b = $("#update");
+  if (!u.latest || skip === u.latest) return;
+  const how = u.kind === "docker" ? "In the folder with <b>compose.yaml</b>, run these two commands." : u.kind === "git" ? "Run this on the computer Mindbaton runs on." : "";
+  b.innerHTML = `${IC_IMPORT}<span><b>Mindbaton ${esc(u.latest)}</b> is available · you have ${esc(u.current)}</span>
+    <a class="link" href="${esc(u.url || "https://github.com/DkshByte/mindbaton/releases")}" target="_blank" rel="noopener">What's new ↗</a>
+    ${u.cmd ? `<button class="link" type="button" id="up-how" aria-expanded="false">How to update</button>`
+      : `<a class="link" href="https://github.com/DkshByte/mindbaton/blob/main/docs/backup-and-upgrade.md#upgrade" target="_blank" rel="noopener">How to update ↗</a>`}
+    <span class="spacer"></span><button class="btn-quiet" type="button" id="up-skip">Not now</button>
+    ${u.cmd ? `<p class="set-note" id="up-note" hidden>${how} Your memories stay.${u.kind === "git" ? " If the new version fails its self-test, it goes back to this one." : ""}</p>
+      <div class="cmd" id="up-cmd" hidden><pre>${esc(u.cmd)}</pre><button class="btn sm" data-copy="${esc(u.cmd)}">Copy</button></div>` : ""}`;
+  b.hidden = false;
+  if ($("#up-how")) $("#up-how").onclick = e => { const open = $("#up-cmd").hidden; $("#up-cmd").hidden = $("#up-note").hidden = !open; e.target.setAttribute("aria-expanded", open); };
+  $("#up-skip").onclick = () => { try { localStorage.setItem("mb-skip-update", u.latest); } catch {} b.hidden = true; };
 }
 
 // ---- the account menu ----

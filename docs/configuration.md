@@ -20,6 +20,7 @@ restart Mindbaton. Real environment variables win over the file. With Docker, us
 | `MINDBATON_GROQ_MODEL` | `openai/gpt-oss-120b` | Groq model, used when Gemini isn't available. |
 | `GEMINI_KEY`, `GROQ_KEY` | *(none)* | Keys for the optional AI. Easier: paste them on the Setup page, which tests and saves them to `ai_keys` in your data folder. |
 | `MINDBATON_WATCH_CLAUDE` | `1` | `0` stops Mindbaton reading Claude Code's chat history from `~/.claude/projects` on this computer. Docker sets `0` (there's nothing to read inside the container). |
+| `MINDBATON_UPDATE_CHECK` | `1` | `0` stops the once-a-day check with GitHub for a newer release (the "update available" notice admins see). |
 
 For the Claude Desktop bridge (`mcp_stdio.py`), set these in the Claude Desktop config, not in `mindbaton.env`:
 
