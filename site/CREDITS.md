@@ -38,3 +38,6 @@ Every PNG carries its origin in an `impeccable:prompt` text chunk
   "Read the whole pack" block.
 - **`og.png`:** serve `site/` (`python3 -m http.server 3105 -d site`) and screenshot `http://127.0.0.1:3105/` at a
   1200×630 viewport.
+
+- **Chrome Web Store badge** (`badges/chrome-web-store.png`): Google's official "Available in the Chrome Web Store" badge,
+  from developer.chrome.com/docs/webstore/branding, used unmodified as their guidelines allow. Chrome is a trademark of Google LLC.

@@ -105,7 +105,7 @@ everything that isn't. More detail, Windows, and what the setup code is for: [do
 
 | You use | How it connects | Guide |
 |---|---|---|
-| ChatGPT, Claude, Gemini, Perplexity, DeepSeek, Grok, Copilot, Poe, Mistral (in the browser) | Browser extension — press `Alt+M` in any chat to bring your memory in. It connects to your Mindbaton with a pairing code | [Extension](docs/connect.md#browser-extension) |
+| ChatGPT, Claude, Gemini, Perplexity, DeepSeek, Grok, Copilot, Poe, Mistral (in the browser) | [Browser extension](https://chromewebstore.google.com/detail/mindbaton/nfadphcjimkchbapapbcphnbpajmfmih) from the Chrome Web Store — press `Alt+M` in any chat to bring your memory in. It connects to your Mindbaton with a pairing code | [Extension](docs/connect.md#browser-extension) |
 | Claude Code, Codex, Cursor, Windsurf, VS Code, Gemini CLI, Antigravity, OpenCode | MCP over HTTP, with a device token | [Coding agents](docs/connect.md#coding-agents-and-editors) |
 | Claude Desktop | MCP through the small `mcp_stdio.py` bridge | [Claude Desktop](docs/connect.md#claude-desktop) |
 | Claude and ChatGPT apps (web and phone) | Custom connector — needs an HTTPS address | [Connectors](docs/connect.md#claude-and-chatgpt-apps) |

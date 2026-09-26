@@ -256,6 +256,11 @@ a.btn { text-decoration: none; }
 .imp-list { display: grid; gap: 10px; max-height: 360px; overflow-y: auto; padding: 12px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--bg); }
 .imp-list input:disabled + span { color: var(--fg-3); }
 .imp-go { display: flex; gap: 8px; }
+.step .cws { display: block; width: fit-content; margin: 8px 0 2px; border-radius: 6px; }  /* Google's badge, unmodified */
+.step .cws img { display: block; width: 206px; height: auto; }
+.step details.manual { font-size: 13px; color: var(--fg-3); }
+.step details.manual summary { cursor: pointer; width: fit-content; }
+.step details.manual ol { margin-top: 8px; }
 .keyform { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .keyform select, .keyform input { height: 34px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg); color: var(--fg); padding: 0 10px; font: 13px var(--sans); }
 .keyform input { flex: 1; min-width: 220px; font-family: var(--mono); }
@@ -933,7 +938,7 @@ function connectCard() {
   return `<section class="card" style="flex:1;min-height:0" aria-labelledby="h-connect"><div class="card-h">${ICON.plug}<h2 id="h-connect">Connect an AI</h2></div><div class="card-b connect">
     <div class="conn">${logo("claude code", "lg-lg")}<div><b>Claude Code, Codex, Cursor & co.</b><p>One command each, with a key that opens only your memory. <button class="link" data-view="setup">Get them in Setup</button></p></div></div>
     <div class="conn">${logo("claude", "lg-lg")}<div><b>Claude Desktop</b><p><a href="/mcp_stdio.py" download>mcp_stdio.py</a> with <code>MINDBATON_URL=${esc(base)}</code> and your key.</p></div></div>
-    <div class="conn"><span class="stack">${["ChatGPT", "Gemini", "Perplexity"].map(a => aiLogo(a, "")).join("")}</span><div><b>ChatGPT, Gemini & co. on the web</b><p>The extension saves what you send; <code>Alt+M</code> brings your memory into the chat. <a href="/mindbaton-extension.zip" download>Get the extension</a></p></div></div>
+    <div class="conn"><span class="stack">${["ChatGPT", "Gemini", "Perplexity"].map(a => aiLogo(a, "")).join("")}</span><div><b>ChatGPT, Gemini & co. on the web</b><p>The extension saves what you send; <code>Alt+M</code> brings your memory into the chat. <a href="https://chromewebstore.google.com/detail/mindbaton/nfadphcjimkchbapapbcphnbpajmfmih" target="_blank" rel="noopener">Get the extension</a></p></div></div>
   </div></section>`;
 }
 
@@ -1045,10 +1050,13 @@ async function renderSetup() {
       st.extension.ok ? `Saving from ${esc(st.extension.ais.join(", ") || "your AI chats")}${st.extension.last ? " · last " + ago(st.extension.last) : ""}${st.extension.live ? " · Live mode on" : ""}`
         : "Remembers what you tell AI websites, and hands a full chat to another AI.",
       `<div class="stack">${webAIs.map(a => aiLogo(a, "")).join("")}</div><ol>
-        <li><a class="btn sm primary" href="/mindbaton-extension.zip" download>Download the extension</a> and unzip it.</li>
+        <li>Add it from the official store (Chrome, Edge and Brave all install from there; it updates itself):
+          <a class="cws" href="https://chromewebstore.google.com/detail/mindbaton/nfadphcjimkchbapapbcphnbpajmfmih" target="_blank" rel="noopener"><img src="/assets/badges/chrome-web-store.png" width="206" height="62" alt="Available in the Chrome Web Store"></a></li>
+        <li>A Connect page opens: type the address above, press <b>Connect</b> and approve the code it shows. (Or make a key in <button class="link" data-go="devices">Settings → Devices</button> and paste it in.) Done: chat with any AI and it shows up here.</li></ol>
+      <details class="manual"><summary>Install it by hand instead</summary><ol>
+        <li><a class="btn sm" href="/mindbaton-extension.zip" download>Download the extension</a> and unzip it.</li>
         <li>Open <b>chrome://extensions</b> ${`<button class="btn sm" data-copy="chrome://extensions">Copy</button>`}, turn on <b>Developer mode</b> (top right).</li>
-        <li>Click <b>Load unpacked</b> and pick the unzipped folder.</li>
-        <li>A Connect page opens: type the address above, press <b>Connect</b> and approve the code it shows. (Or make a key in <button class="link" data-go="devices">Settings → Devices</button> and paste it in.) Done: chat with any AI and it shows up here.</li></ol>`)}
+        <li>Click <b>Load unpacked</b> and pick the unzipped folder, then connect it as in step 2.</li></ol></details>`)}
     ${step(3, st.agents.ok, "Coding agents and desktop apps",
       st.agents.ok ? "Connected: " + esc([st.agents.claude_code?.chats ? "Claude Code" : null, ...Object.keys(st.agents.apps || {})].filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(", "))
         : "Give Claude Code, Codex, Cursor and friends your memory: they read it, add to it, and continue chats.",

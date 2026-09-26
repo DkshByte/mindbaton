@@ -488,6 +488,8 @@ h1 .offer { display: block; font-weight: 650; font-stretch: 100%; font-size: cla
 .routes { display: grid; gap: 8px; margin-bottom: 28px; }
 @media (min-width: 1000px) { .routes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .route { padding: 28px 24px; }
+.cws { display: inline-block; margin-top: 12px; border-radius: 6px; }  /* Google's badge, unmodified (resized only) */
+.cws img { display: block; width: 206px; height: auto; }
 .route h3 { margin-bottom: 20px; color: var(--white); font-size: 13px; }
 .steps { list-style: none; counter-reset: s; margin: 0; padding: 0; display: grid; gap: 22px; }
 .steps li { counter-increment: s; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 4px 14px; }
@@ -530,3 +532,4 @@ h1 .offer { display: block; font-weight: 650; font-stretch: 100%; font-size: cla
   .jack.is-full .full { animation: none; }
   button.glass:active, .dock a:active { scale: none; }
 }
+.routes .route:nth-child(3) { grid-column: 1 / -1; }  /* the extension: full width under the two server routes */

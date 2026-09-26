@@ -26,12 +26,11 @@ Captures what you send to ChatGPT, Claude, Gemini, Perplexity, DeepSeek, Grok, C
 Studio, keeps whole chats in Live mode, and brings your memory into any chat. Works in Chrome, Edge, Brave, Arc and
 other Chromium browsers.
 
-1. Download the extension from your Mindbaton: `http://192.168.1.20:3004/mindbaton-extension.zip` (also linked on the
-   Setup page) and unzip it.
-2. Open `chrome://extensions`, switch on **Developer mode** (top right), click **Load unpacked** and pick the unzipped
-   folder.
-3. Click the Mindbaton icon in the toolbar, type your Mindbaton address and press **Connect**.
-4. A Mindbaton tab opens asking *"Connect Chrome on laptop (browser extension)?"* with a code like `ABCD-EFGH`. Log in if
+1. Add it from the **[Chrome Web Store](https://chromewebstore.google.com/detail/mindbaton/nfadphcjimkchbapapbcphnbpajmfmih)** (Chrome, Edge and Brave all install from there, and it updates itself).
+   Or by hand: download `http://192.168.1.20:3004/mindbaton-extension.zip` from your Mindbaton (also on the Setup page),
+   unzip it, open `chrome://extensions`, switch on **Developer mode**, click **Load unpacked** and pick the folder.
+2. The Connect page opens (or click the Mindbaton icon in the toolbar), type your Mindbaton address and press **Connect**.
+3. A Mindbaton tab opens asking *"Connect Chrome on laptop (browser extension)?"* with a code like `ABCD-EFGH`. Log in if
    asked, check it's the request you just made, and press **Approve**. Done — the extension now has its own token.
 
 Can't use the approve tab (for example Mindbaton is on a different network right now)? Make a token in Settings →
