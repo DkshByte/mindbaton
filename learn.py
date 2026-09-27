@@ -10,6 +10,7 @@ when it is sure: a missed fact costs less than a made-up one. The weights ship i
 
     python3 learn.py            # self-check
     python3 learn.py --train    # generate examples, train, report held-out accuracy, write the weights (~2 min)
+    python3 learn.py --dataset data.jsonl   # lessons for the 2B model (train/brain-2b.ipynb): message -> facts as JSON
     python3 learn.py --write    # have a big open model (gpt-oss-120b on Groq, GROQ_KEY) write varied chat examples of
                                 # made-up facts into assets/learn/examples.jsonl.gz (~30 min of a free tier; nothing personal)
 """
@@ -417,6 +418,56 @@ def write(per=4, batch=20, facts_per_label=45, none_per_pool=70, seed=13, budget
         print(f"{min(i + batch, len(jobs))}/{len(jobs)} facts, {sent} requests, {save()} examples saved", flush=True)
 
 
+SYSTEM = """You read one chat message a person sent to an AI assistant and list the lasting facts it states about the \
+person ("me") or about people they name. Reply with JSON only: {"facts": [{"op": "+" or "-", "who": "me" or who it is \
+about, "rel": the relation, "what": the words from the message}]}. "+" is true now, "-" stopped being true. Relations: \
+works at, lives in, from, is, has, uses, likes, dislikes, avoids, learning, working on, plays, wants, and family words \
+(wife, brother, dog, ...). Questions, requests, maybes and news about the world state nothing: {"facts": []}."""
+KIN_NAMES = [("sister", "Priya"), ("brother", "Arjun"), ("wife", "Sarah"), ("husband", "Karan"), ("friend", "Rahul"),
+             ("girlfriend", "Ana"), ("boyfriend", "Leo"), ("dad", None), ("mom", None), ("cousin", "Meera"), ("boss", "Tom")]
+THIRD = [("works at", "org", "{k} works at {o}|{k} just joined {o}|{k} has been at {o} for {dur}|{k} got hired by {o}"),
+         ("lives in", "place", "{k} lives in {o}|{k} just moved to {o}|{k} is based in {o} now"),
+         ("likes", "like", "{k} loves {o}|{k} is obsessed with {o}|{k} is really into {o}"),
+         ("uses", "tool", "{k} uses {o}|{k} swears by {o}|{k} switched to {o}"),
+         ("plays", "play", "{k} plays {o} every {day}|{k} is on a {o} team")]
+
+
+def dataset(path, seed=21):
+    """Lessons for the 2B model: [{messages: system, user message, assistant JSON}]. Made-up examples (templates, the ones
+    gpt-oss wrote, messages with two facts, facts about other people) and text that states nothing (templates, what
+    gpt-oss wrote, stdlib docstrings). Gemini's examples stay out: its terms bar training models that compete with it."""
+    rnd = random.Random(seed)
+    lesson = lambda text, facts: {"messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": text},
+                                               {"role": "assistant", "content": json.dumps({"facts": facts}, ensure_ascii=False)}]}
+    def fact(lab, obj, who="me", text=None):  # the object as the message spells it ("stripe" in a lower-case message)
+        i = text.lower().find(obj.lower()) if text else -1
+        return {"op": lab[0], "who": who, "rel": lab[1:], "what": text[i:i + len(obj)] if i >= 0 else obj}
+    pos, out = [], []
+    for text, lab, obj in examples(n_per=250, seed=seed) + written(("groq",)) * 2:
+        if lab == "none":
+            out.append(lesson(text, []))
+        else:
+            pos.append((text, lab, obj))
+            out.append(lesson(text, [fact(lab, obj, text=text)]))
+    for _ in range(1500):  # two facts in one message
+        (a, la, oa), (b, lb, ob) = rnd.sample(pos, 2)
+        text = a.rstrip(".!") + rnd.choice([". ", ", and ", " — also ", ". oh and "]) + b
+        out.append(lesson(text, [fact(la, oa, text=a), fact(lb, ob, text=b)]))
+    for _ in range(1200):  # about someone else: theirs, not the user's
+        kin, name = rnd.choice(KIN_NAMES)
+        rel, pool, temps = rnd.choice(THIRD)
+        o = rnd.choice(POOLS[pool])
+        who = name or "my " + kin
+        subj = f"my {kin} {name}" if name else f"my {kin}"
+        text = fill(rnd.choice(temps.split("|")).replace("{k}", subj), o, rnd)
+        out.append(lesson(text, ([fact("+" + kin, name, text=text)] if name else []) + [fact("+" + rel, o, who, text=text)]))
+    out += [lesson(t, []) for t in prose(3000)]
+    rnd.shuffle(out)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("".join(json.dumps(x, ensure_ascii=False) + "\n" for x in out))
+    print(f"wrote {len(out)} lessons to {path}")
+
+
 def _margin(s):
     """How far a wrongly guessed fact beats 'none' in a clause that states nothing (None when 'none' wins)."""
     c = brain.Clause(s)
@@ -650,7 +701,9 @@ TEMPLATES = [
 
 
 if __name__ == "__main__":
-    if "--write" in sys.argv:
+    if "--dataset" in sys.argv:
+        dataset(sys.argv[sys.argv.index("--dataset") + 1])
+    elif "--write" in sys.argv:
         g = "--gemini" in sys.argv
         write(writer="gemini" if g else "groq", seed=29 if g else 13, budget=60 if g else 140, batch=10 if g else 20)
     else:
