@@ -100,7 +100,7 @@ QUERIES = [  # (query, message indexes of which at least one must be in the top 
 ]
 ANSWERS = [("where do I live", "bangalore"), ("where do i work", "razorpay"), ("what's my name", "rohan"),
            ("how old am i", "27"), ("what gpu do i have", "rtx 3060"),
-           ("where did I work 39 days ago", "infosys")]
+           ("where did I work 39 days ago", "infosys"), ("where did I live before", "jaipur"), ("where did i work before", "infosys")]
 SAME_TOPIC = [(3, 4), (7, 8), (8, 9), (14, 15), (15, 38), (11, 12), (24, 25)]
 DIFF_TOPIC = [(3, 11), (7, 14), (11, 15), (29, 4)]
 
@@ -292,6 +292,263 @@ def cross_app():
     return ok, 12, bad
 
 
+# ---- the brain: meaning, people, links, honesty, change ---------------------------------------------------------------
+BRAIN = dict(  # a third person, said plainly; every question uses other words than the memory it needs
+    msgs=["hi, I'm Nikhil, I work as a data analyst at Deloitte",               # 0
+          "I love cricket and play every sunday with friends",                  # 1
+          "my wife Sarah is a pediatric nurse",                                 # 2
+          "I drink my coffee black, no sugar",                                  # 3
+          "I'm vegetarian since 2019",                                          # 4
+          "my laptop is a thinkpad t480 running fedora",                        # 5
+          "Tailscale is how I reach my homelab from outside",                   # 6
+          "i'm saving up for a trip to japan next spring",                      # 7
+          "I have mild asthma, so I avoid running in cold weather",             # 8
+          "my dog Bruno is a golden retriever",                                 # 9
+          "I'm learning spanish on duolingo",                                   # 10
+          "i usually code in go and typescript",                                # 11
+          "the jellyfin server keeps buffering on my tv",                       # 12
+          "I was born and raised in Chennai",                                   # 13
+          "we are planning our wedding anniversary dinner on 12 june",          # 14
+          "my brother arjun works at amazon in seattle",                        # 15
+          "I prefer short, direct answers without fluff",                       # 16
+          "i drive a red honda city",                                           # 17
+          "my budget for a new monitor is 20k rupees",                          # 18
+          "I listen to lo-fi and jazz while working",                           # 19
+          "my inhaler is almost empty, where can I refill it",                  # 20
+          "got a new bat for the weekend match",                                # 21
+          "how much is a hotel in tokyo in april",                              # 22
+          "my movies stutter when streaming 4k on the living room tv",          # 23
+          "suggest a high protein dinner without meat",                         # 24
+          "Bruno needs his rabies shot next week",                              # 25
+          "Sarah works at Apollo Hospital"],                                    # 26
+    queries=[  # (question, messages that answer it): one must be in the top 3
+        ("what do I do for fun", [1, 19, 21]), ("what sport do I play", [1, 21]), ("who is my partner", [2]),
+        ("what does my wife do for a living", [2, 26]), ("how do I take my coffee", [3]), ("do I eat meat", [4, 24]),
+        ("what computer do I use", [5]), ("how do I access my home network remotely", [6]), ("any upcoming vacation plans", [7, 22]),
+        ("do I have any health conditions", [8, 20]), ("do I have pets", [9, 25]), ("what languages am I studying", [10]),
+        ("which programming languages do I know", [11]), ("problems with my media server", [12, 23]), ("where did I grow up", [13]),
+        ("when is our anniversary", [14]), ("where does my brother live", [15]), ("how should you answer me", [16]),
+        ("what car do I have", [17]), ("how much can I spend on a display", [18]), ("what music do I like", [19]),
+        ("where do I work", [0]), ("where does my wife work", [26])],
+    answers=[("who is my partner", "sarah"), ("where does my wife work", "apollo"), ("what does my brother do", "amazon"),
+             ("where does my brother live", "seattle"), ("where did I grow up", "chennai"), ("what's my dog called", "bruno")],
+    linked=[(8, 20), (1, 21), (7, 22), (12, 23), (4, 24), (9, 25), (2, 26)],     # one subject in other words: linked
+    unlinked=[(8, 12), (1, 3), (7, 5), (20, 21), (22, 24), (16, 17), (3, 18)],   # nothing in common: not linked
+    unknown=["what's my blood type", "what is my favourite colour", "tell me about my boat", "what's my shoe size",
+             "which gym do I go to", "what's my mother's name"],                 # never said: no answer and no memories
+    changes=[  # (messages in one chat, relation, does it hold at the end?)
+        (["I love coffee", "I can't stand coffee anymore"], ("me", "likes", "coffee"), False),
+        (["I love coffee", "I can't stand coffee anymore"], ("me", "dislikes", "coffee"), True),
+        (["I don't like sushi", "ok I love sushi now"], ("me", "dislikes", "sushi"), False),
+        (["I love coffee", "my wife hates coffee"], ("me", "likes", "coffee"), True),            # someone else's taste
+        (["I want to buy a PS5", "I finally bought a PS5"], ("me", "wants", "ps5"), False),
+        (["I want to buy a PS5", "my brother bought a PS5"], ("me", "wants", "ps5"), True),      # someone else's purchase
+        (["I'm moving to Berlin next month", "I moved to Berlin"], ("me", "plans to move to", "berlin"), False),
+        (["I'm learning Rust", "I gave up on Rust"], ("me", "learning", "rust"), False),
+        (["I'm learning Rust", "I gave up on Go"], ("me", "learning", "rust"), True),
+        (["I play guitar", "I don't play guitar anymore"], ("me", "plays", "guitar"), False),
+        (["I'm working on DoorTalk", "I abandoned DoorTalk"], ("me", "working on", "doortalk"), False),
+        (["I use Windows on my desktop", "I switched to Linux last month"], ("me", "uses", "windows"), False),
+        (["my wife loves hiking", "my wife's name is Sarah"], ("sarah", "likes", "hiking"), True),
+        (["my wife is Sarah", "my wife loves hiking"], ("sarah", "likes", "hiking"), True),
+        (["my sister Meera is a doctor", "my sister Priya is a lawyer", "my sister loves painting"],
+         ("meera", "likes", "painting"), False),                                                   # which sister? don't guess
+        (["I'm building DoorTalk", "I renamed DoorTalk to HearthLink"], ("me", "working on", "hearthlink"), True),
+        (["my brother arjun moved to seattle", "he works at amazon now"], ("arjun", "works at", "amazon"), True)])
+HOLDOUT2 = dict(  # the same suite on another person in other words; never tuned against, only reported
+    msgs=["I'm Leo, I teach high school chemistry in Porto", "my girlfriend Ana is an architect",
+          "I've been bouldering twice a week for three years", "I can't eat gluten, I have celiac disease",
+          "I edit my photos in darktable on a framework laptop", "my cat Pixel sleeps on my keyboard all day",
+          "I'm writing a fantasy novel in the evenings", "we're saving for a house deposit",
+          "I only drink green tea, coffee makes me jittery", "my home server runs proxmox with three VMs",
+          "I want to visit iceland in winter", "my mom lives in lyon", "Ana just got promoted at her firm"],
+    queries=[("what's my job", [0]), ("who am I dating", [1]), ("what exercise do I do", [2]), ("any dietary restrictions", [3]),
+             ("what photo software do I use", [4]), ("do I have any animals", [5]), ("what creative projects am I working on", [6]),
+             ("what are we saving money for", [7]), ("do I drink coffee", [8]), ("what hypervisor do I run", [9]),
+             ("where do I want to travel", [10]), ("where does my mother live", [11])],
+    answers=[("where does my mother live", "lyon"), ("what does my girlfriend do", "architect"), ("what's my name", "leo")],
+    linked=[(1, 12)], unlinked=[(2, 8), (5, 9), (3, 10)],
+    unknown=["what's my blood group", "what car do I drive", "how tall am I"],
+    changes=[(["I love running", "I hate running now, my knees hurt"], ("me", "likes", "running"), False),
+             (["I want to buy a kindle", "just got a kindle paperwhite"], ("me", "wants", "kindle"), False),
+             (["I'm planning to move to Lisbon", "we finally moved to Lisbon"], ("me", "plans to move to", "lisbon"), False),
+             (["I'm learning the piano", "I quit piano lessons"], ("me", "learning", "piano"), False),
+             (["my partner loves sushi", "my partner's name is Sam"], ("sam", "likes", "sushi"), True),
+             (["My podcast is called Night Owls", "I renamed Night Owls to Late Shift"], ("me", "working on", "late shift"), True),
+             (["my sister Priya just started at Google", "she lives in Zurich now"], ("priya", "lives in", "zurich"), True)])
+HOLDOUT3 = dict(  # written after the brain was tuned (2026-09-27) and run once: the honest number for new people
+    msgs=["hey, I'm Priya, I work as a product manager at Swiggy", "I run 5k every morning before work", "my husband Karan is a pilot",
+          "I'm lactose intolerant", "I use an iPad Pro for sketching", "I've been learning the violin for two years",
+          "we're planning a trip to Ladakh in October", "my phone is a pixel 8", "I read a lot of sci-fi, Asimov is my favourite",
+          "my son Aarav just turned six", "I host my blog on a hetzner vps", "I hate crowded places", "Karan works at IndiGo"],
+    queries=[("what's my morning routine", [1]), ("who am I married to", [2, 12]), ("any food intolerances", [3]),
+             ("what do I draw on", [4]), ("what instrument do I play", [5]), ("where are we travelling", [6]),
+             ("what smartphone do I have", [7]), ("what books do I like", [8]), ("how old is my kid", [9]),
+             ("where is my website hosted", [10]), ("what kind of places do I avoid", [11])],
+    answers=[("where does my husband work", "indigo"), ("who is my spouse", "karan"), ("what's my son's name", "aarav")],
+    linked=[(2, 12)], unlinked=[(1, 7), (3, 10)],
+    unknown=["what's my cat's name", "which university did I go to", "what's my favourite football team"],
+    changes=[(["I love sushi", "sushi makes me sick now, I hate it"], ("me", "likes", "sushi"), False),
+             (["I want to buy an e-bike", "bought the e-bike yesterday!"], ("me", "wants", "e-bike"), False),
+             (["I'm moving to Pune next month", "I've moved to Pune"], ("me", "plans to move to", "pune"), False),
+             (["I'm learning German", "I stopped learning German"], ("me", "learning", "german"), False),
+             (["my daughter loves drawing", "my daughter's name is Isha"], ("isha", "likes", "drawing"), True),
+             (["I'm building Kiosk", "Kiosk is now called Stall"], ("me", "working on", "stall"), True),
+             (["my friend Rahul moved to Delhi", "he works at Zomato"], ("rahul", "works at", "zomato"), True),
+             (["I use Chrome", "I switched to Firefox"], ("me", "uses", "chrome"), False)])
+NATURAL = [  # everyday ways to say a fact that no rule was written for: the learner is for these (written before it)
+    ("switched jobs, I'm at Stripe now", ("me", "works at", "stripe")), ("another monday at the bank, yay", ("me", "works at", "bank")),
+    ("been at Google for 3 years now", ("me", "works at", "google")), ("my manager at Infosys is super strict", ("me", "works at", "infosys")),
+    ("moved back home to Pune after 5 years in Dubai", ("me", "lives in", "pune")),
+    ("it's so hot here in Chennai today", ("me", "lives in", "chennai")), ("been living out of Berlin since last year", ("me", "lives in", "berlin")),
+    ("been vegan 3 yrs now lol", ("me", "is", "vegan")), ("as a nurse I work night shifts", ("me", "is", "nurse")),
+    ("finally took the plunge and got myself a ps5", ("me", "has", "ps5")), ("bought the e-bike yesterday!", ("me", "has", "e-bike")),
+    ("just got a kindle paperwhite", ("me", "has", "kindle paperwhite")), ("my new macbook arrived today", ("me", "has", "macbook")),
+    ("I've got two kids and a golden retriever", ("me", "has", "golden retriever")),
+    ("can't live without my kindle", ("me", "likes", "kindle")), ("obsessed with pickleball lately", ("me", "likes", "pickleball")),
+    ("sushi is my comfort food", ("me", "likes", "sushi")), ("nothing beats a good thriller", ("me", "likes", "thriller")),
+    ("not a coffee person tbh", ("me", "dislikes", "coffee")), ("sushi makes me sick now, I hate it", ("me", "dislikes", "sushi")),
+    ("ugh, crowds make me anxious", ("me", "dislikes", "crowd")), ("no more meat for me", ("me", "avoids", "meat")),
+    ("day 40 of learning japanese!", ("me", "learning", "japanese")), ("finally picking up rust this summer", ("me", "learning", "rust")),
+    ("vim user for life", ("me", "uses", "vim")), ("my whole setup runs on arch btw", ("me", "uses", "arch")),
+    ("been daily driving linux for years", ("me", "uses", "linux")), ("still grinding on my indie game", ("me", "working on", "indie game")),
+    ("hit the courts for badminton every saturday", ("me", "plays", "badminton")), ("saving up for a new bike", ("me", "wants", "bike"))]
+NATURAL_NOT = [  # nothing new about the user (a relative may still be named)
+    "what's the best way to learn rust?", "if I lived in Berlin I'd bike everywhere", "my friend works at Google",
+    "the bank is closed today", "Stripe's API docs are great", "can you explain how kubernetes works", "they moved to Pune last year",
+    "ok do it", "is the kindle worth it?", "fix the bug in the login page", "Google announced a new phone",
+    "I wonder if Japan is expensive", "should I buy a ps5 or an xbox", "my sister loves sushi", "write a poem about coffee",
+    "compare arch and fedora for me", "why is my build so slow", "maybe I'll try vim someday"]
+NATURAL_GONE = [  # the user takes something back: it must be retracted
+    ("ugh, coffee and I are done for good", "coffee"), ("quit my job at Infosys", "infosys"), ("not using notion anymore", "notion"),
+    ("sold my car last month", "car"), ("done with twitter, deleted the app", "twitter")]
+
+NATURAL2 = dict(  # written after the learner was trained (2026-09-27), run once: the honest number for everyday phrasing
+    facts=[("three years at Accenture and still no promotion", ("works at", "accenture")),
+           ("finally settled in Lisbon after all the moving around", ("lives in", "lisbon")),
+           ("Mumbai rains are something else, love living here", ("lives in", "mumbai")),
+           ("vegetarian since birth, never tasted meat", ("is", "vegetarian")), ("picked up a steam deck over the holidays", ("has", "steam deck")),
+           ("I'm a huge fan of Studio Ghibli films", ("likes", "studio ghibli film")), ("honestly obsessed with sourdough baking", ("likes", "sourdough baking")),
+           ("can't stop listening to Taylor Swift", ("likes", "taylor swift")), ("horror movies are my thing", ("likes", "horror movie")),
+           ("I really can't stand cilantro", ("dislikes", "cilantro")), ("mushrooms are disgusting", ("dislikes", "mushroom")),
+           ("been off alcohol for 6 months", ("avoids", "alcohol")), ("cut out sugar completely this year", ("avoids", "sugar")),
+           ("on day 12 of my duolingo streak for korean", ("learning", "korean")), ("trying to learn the ukulele during lockdown", ("learning", "ukulele")),
+           ("mostly using Obsidian for notes these days", ("uses", "obsidian")), ("moved all my photos to Immich last weekend", ("uses", "immich")),
+           ("writing a fantasy trilogy in my spare time", ("working on", "fantasy trilogy")),
+           ("almost done with my portfolio redesign", ("working on", "portfolio redesign")),
+           ("tennis every sunday morning with my dad", ("plays", "tennis")), ("really want a mechanical keyboard for my birthday", ("wants", "mechanical keyboard")),
+           ("spent my whole childhood in Nagpur", ("from", "nagpur")), ("starting my new role at Atlassian on Monday", ("works at", "atlassian")),
+           ("Arch user since 2019", ("uses", "arch")), ("just adopted a rescue cat named Miso", ("has", "rescue cat")),
+           ("my daily commute is on a royal enfield", ("has", "royal enfield")), ("I'm a pharmacist at a small clinic", ("is", "pharmacist")),
+           ("love a good masala dosa on sundays", ("likes", "masala dosa")), ("working remotely from Goa this month", ("lives in", "goa")),
+           ("still hooked on Elden Ring", ("likes", "elden ring"))],
+    none=["what's a good name for a rescue cat?", "my dad plays tennis every sunday", "Atlassian is hiring backend engineers",
+          "summarize the latest Taylor Swift album reviews", "Setup notes: the NAS mounts at /mnt/data", "Chapter 4: Recursion and backtracking",
+          "Loops, arrays, strings and pointers", "use obsidian for this please", "is sourdough hard to make?", "Lisbon is gorgeous in October",
+          "if I had time I'd learn korean", "the espresso machine at work is broken again", "ok that fixed it, thanks",
+          "Priya moved to Lisbon last year", "compare Obsidian and Notion for a student", "error: permission denied when running the script",
+          "my brother is obsessed with F1", "the new steam deck looks amazing", "Studio Ghibli announced a new film", "Operating systems and networks"],
+    gone=[("no longer at Accenture as of this week", "accenture"), ("sold the steam deck, never used it", "steam deck"),
+          ("stopped using Obsidian, too slow for me", "obsidian"), ("not doing duolingo anymore", "duolingo"),
+          ("quit tennis after my knee injury", "tennis"), ("gave away my old kindle", "kindle")])
+
+NATURAL3 = dict(  # written before the learner saw any AI-written examples (2026-09-27): the clean before/after for step 2b
+    facts=[("my 9 to 5 is at a fintech called Revolut", ("works at", "revolut")), ("two years into my job at Tesla now", ("works at", "tesla")),
+           ("we just closed on a house in Austin!", ("lives in", "austin")), ("finally unpacked after the move to Leeds", ("lives in", "leeds")),
+           ("keto for three months and down 8 kilos", ("is", "keto")), ("proud owner of a Tamagotchi again lol", ("has", "tamagotchi")),
+           ("the new Pixel 9 is in my pocket as we speak", ("has", "pixel 9")), ("my cat Biscuit knocked over my coffee again", ("cat", "biscuit")),
+           ("can't get enough of Korean dramas lately", ("likes", "korean drama")), ("Formula 1 weekends are sacred in my house", ("likes", "formula 1")),
+           ("honestly can't do spicy food anymore", ("dislikes", "spicy food")), ("giving up meat for good this year", ("avoids", "meat")),
+           ("zero caffeine since march", ("avoids", "caffeine")), ("grinding leetcode every night for interviews", ("learning", "leetcode")),
+           ("halfway through a pottery course at the community center", ("learning", "pottery")),
+           ("Emacs for everything, org-mode changed my life", ("uses", "emacs")), ("all my passwords live in Bitwarden", ("uses", "bitwarden")),
+           ("building a tiny rust compiler for fun", ("working on", "rust compiler")),
+           ("launching my candle shop on etsy next week", ("working on", "candle shop")),
+           ("5-a-side football every thursday after work", ("plays", "football")),
+           ("desperately need a new laptop, mine is dying", ("wants", "laptop")), ("my hometown is Mysore", ("from", "mysore")),
+           ("I've been a UX researcher for 6 years", ("is", "ux researcher")), ("Toronto has been home for a decade", ("lives in", "toronto")),
+           ("mechanic by trade, coder by night", ("is", "mechanic")), ("absolutely love hiking in the Alps", ("likes", "hiking")),
+           ("recently switched from Android to an iPhone 16", ("uses", "iphone 16")), ("my daughter Zara just turned 3", ("daughter", "zara")),
+           ("been using a Framework laptop since last spring", ("uses", "framework laptop")),
+           ("lactose intolerant, so no milk in my tea", ("is", "lactose intolerant"))],
+    none=["how do I get a job at Revolut?", "my roommate just bought a Pixel 9", "Austin real estate prices are wild",
+          "if I went keto would I lose weight?", "plan a 5-day trip to Iceland for me", "what's the difference between Emacs and Vim",
+          "Bitwarden vs 1Password?", "my mom loves Korean dramas", "install: pip install -r requirements.txt", "Week 3: Trees, heaps and hashing",
+          "Tesla recalled another model", "someone told me pottery is relaxing", "rewrite this paragraph to sound more formal",
+          "Leeds United lost again", "Zara is a clothing brand, right?"],
+    gone=[("left Revolut after the layoffs", "revolut"), ("no more Bitwarden, moved everything elsewhere", "bitwarden"),
+          ("sold my Pixel last week", "pixel"), ("stopped going to pottery class", "pottery"), ("don't live in Leeds anymore", "leeds"),
+          ("not into Korean dramas these days", "korean drama")])
+
+
+def rels_of(g):
+    ek = {r[0]: r[1] for r in g.db.execute("SELECT id, key FROM nodes WHERE kind='entity'")}
+    return {(ek[a], rel, ek[b]) for a, b, rel in g.db.execute("SELECT src, dst, rel FROM edges") if a in ek and b in ek}
+
+
+def said(msgs, chat=None, gap=DAY):
+    """msgs said one per `gap` (in one chat if given) -> (graph, memory ids per message)."""
+    g = server.Graph(":memory:")
+    t0 = time.time() - (len(msgs) + 1) * gap
+    return g, [g.ingest(t, "chatgpt.com", chat, chat and "https://chatgpt.com/c/" + chat, t0 + i * gap) for i, t in enumerate(msgs)]
+
+
+def brain_suite(s):
+    """-> {part: (ok, total, misses)} for meaning, answers, links, unknown and changes."""
+    g, ids = said(s["msgs"])
+    of = {m: i for i, ms in enumerate(ids) for m in ms}
+    out = {}
+    bad = []
+    for q, want in s["queries"]:
+        got = [of.get(m["id"]) for m in g.recall(q, 10)["memories"]]
+        if not any(i in want for i in got[:3]):
+            bad.append(f"  meaning: {q!r} want {want} got {got[:5]}")
+    out["meaning"] = (len(s["queries"]) - len(bad), len(s["queries"]), bad)
+    bad = []
+    for q, want in s["answers"]:
+        ans = (g.recall(q, 5).get("answer") or {}).get("text", "")
+        if want not in ans.lower():
+            bad.append(f"  answer: {q!r} want {want!r} got {ans!r}")
+    out["answers"] = (len(s["answers"]) - len(bad), len(s["answers"]), bad)
+    sim = {frozenset(e) for e in g.db.execute("SELECT src, dst FROM edges WHERE rel='similar'")}
+    linked = lambda a, b: any(frozenset((x, y)) in sim for x in ids[a] for y in ids[b])
+    bad = [f"  not linked: {s['msgs'][a]!r} ~ {s['msgs'][b]!r}" for a, b in s["linked"] if not linked(a, b)] + \
+          [f"  wrongly linked: {s['msgs'][a]!r} ~ {s['msgs'][b]!r}" for a, b in s["unlinked"] if linked(a, b)]
+    out["links"] = (len(s["linked"]) + len(s["unlinked"]) - len(bad), len(s["linked"]) + len(s["unlinked"]), bad)
+    bad = []
+    for q in s["unknown"]:
+        r = g.recall(q, 8)
+        if r["answer"] or r["memories"]:
+            bad.append(f"  should not know: {q!r} -> {(r['answer'] or {}).get('text')!r} {[m['text'][:40] for m in r['memories'][:3]]}")
+    out["unknown"] = (len(s["unknown"]) - len(bad), len(s["unknown"]), bad)
+    bad = []
+    for msgs, triple, want in s["changes"]:
+        if (triple in rels_of(said(msgs, "c1", 3600)[0])) != want:
+            bad.append(f"  change: {msgs} -> {triple} should be {'there' if want else 'gone'}")
+    out["changes"] = (len(s["changes"]) - len(bad), len(s["changes"]), bad)
+    return out
+
+
+PARTS = {"meaning": "asked in other words", "answers": "answers about people", "links": "linked by meaning",
+         "unknown": "says when it doesn't know", "changes": "facts that change"}
+
+
+def natural(facts=None, none=None, gone=None):
+    """Everyday phrasings: facts found, false facts avoided, things taken back -> [(ok, total, misses)]."""
+    import brain
+    facts = facts or [(t, w[1:]) for t, w in NATURAL]
+    none, gone = none or NATURAL_NOT, gone or NATURAL_GONE
+    rel = lambda t: {r for m in brain.analyse(t) for r in m["relations"]}
+    hit = lambda t, w: any(r[0] == "me" and r[1] == w[0] and (r[2] == w[1] or brain.same_thing(r[2], w[1])) for r in rel(t))
+    found = [f"  missed: {t!r} want {w} got {sorted(rel(t))}" for t, w in facts if not hit(t, w)]
+    false = [f"  false fact: {t!r} -> {sorted(r for r in rel(t) if r[0] == 'me' and r[1] not in brain.KIN)}" for t in none
+             if any(r[0] == "me" and r[1] not in brain.KIN for r in rel(t))]
+    back = [f"  not taken back: {t!r} ({k})" for t, k in gone
+            if not any(r[2] == k or brain.same_thing(k, r[2]) for m in brain.analyse(t) for r in m["retracts"])]
+    return [(len(facts) - len(found), len(facts), found), (len(none) - len(false), len(none), false),
+            (len(gone) - len(back), len(gone), back)]
+
+
 def holdout():
     h = HOLDOUT
     g = server.Graph(":memory:")
@@ -390,6 +647,12 @@ def run(verbose=True):
     p_ok, p_bad = phrasings()
     gate("phrasings understood", p_ok, len(PHRASINGS), len(PHRASINGS))
     misses += p_bad
+    for part, (ok, n, bad) in brain_suite(BRAIN).items():
+        gate(PARTS[part], ok, n, n - (part == "links"))  # asthma ~ inhaler: beyond the static vectors (0.18)
+        misses += bad
+    for name, (ok, n, bad) in zip(("everyday phrasings", "no false facts", "taken back"), natural()):
+        gate(name, ok, n, n - (name == "everyday phrasings"))  # "sushi is my comfort food": the learner picks "comfort food"
+        misses += bad
     if verbose:
         print("\n".join(lines))
         print(f"{'MRR':28} {mrr:.3f}")
@@ -406,4 +669,16 @@ def run(verbose=True):
 if __name__ == "__main__":
     ok, _, _ = run()
     holdout()
+    h2 = brain_suite(HOLDOUT2)
+    print("holdout 2: " + ", ".join(f"{PARTS[k]} {a}/{n}" for k, (a, n, _) in h2.items()))
+    print("\n".join(b for _, _, bad in h2.values() for b in bad))
+    h3 = brain_suite(HOLDOUT3)
+    print("holdout 3: " + ", ".join(f"{PARTS[k]} {a}/{n}" for k, (a, n, _) in h3.items()))
+    print("\n".join(b for _, _, bad in h3.values() for b in bad))
+    (f, fn, fb), (n, nn, nb), (g_, gn, gb) = natural(NATURAL2["facts"], NATURAL2["none"], NATURAL2["gone"])
+    print(f"everyday phrasings, fresh set: facts {f}/{fn}, no false facts {n}/{nn}, taken back {g_}/{gn}")
+    print("\n".join(fb + nb + gb))
+    (f, fn, fb), (n, nn, nb), (g_, gn, gb) = natural(NATURAL3["facts"], NATURAL3["none"], NATURAL3["gone"])
+    print(f"everyday phrasings, fresh set 3: facts {f}/{fn}, no false facts {n}/{nn}, taken back {g_}/{gn}")
+    print("\n".join(fb + nb + gb))
     sys.exit(0 if ok else 1)

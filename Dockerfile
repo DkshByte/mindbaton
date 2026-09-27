@@ -2,7 +2,7 @@
 #   docker build -t mindbaton . && docker run -d -p 3004:3004 -v mindbaton-data:/data --name mindbaton mindbaton
 FROM python:3.13-slim
 
-# No pip packages and no system packages: the English word list ships in assets/words.
+# No pip packages and no system packages: the English word list (assets/words) and meaning table (assets/sense) ship with it.
 RUN useradd --system --uid 10001 --home-dir /data mindbaton && mkdir -m 700 /data && chown mindbaton /data
 
 WORKDIR /app

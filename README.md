@@ -42,6 +42,15 @@ No cloud, no account, no subscription. It's a small Python program and one datab
 - **Hand-offs** — one click turns a chat into a hand-off pack another AI continues from.
 - **Topics that make sense** — the same subject talked about in two apps becomes one topic.
 - **Ask it anything** — "where do I live?", "what GPU do I have?" get a direct answer, with the memories behind it.
+- **Understands meaning, not just words** — "what do I do for fun?" finds "I love cricket"; "how do I take my coffee?"
+  finds "I drink it black". Offline, in plain Python: a small built-in table of word meanings, no AI needed.
+- **Reads the way you actually type** — "switched jobs, I'm at Stripe now", "not a coffee person tbh", "bought the
+  e-bike yesterday!": a small learner reads what no rule covers, only when it's sure. It learned from made-up examples,
+  never from your messages.
+- **Keeps up when things change** — "I can't stand coffee anymore" replaces "I love coffee", buying the PS5 you wanted
+  closes the wish, and "my wife" becomes Sarah once you've said her name. The history stays, so "where did I live
+  before?" still has an answer.
+- **Says when it doesn't know** — ask about something you never mentioned and it says so, instead of guessing.
 - **Forget in one click** — and it stays forgotten, even after a rebuild.
 - **Secrets stay out** — API keys and passwords you paste into a chat are blanked out before anything is saved.
 - **Works offline** — understanding is plain rules, no AI needed. Add a free Gemini or Groq key if you'd like nicer
@@ -67,7 +76,7 @@ No cloud, no account, no subscription. It's a small Python program and one datab
 
 ## Quick start
 
-You need a computer that stays on (a home server, a NAS, a Mac mini, a Raspberry Pi 4 or your laptop) with
+You need a computer that stays on (a home server, a NAS, a Mac mini or your laptop) with
 **Python 3.9+** or **Docker**.
 
 **Linux or macOS**
@@ -91,7 +100,7 @@ itself every night: see [Automatic updates](docs/backup-and-upgrade.md#automatic
 
 Open `http://<this computer>:3004/?code=<the code>` and choose your password.
 
-Or skip the clone and run the published image (amd64 and arm64, so Raspberry Pi and most NAS boxes too):
+Or skip the clone and run the published image (amd64 and arm64, so most NAS boxes and Apple Silicon Macs too):
 
 ```sh
 docker run -d --name mindbaton -p 3004:3004 -v mindbaton-data:/data --restart unless-stopped ghcr.io/dkshbyte/mindbaton

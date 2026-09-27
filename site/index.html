@@ -193,7 +193,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         <li id="part-5"><b><code>brain.py</code>.</b> Plain rules sort facts, people and topics. No AI model, no GPU.</li>
         <li id="part-6"><b><code>handoff.py</code>.</b> Builds the baton: lines pulled word for word, fitted to a token budget.</li>
         <li id="part-7"><b>Memory database.</b> SQLite with full-text search, one per account, in your <code>data</code> folder.</li>
-        <li id="part-8"><b>The computer you already own.</b> A home server, a NAS, a Mac mini, a Raspberry Pi 4 or your laptop. Not included.</li>
+        <li id="part-8"><b>The computer you already own.</b> A home server, a NAS, a Mac mini or your laptop. Not included.</li>
       </ol>
       <p class="silk-p small blankplate">Blank plate: an optional free Gemini or Groq key, for nicer summaries and topic names. Empty unless you fill it.</p>
     </div>
@@ -404,7 +404,7 @@ That's where we stopped. My last message is the final "Me:" line above — carry
     <article class="plate card" tabindex="0" data-state="next" aria-labelledby="n2-h">
       <p class="state silk"><span class="led" aria-hidden="true"></span><span class="s-built">In the box</span><span class="s-next">Next update</span></p>
       <h3 id="n2-h">Put it on a server, or link to one</h3>
-      <p>Install Mindbaton on the computer that stays on, like a home server, a NAS or a Raspberry Pi. On your laptop, choose “Link to my Mindbaton”: it finds that one and connects this computer's AI tools to it.</p>
+      <p>Install Mindbaton on the computer that stays on, like a home server or a NAS. On your laptop, choose “Link to my Mindbaton”: it finds that one and connects this computer's AI tools to it.</p>
       <div class="link-diagram" aria-hidden="true">
         <p class="box"><span class="led on"></span><b>Your server</b><span class="mono">192.168.1.20:3004</span></p>
         <span class="cable"></span>
@@ -520,7 +520,7 @@ That's where we stopped. My last message is the final "Me:" line above — carry
   </div>
   <table class="spec">
     <tbody>
-      <tr><th scope="row">Runs on</th><td>Any computer that stays on: home server, NAS, Mac mini, Raspberry Pi 4, laptop</td></tr>
+      <tr><th scope="row">Runs on</th><td>Any computer that stays on: home server, NAS, Mac mini, laptop</td></tr>
       <tr><th scope="row">Needs</th><td>Python 3.9+ with SQLite FTS5 and the system word list, or Docker</td></tr>
       <tr><th scope="row">Dependencies</th><td>None. Python standard library only; no pip packages, no build step</td></tr>
       <tr><th scope="row">Size</th><td>About 9,800 lines of Python, tests included</td></tr>
