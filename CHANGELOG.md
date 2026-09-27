@@ -12,8 +12,12 @@
   old name still finds them; "he works at Amazon now" knows who "he" is from earlier in the chat.
 - **Says when it doesn't know.** Questions about things you never mentioned ("what's my blood type?") get nothing
   instead of look-alikes, and "what's my favourite colour?" no longer lists everything you like.
+- **Reads the way people actually type.** "switched jobs, I'm at Stripe now", "not a coffee person tbh", "bought the
+  e-bike yesterday!": a small learner in plain Python (trained on generated examples, never on your messages) reads
+  what no rule covers, only when it's sure. Everyday phrasings: 2/30 → 29/30 on the benchmark, 17/30 on a set it never
+  saw, with no made-up facts in either.
 - Search results say how they matched (a direct answer, a thing you named, your words, or meaning only).
-- The memory is rebuilt once on update (logic version 16).
+- The memory is rebuilt once on update (logic version 17).
 
 ## 0.1.3
 

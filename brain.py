@@ -98,6 +98,8 @@ def kin_rels(kin):
     group = KIN_ANY.get(kin) or next((g for g in KIN_SAME if kin in g.split()), "")
     return list(dict.fromkeys([kin] + group.split()))
 GREET = r"^(?:(?:hey|hi|hello|yo|ok|okay|so|and|also|now|btw|um+|hmm+|well|oh|actually|alright|right|thanks|thank you)[ ,!.]+)*"
+FILLER = set("""lol lmao lmfao rofl haha hahaha hehe tbh btw fr ngl imo imho idk welp ugh yay omg smh lowkey highkey fyi jk
+xd meh yikes oof""".split())  # chat noise: never part of a name or a thing
 ACK = set("ok okay k kk thanks thank you thx ty cool great nice perfect awesome got it yes yeah yep no nope sure alright done lol haha "
           "continue go ahead proceed next retry again do run try fix please pls then now on that this".split())  # steering, not content
 
@@ -127,7 +129,8 @@ shut hope intend adore dislike detest join sit rebuild redesign develop prototyp
 uninstall abandon relocate shift reside cause keep freeze hang lag stutter handle solve avoid prevent reduce speed optimize
 optimise automate monitor secure protect deal apply implement integrate refactor clean format sort filter merge split fetch
 send receive sync mount boot restart reboot kill spawn wrap import export encrypt decrypt compress extract scale resize crop
-edit record play watch listen chat message email text call pick choose need seem tend miss catch throw handle suggest""".split())
+edit record play watch listen chat message email text call pick choose need seem tend miss catch throw handle suggest
+arrive deliver happen cancel celebrate commute complain earn hire invite marry retire promise propose vote wake worry""".split())
 
 
 def _forms(v):
@@ -256,7 +259,7 @@ def key(label):
         return ALIAS[compact]
     if (label.islower() or label.isupper() and len(label) > 4) and len(k) > 3 and k.endswith("s") \
             and not k.endswith(("ss", "us", "is", "os", "ics")):
-        k = k[:-3] + "y" if k.endswith("ies") and len(k) > 4 else k[:-1]  # cars -> car, slow queries -> slow query
+        k = k[:-3] + "y" if k.endswith("ies") and len(k) > 4 and k.split()[-1][:-1] not in DICT else k[:-1]  # queries -> query, movies -> movie
     return k
 
 
@@ -468,7 +471,8 @@ def clean(text):
     return re.sub(r"[ \t]+", " ", "\n".join(lines)).strip()
 
 
-CLAUSE_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Za-z\"'])|\n+|;\s*|,?\s+(?:and|but|also|plus|so|though),?\s+(?=(?:i|i'm|i've|i'd|my|now i|we)\b)|"
+CLAUSE_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Za-z\"'])|\n+|;\s*|,?\s+(?:and|but|also|plus|so|though),?\s+(?=(?:i|i'm|i've|i'd|my|now i|we)\b"
+                          r"(?!\s+(?:are|were)\b))|"
                           r",\s+(?=(?:i|i'm|i've|my|now i|we|she|he|they|switched|moved|migrated|remind)\b(?! mean))", re.I)
 
 
@@ -488,7 +492,7 @@ def tag(words):
     out = []
     for w in words:
         l = w.lower()
-        if l in ",;:!?()&":
+        if l in ",;:!?()&" or l in FILLER:
             t = "."
         elif l == "[secret]":
             t = "S"
@@ -517,12 +521,16 @@ def tag(words):
         l, nxt = words[i].lower(), (words[i + 1].lower() if i + 1 < len(words) else "")
         if out[i] != "N" or out[i - 1] != "N" or words[i][:1].isupper():
             continue
-        if l in PARTICIPLE and nxt in PREP:             # "a designer living in mumbai"
+        if l == "right" and nxt == "now":                # "right now" is a time, not part of a thing
+            out[i] = "T"
+        elif words[i - 1].isdigit() and l in UNITS:     # "3 yrs": a duration, not part of a thing
+            out[i - 1] = out[i] = "T"
+        elif l in PARTICIPLE and nxt in PREP:           # "a designer living in mumbai"
             out[i] = "V"
-        elif l in VERB and not l.endswith("ing") and (l.endswith(("s", "ed")) or l != VERB[l]) and \
-                (not nxt or out[i + 1] in "PDOAR.V" or nxt in VERB and nxt.endswith("ing") or words[i - 1].lower() in KIN) \
-                and _subjecty(words[i - 1]):
-            out[i] = "V"                                # "my brother works at", "jellyfin keeps crashing", "my wife loves hiking"
+        elif l in VERB and not l.endswith("ing") and ((l.endswith(("s", "ed")) or l != VERB[l]) and
+                (not nxt or out[i + 1] in "PDOAR.VT" or nxt in VERB and nxt.endswith("ing") or words[i - 1].lower() in KIN)
+                and _subjecty(words[i - 1]) or nxt in ("me", "us", "him", "them")):
+            out[i] = "V"                                # "my brother works at", "my wife loves hiking", "sushi makes me sick"
     return out
 
 
@@ -532,6 +540,9 @@ def _subjecty(w):
     return lw in KIN or w[:1].isupper() or lw in GAZ or lw in ALIAS or namey(w)
 
 
+KEPT_NAMES = {"new york", "new delhi", "new jersey", "new zealand", "new orleans", "new mexico", "new england", "new hampshire",
+              "new brunswick", "new south", "old delhi", "old goa", "first republic"}  # names that start with a word "my new …" drops
+UNITS = set("yr yrs year years month months mo mos week weeks wk wks day days hour hours hr hrs min mins".split())
 PARTICIPLE = set("living staying residing working studying running using hosting based located sitting".split())
 
 
@@ -690,7 +701,7 @@ def when(s, ref=None):
 # mood and type
 # ---------------------------------------------------------------------------------------------------------------------
 Q_START = re.compile(GREET + r"(?:what|which|who|whom|whose|when|where|why|how|should|can|could|would|will|do|does|did|is|are|"
-                     r"am|was|were|have|has|may|might|shall|any idea|anyone know|is there|are there)\b", re.I)
+                     r"am|was|were|have|has|may|might|shall|any idea|anyone know|is there|are there)\b(?!n?['’]t)", re.I)  # "can't live without" is no question
 HYPO = re.compile(r"\b(if|unless|wish|suppose|supposing|imagine|whether|hypothetically|in case|would(?! like)|could|might|"
                   r"maybe|perhaps|thinking (?:of|about)|considering)\b", re.I)
 TASK = re.compile(GREET + r"(please |can you |could you |would you |will you |i need you to |help me |now )?(write|make|create|"
@@ -808,10 +819,12 @@ WANT_REL = {"buy": "wants", "get": "wants", "adopt": "wants", "visit": "wants to
             "move to": "plans to move to", "build": "wants to build"}
 WANT_VERB = {"buying": "buy", "getting": "get", "visiting": "visit", "trying": "try", "switching to": "switch to",
              "moving to": "move to", "building": "build", "adopting": "adopt", "upgrading to": "upgrade to"}
-NEG = re.compile(r"\b(?:i|we)\s+(?:(?:really|just|actually|kinda)\s+)?(?:don't|do not|no longer|never|don't really|stopped)\s+"
+NEG = re.compile(r"(?:^|\b(?:i|we)\s+|\bi'm\s+|\bim\s+)(?:(?:really|just|actually|kinda)\s+)?(?:don't|do not|no longer|never|"
+                 r"don't really|stopped|not)\s+"
                  r"(use|using|run|running|have|own|live in|living in|work at|work for|working at|working for|like|love|drive|"
-                 r"play|playing|learn|learning|study|studying|work on|working on)\s+", re.I)
-DROP = re.compile(r"\b(?:i|we)(?:'ve| have)?\s+(?:(?:finally|just|recently|already)\s+)?(stopped using|quit using|gave up on|gave up|"
+                 r"play|playing|learn|learning|study|studying|work on|working on|doing|do)\s+(?!.*\?)", re.I)
+NO_LONGER = re.compile(r"^(?:i'm\s+|im\s+|i am\s+)?no longer (at|in|with|on|using)\s+", re.I)  # subject dropped in chat
+DROP = re.compile(r"(?:^|\b(?:i|we)(?:'ve| have)?\s+)(?:(?:finally|just|recently|already)\s+)?(stopped using|quit using|gave up on|gave up|"
                   r"dropped|uninstalled|ditched|got rid of|sold|deleted|abandoned|moved off|moved away from|switched away from|"
                   r"left|quit|moved out of)\s+(?:of\s+)?", re.I)
 USED_TO = re.compile(r"\b(?:i|we)\s+used to\s+(use|live in|work at|work for|have|own|like|love|run)\s+", re.I)
@@ -844,9 +857,10 @@ RENAME = [re.compile(p, re.I) for p in (  # the same thing under a new name
 
 def same_thing(a, b):
     """Two keys for one thing when settling a want or a drop: 'kindle' ~ 'kindle paperwhite', 'piano' ~ 'piano lesson'."""
-    wa, wb = set(a.split()), set(b.split())
+    wa, wb = ({w[:-1] if len(w) > 3 and w.endswith("s") and not w.endswith("ss") else w for w in x.split()} for x in (a, b))
     return a == b or bool(wa & wb) and (wa <= wb or wb <= wa)
 TOOLISH = set("editor ide os distro browser vpn stack setup db database shell terminal language framework".split())  # my X is Y -> uses Y
+DEVICES = {"laptop", "phone", "gpu", "cpu", "computer", "hardware"}  # categories of things one has rather than uses
 DEVICE = set("phone laptop server nas router gpu cpu keyboard car bike computer pc desktop tablet watch camera monitor machine rig "
              "workstation console".split())
 ATTRIBUTE = set("budget salary income rent age height weight birthday timezone deadline plan goal username handle email address "
@@ -915,7 +929,7 @@ class Clause:
         out = []
         for words in items:
             words = list(words)
-            while words and words[0].lower() in STRIP:
+            while words and words[0].lower() in STRIP and " ".join(words[:2]).lower() not in KEPT_NAMES:
                 words.pop(0)
             while words and (words[-1].lower() in STOP or words[-1].lower() in TEMPW) and \
                     not (len(words) == 1 and words[0][:1].isupper() and len(words[0]) > 1):
@@ -951,7 +965,7 @@ def facts(s, md=None, prev_person=None, prev_thing=None, people=()):
     md = md or mood(s)
     c = Clause(s)
     rels, ents, slots, retracts = [], [], [], []
-    more = {"switched": [], "renames": []}
+    more = {"switched": [], "renames": [], "weak": []}  # weak: guessed from a bare "my X", which the learner may replace
     person = prev_person
     low = s.lower()
     firstperson = bool(re.search(r"\b(i|i'm|i've|i'd|my|me|we|we're|our)\b", low))
@@ -1007,9 +1021,11 @@ def facts(s, md=None, prev_person=None, prev_thing=None, people=()):
         if techs:
             for k, lab, _ in techs:
                 ents.append((k, lab, "tech"))
-                rels.append(("me", "uses", k))
+                rels.append(("me", "has" if category_of(k) in DEVICES else "uses", k))  # "my macbook": a thing they have
+                more["weak"].append(rels[-1])
         elif md != "hypothetical":
-            add("me", "has", o, "thing")
+            if add("me", "has", o, "thing"):
+                more["weak"].append(rels[-1])
     if md == "question":
         return _dedupe(rels), ents, slots, retracts, person, more
 
@@ -1036,9 +1052,9 @@ def facts(s, md=None, prev_person=None, prev_thing=None, people=()):
             retracts.append(("me", None, key(o)))
         for o in Clause(m[2]).objects(0, lists=False)[0]:
             add("me", "has" if device else "uses", o)
-    for rx in (NEG, USED_TO, DROP):
+    for rx in (NEG, USED_TO, DROP, NO_LONGER):
         for m in rx.finditer(s):
-            rel = VERB_REL.get(m[1].lower(), "uses")
+            rel = VERB_REL.get(m[1].lower(), "uses") if rx is not NO_LONGER else None
             for o in c.objects(c.at(m.end()))[0]:
                 retracts.append(("me", rel, key(o)))
 
@@ -1304,7 +1320,16 @@ def steering(body):
     return 0 < len(words) <= 10 and all(w in STOP or w.isalpha() and len(w) <= 2 or stem(w) in STEER for w in words)
 
 
-def analyse(text, ref=None, prev=None, who=None, people=()):
+LEARNED_KIND = {"lives in": "place", "from": "place", "works at": "org", "is": "role", "working on": "project", "learning": "skill"}
+
+
+def _learned(s):
+    """What the learner (learn.py, trained on examples) reads in a clause the rules found nothing personal in."""
+    import learn  # here, not at the top: learn imports brain
+    return learn.read(s)
+
+
+def analyse(text, ref=None, prev=None, who=None, people=(), learner=True):
     """Raw message -> memories. Personal statements become one memory each; questions/tasks collapse into one topic memory.
     prev: the named thing the conversation was last about, so "it is ..." has a subject; who: the person it was last
     about, so "he works at amazon now" has one; people: keys of people already known by name."""
@@ -1322,18 +1347,37 @@ def analyse(text, ref=None, prev=None, who=None, people=()):
         t = classify(s, md)
         found = entities(s)
         rels, extra, slots, retracts, person, more = facts(s, md, person, prev, people)
+        learned = []
+        if learner and md == "statement" and t not in ("task", "question") and not retracts and \
+                not any(r not in more["weak"] and not (r[0] == "me" and r[1] in KIN) for r in rels):  # nothing firm: ask the learner
+            learned = _learned(s)
+            if learned:  # it read the clause; a bare "my X" guess ("my comfort food" -> has) gives way
+                rels = [r for r in rels if r not in more["weak"]]
+                weak = {r[2] for r in more["weak"]}
+                extra = [e for e in extra if e[0] not in weak or any(r[2] == e[0] for r in rels)]
+            for op, rel, obj in learned:
+                e = _typed(obj, rel, LEARNED_KIND.get(rel))
+                if op == "-":
+                    retracts.append(("me", rel, e[0]))
+                else:
+                    extra.append(e)
+                    rels.append(("me", rel, e[0]))
+                    if rel in EXCLUSIVE:
+                        slots.append("me." + rel)
         ents = list({e[0]: e for e in found + extra}.values())
         big = {w for e in extra for w in e[0].split() if len(e[0].split()) > 1}
         ents = [e for e in ents if not (e[2] == "name" and e[0] in big)]
         rels += [r for r in links(s, [e for e in ents if e[2] != "value"]) if r not in rels]
         prev = next((e for e in ents if e[2] in ("name", "project", "tech") and e[0] != "me"), prev)
         at, tense = when(s, ref)
+        if learned and t == "note" and learned[0][1] in ("likes", "dislikes", "avoids", "learning", "working on", "wants"):
+            t = "preference" if learned[0][1] in ("likes", "dislikes", "avoids") else "goal"  # else fact or event, below
         if t in ("note", "fact") and tense == "past" and PAST_V.search(s) and (rels or retracts):
             t = "event"
         if t == "note" and md == "statement" and (retracts or any(r[0] == "me" for r in rels)):
             t = "event" if PAST_V.search(s) else "fact"
         personal = t in PERSONAL and md != "question"
-        conf = 1.0 if explicit else .9 if personal and md == "statement" else .6 if md == "hypothetical" else .5
+        conf = 1.0 if explicit else .75 if learned else .9 if personal and md == "statement" else .6 if md == "hypothetical" else .5
         if explicit and t not in PERSONAL:
             t, personal = "fact", True
         phr = phrases(s)

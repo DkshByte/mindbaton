@@ -40,7 +40,7 @@ def load_env(path=os.path.join(HERE, "mindbaton.env")):
 
 
 load_env()
-import ai, brain, handoff, live, sense  # noqa: E402  (after the env file: ai.py reads its settings at import)
+import ai, brain, handoff, learn, live, sense  # noqa: E402  (after the env file: ai.py reads its settings at import)
 
 HOST = os.environ.get("MINDBATON_HOST", "127.0.0.1")
 PORT = int(os.environ.get("MINDBATON_PORT", 3004))
@@ -87,7 +87,7 @@ def update_watch():
     threading.Thread(target=check, daemon=True).start()
 LOCK = threading.RLock()  # one request touches the databases at a time; threads only keep idle sockets from blocking others
 # ponytail: one lock for every account's graph; per-account locks if many people use one install at once
-LOGIC_VERSION = "16"  # 16: meaning vectors, facts that settle older ones, kin/rename merges (15: "the user always runs / was born" -> "I always run / was born" (14: hand-off packs and briefings are marked [mindbaton])
+LOGIC_VERSION = "17"  # 17: the learner reads everyday phrasing (16: meaning vectors, facts that settle older ones, kin/rename merges (15: "the user always runs / was born" -> "I always run / was born" (14: hand-off packs and briefings are marked [mindbaton])
 PERSONAL = brain.PERSONAL
 AI_SITE = {}  # "ChatGPT" -> "chatgpt.com"
 LINKISH = ("mentions", "about", "context")
@@ -613,7 +613,8 @@ class Graph:
             m["terms"] = brain.terms(text, m["entities"], m.get("phrases", []))
         else:
             people = {k for (k,) in self.db.execute("SELECT key FROM nodes WHERE kind='entity' AND type='person'")}
-            mems = brain.analyse(text, ts, self.last_thing(ctx, ai, ts), self.last_person(ctx, ts), people)
+            mems = brain.analyse(text, ts, self.last_thing(ctx, ai, ts), self.last_person(ctx, ts), people,
+                                 learner=not (url or "").startswith("memory://"))  # notes are an agent's prose, not chat
         src = {k: v for k, v in {"ai": ai, "chat": chat, "ts": ts, "ctx": ctx, "model": live.model_name(meta.get("model")),
                                  "note": 1 if (url or "").startswith("memory://") else None}.items() if v}
         for m in mems:
@@ -3287,6 +3288,7 @@ if __name__ == "__main__":
         os.environ["MINDBATON_AI"] = "0"  # tests never call the AI
         brain.selfcheck()
         sense.selfcheck()
+        learn.selfcheck()
         handoff.selfcheck()
         selfcheck()
         authcheck()

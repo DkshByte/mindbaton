@@ -396,13 +396,61 @@ HOLDOUT3 = dict(  # written after the brain was tuned (2026-09-27) and run once:
              (["I'm building Kiosk", "Kiosk is now called Stall"], ("me", "working on", "stall"), True),
              (["my friend Rahul moved to Delhi", "he works at Zomato"], ("rahul", "works at", "zomato"), True),
              (["I use Chrome", "I switched to Firefox"], ("me", "uses", "chrome"), False)])
-NATURAL = [  # everyday ways to say a fact that no rule was written for: the learner (step 2) is for these; reported, not gated
-    ("switched jobs, I'm at Stripe now", ("me", "works at", "stripe")), ("not a coffee person tbh", ("me", "dislikes", "coffee")),
-    ("been vegan 3 yrs now lol", ("me", "is", "vegan")), ("finally took the plunge and got myself a ps5", ("me", "has", "ps5")),
-    ("another monday at the bank, yay", ("me", "works at", "bank")), ("no more meat for me", ("me", "avoids", "meat")),
+NATURAL = [  # everyday ways to say a fact that no rule was written for: the learner is for these (written before it)
+    ("switched jobs, I'm at Stripe now", ("me", "works at", "stripe")), ("another monday at the bank, yay", ("me", "works at", "bank")),
+    ("been at Google for 3 years now", ("me", "works at", "google")), ("my manager at Infosys is super strict", ("me", "works at", "infosys")),
     ("moved back home to Pune after 5 years in Dubai", ("me", "lives in", "pune")),
-    ("can't live without my kindle", ("me", "likes", "kindle")), ("day 40 of learning japanese!", ("me", "learning", "japanese")),
-    ("I've got two kids and a golden retriever", ("me", "has", "golden retriever"))]
+    ("it's so hot here in Chennai today", ("me", "lives in", "chennai")), ("been living out of Berlin since last year", ("me", "lives in", "berlin")),
+    ("been vegan 3 yrs now lol", ("me", "is", "vegan")), ("as a nurse I work night shifts", ("me", "is", "nurse")),
+    ("finally took the plunge and got myself a ps5", ("me", "has", "ps5")), ("bought the e-bike yesterday!", ("me", "has", "e-bike")),
+    ("just got a kindle paperwhite", ("me", "has", "kindle paperwhite")), ("my new macbook arrived today", ("me", "has", "macbook")),
+    ("I've got two kids and a golden retriever", ("me", "has", "golden retriever")),
+    ("can't live without my kindle", ("me", "likes", "kindle")), ("obsessed with pickleball lately", ("me", "likes", "pickleball")),
+    ("sushi is my comfort food", ("me", "likes", "sushi")), ("nothing beats a good thriller", ("me", "likes", "thriller")),
+    ("not a coffee person tbh", ("me", "dislikes", "coffee")), ("sushi makes me sick now, I hate it", ("me", "dislikes", "sushi")),
+    ("ugh, crowds make me anxious", ("me", "dislikes", "crowd")), ("no more meat for me", ("me", "avoids", "meat")),
+    ("day 40 of learning japanese!", ("me", "learning", "japanese")), ("finally picking up rust this summer", ("me", "learning", "rust")),
+    ("vim user for life", ("me", "uses", "vim")), ("my whole setup runs on arch btw", ("me", "uses", "arch")),
+    ("been daily driving linux for years", ("me", "uses", "linux")), ("still grinding on my indie game", ("me", "working on", "indie game")),
+    ("hit the courts for badminton every saturday", ("me", "plays", "badminton")), ("saving up for a new bike", ("me", "wants", "bike"))]
+NATURAL_NOT = [  # nothing new about the user (a relative may still be named)
+    "what's the best way to learn rust?", "if I lived in Berlin I'd bike everywhere", "my friend works at Google",
+    "the bank is closed today", "Stripe's API docs are great", "can you explain how kubernetes works", "they moved to Pune last year",
+    "ok do it", "is the kindle worth it?", "fix the bug in the login page", "Google announced a new phone",
+    "I wonder if Japan is expensive", "should I buy a ps5 or an xbox", "my sister loves sushi", "write a poem about coffee",
+    "compare arch and fedora for me", "why is my build so slow", "maybe I'll try vim someday"]
+NATURAL_GONE = [  # the user takes something back: it must be retracted
+    ("ugh, coffee and I are done for good", "coffee"), ("quit my job at Infosys", "infosys"), ("not using notion anymore", "notion"),
+    ("sold my car last month", "car"), ("done with twitter, deleted the app", "twitter")]
+
+NATURAL2 = dict(  # written after the learner was trained (2026-09-27), run once: the honest number for everyday phrasing
+    facts=[("three years at Accenture and still no promotion", ("works at", "accenture")),
+           ("finally settled in Lisbon after all the moving around", ("lives in", "lisbon")),
+           ("Mumbai rains are something else, love living here", ("lives in", "mumbai")),
+           ("vegetarian since birth, never tasted meat", ("is", "vegetarian")), ("picked up a steam deck over the holidays", ("has", "steam deck")),
+           ("I'm a huge fan of Studio Ghibli films", ("likes", "studio ghibli film")), ("honestly obsessed with sourdough baking", ("likes", "sourdough baking")),
+           ("can't stop listening to Taylor Swift", ("likes", "taylor swift")), ("horror movies are my thing", ("likes", "horror movie")),
+           ("I really can't stand cilantro", ("dislikes", "cilantro")), ("mushrooms are disgusting", ("dislikes", "mushroom")),
+           ("been off alcohol for 6 months", ("avoids", "alcohol")), ("cut out sugar completely this year", ("avoids", "sugar")),
+           ("on day 12 of my duolingo streak for korean", ("learning", "korean")), ("trying to learn the ukulele during lockdown", ("learning", "ukulele")),
+           ("mostly using Obsidian for notes these days", ("uses", "obsidian")), ("moved all my photos to Immich last weekend", ("uses", "immich")),
+           ("writing a fantasy trilogy in my spare time", ("working on", "fantasy trilogy")),
+           ("almost done with my portfolio redesign", ("working on", "portfolio redesign")),
+           ("tennis every sunday morning with my dad", ("plays", "tennis")), ("really want a mechanical keyboard for my birthday", ("wants", "mechanical keyboard")),
+           ("spent my whole childhood in Nagpur", ("from", "nagpur")), ("starting my new role at Atlassian on Monday", ("works at", "atlassian")),
+           ("Arch user since 2019", ("uses", "arch")), ("just adopted a rescue cat named Miso", ("has", "rescue cat")),
+           ("my daily commute is on a royal enfield", ("has", "royal enfield")), ("I'm a pharmacist at a small clinic", ("is", "pharmacist")),
+           ("love a good masala dosa on sundays", ("likes", "masala dosa")), ("working remotely from Goa this month", ("lives in", "goa")),
+           ("still hooked on Elden Ring", ("likes", "elden ring"))],
+    none=["what's a good name for a rescue cat?", "my dad plays tennis every sunday", "Atlassian is hiring backend engineers",
+          "summarize the latest Taylor Swift album reviews", "Setup notes: the NAS mounts at /mnt/data", "Chapter 4: Recursion and backtracking",
+          "Loops, arrays, strings and pointers", "use obsidian for this please", "is sourdough hard to make?", "Lisbon is gorgeous in October",
+          "if I had time I'd learn korean", "the espresso machine at work is broken again", "ok that fixed it, thanks",
+          "Priya moved to Lisbon last year", "compare Obsidian and Notion for a student", "error: permission denied when running the script",
+          "my brother is obsessed with F1", "the new steam deck looks amazing", "Studio Ghibli announced a new film", "Operating systems and networks"],
+    gone=[("no longer at Accenture as of this week", "accenture"), ("sold the steam deck, never used it", "steam deck"),
+          ("stopped using Obsidian, too slow for me", "obsidian"), ("not doing duolingo anymore", "duolingo"),
+          ("quit tennis after my knee injury", "tennis"), ("gave away my old kindle", "kindle")])
 
 
 def rels_of(g):
@@ -457,10 +505,20 @@ PARTS = {"meaning": "asked in other words", "answers": "answers about people", "
          "unknown": "says when it doesn't know", "changes": "facts that change"}
 
 
-def natural():
+def natural(facts=None, none=None, gone=None):
+    """Everyday phrasings: facts found, false facts avoided, things taken back -> [(ok, total, misses)]."""
     import brain
-    got = [want in {r for m in brain.analyse(t) for r in m["relations"]} for t, want in NATURAL]
-    return sum(got), len(NATURAL)
+    facts = facts or [(t, w[1:]) for t, w in NATURAL]
+    none, gone = none or NATURAL_NOT, gone or NATURAL_GONE
+    rel = lambda t: {r for m in brain.analyse(t) for r in m["relations"]}
+    hit = lambda t, w: any(r[0] == "me" and r[1] == w[0] and (r[2] == w[1] or brain.same_thing(r[2], w[1])) for r in rel(t))
+    found = [f"  missed: {t!r} want {w} got {sorted(rel(t))}" for t, w in facts if not hit(t, w)]
+    false = [f"  false fact: {t!r} -> {sorted(r for r in rel(t) if r[0] == 'me' and r[1] not in brain.KIN)}" for t in none
+             if any(r[0] == "me" and r[1] not in brain.KIN for r in rel(t))]
+    back = [f"  not taken back: {t!r} ({k})" for t, k in gone
+            if not any(r[2] == k or brain.same_thing(k, r[2]) for m in brain.analyse(t) for r in m["retracts"])]
+    return [(len(facts) - len(found), len(facts), found), (len(none) - len(false), len(none), false),
+            (len(gone) - len(back), len(gone), back)]
 
 
 def holdout():
@@ -564,6 +622,9 @@ def run(verbose=True):
     for part, (ok, n, bad) in brain_suite(BRAIN).items():
         gate(PARTS[part], ok, n, n - (part == "links"))  # asthma ~ inhaler: beyond the static vectors (0.18)
         misses += bad
+    for name, (ok, n, bad) in zip(("everyday phrasings", "no false facts", "taken back"), natural()):
+        gate(name, ok, n, n - (name == "everyday phrasings"))  # "sushi is my comfort food": the learner picks "comfort food"
+        misses += bad
     if verbose:
         print("\n".join(lines))
         print(f"{'MRR':28} {mrr:.3f}")
@@ -586,5 +647,7 @@ if __name__ == "__main__":
     h3 = brain_suite(HOLDOUT3)
     print("holdout 3: " + ", ".join(f"{PARTS[k]} {a}/{n}" for k, (a, n, _) in h3.items()))
     print("\n".join(b for _, _, bad in h3.values() for b in bad))
-    print("everyday phrasings (no rule written for them): %d/%d" % natural())
+    (f, fn, fb), (n, nn, nb), (g_, gn, gb) = natural(NATURAL2["facts"], NATURAL2["none"], NATURAL2["gone"])
+    print(f"everyday phrasings, fresh set: facts {f}/{fn}, no false facts {n}/{nn}, taken back {g_}/{gn}")
+    print("\n".join(fb + nb + gb))
     sys.exit(0 if ok else 1)

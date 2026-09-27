@@ -29,6 +29,11 @@ The app's visual system: `DESIGN.md`. How to contribute: `CONTRIBUTING.md`. What
   (`similar`) to its closest one at ≥ .28, more at ≥ .36. Meaning alone never answers a question about "my X" or a
   relative that was never mentioned (`lost`), and weak or off-anchor matches are dropped: saying nothing beats padding.
   Every result says how it matched (`match`: answer / thing / words / meaning).
+- **The learner reads what no rule covers** (`learn.py`): two averaged perceptrons (which fact, which words) trained on
+  sentences generated from its own templates plus impersonal stdlib docstrings, never on anyone's messages; weights in
+  `assets/learn`. `brain.analyse` asks it only for chat-like statements (`learn.chatlike`: no markup, lists, labels or
+  instructions to an agent) in which the rules found nothing firm, keeps an answer only above the margin, and never for
+  imported notes. Retrain with `python3 learn.py --train` after changing templates; check `NATURAL2` stays free of false facts.
 - **Facts settle each other.** A new fact closes older ones in the history (`facts.valid_to`), never deletes them:
   `brain.SETTLES` (likes ↔ dislikes, a move made ends the plan), `brain.BOUGHT` (an event like "I bought X" ends the
   want), `ONGOING` for "I gave up X", a switch closes the old tool of the same category. One thing under two names is
