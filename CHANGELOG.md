@@ -13,9 +13,9 @@
 - **Says when it doesn't know.** Questions about things you never mentioned ("what's my blood type?") get nothing
   instead of look-alikes, and "what's my favourite colour?" no longer lists everything you like.
 - **Reads the way people actually type.** "switched jobs, I'm at Stripe now", "not a coffee person tbh", "bought the
-  e-bike yesterday!": a small learner in plain Python (trained on generated examples, never on your messages) reads
-  what no rule covers, only when it's sure. Everyday phrasings: 2/30 → 29/30 on the benchmark, 17/30 on a set it never
-  saw, with no made-up facts in either.
+  e-bike yesterday!": a small learner in plain Python (trained on made-up examples, some written by an open model,
+  never on your messages) reads what no rule covers, only when it's sure. Everyday phrasings: 2/30 → 29/30 on the
+  benchmark; on sets it never saw, 17/30 and 14/30, with no made-up facts.
 - Search results say how they matched (a direct answer, a thing you named, your words, or meaning only).
 - The memory is rebuilt once on update (logic version 17).
 

@@ -33,7 +33,11 @@ The app's visual system: `DESIGN.md`. How to contribute: `CONTRIBUTING.md`. What
   sentences generated from its own templates plus impersonal stdlib docstrings, never on anyone's messages; weights in
   `assets/learn`. `brain.analyse` asks it only for chat-like statements (`learn.chatlike`: no markup, lists, labels or
   instructions to an agent) in which the rules found nothing firm, keeps an answer only above the margin, and never for
-  imported notes. Retrain with `python3 learn.py --train` after changing templates; check `NATURAL2` stays free of false facts.
+  imported notes. Retrain with `python3 learn.py --train` after changing templates; check `NATURAL2`/`NATURAL3` stay free
+  of false facts, and rebuild a copy of real data to see what it reads there (the first version made 86 junk facts).
+  `python3 learn.py --write` has gpt-oss-120b (Groq, open weights) write chat examples of made-up facts into
+  `assets/learn/examples.jsonl.gz` (saved per batch; runs add up). Gemini can write too (`--gemini`, its own file): its
+  terms bar training models that compete with it, so keep its examples out of anything bigger than these patterns.
 - **Facts settle each other.** A new fact closes older ones in the history (`facts.valid_to`), never deletes them:
   `brain.SETTLES` (likes ↔ dislikes, a move made ends the plan), `brain.BOUGHT` (an event like "I bought X" ends the
   want), `ONGOING` for "I gave up X", a switch closes the old tool of the same category. One thing under two names is

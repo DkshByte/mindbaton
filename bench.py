@@ -452,6 +452,34 @@ NATURAL2 = dict(  # written after the learner was trained (2026-09-27), run once
           ("stopped using Obsidian, too slow for me", "obsidian"), ("not doing duolingo anymore", "duolingo"),
           ("quit tennis after my knee injury", "tennis"), ("gave away my old kindle", "kindle")])
 
+NATURAL3 = dict(  # written before the learner saw any AI-written examples (2026-09-27): the clean before/after for step 2b
+    facts=[("my 9 to 5 is at a fintech called Revolut", ("works at", "revolut")), ("two years into my job at Tesla now", ("works at", "tesla")),
+           ("we just closed on a house in Austin!", ("lives in", "austin")), ("finally unpacked after the move to Leeds", ("lives in", "leeds")),
+           ("keto for three months and down 8 kilos", ("is", "keto")), ("proud owner of a Tamagotchi again lol", ("has", "tamagotchi")),
+           ("the new Pixel 9 is in my pocket as we speak", ("has", "pixel 9")), ("my cat Biscuit knocked over my coffee again", ("cat", "biscuit")),
+           ("can't get enough of Korean dramas lately", ("likes", "korean drama")), ("Formula 1 weekends are sacred in my house", ("likes", "formula 1")),
+           ("honestly can't do spicy food anymore", ("dislikes", "spicy food")), ("giving up meat for good this year", ("avoids", "meat")),
+           ("zero caffeine since march", ("avoids", "caffeine")), ("grinding leetcode every night for interviews", ("learning", "leetcode")),
+           ("halfway through a pottery course at the community center", ("learning", "pottery")),
+           ("Emacs for everything, org-mode changed my life", ("uses", "emacs")), ("all my passwords live in Bitwarden", ("uses", "bitwarden")),
+           ("building a tiny rust compiler for fun", ("working on", "rust compiler")),
+           ("launching my candle shop on etsy next week", ("working on", "candle shop")),
+           ("5-a-side football every thursday after work", ("plays", "football")),
+           ("desperately need a new laptop, mine is dying", ("wants", "laptop")), ("my hometown is Mysore", ("from", "mysore")),
+           ("I've been a UX researcher for 6 years", ("is", "ux researcher")), ("Toronto has been home for a decade", ("lives in", "toronto")),
+           ("mechanic by trade, coder by night", ("is", "mechanic")), ("absolutely love hiking in the Alps", ("likes", "hiking")),
+           ("recently switched from Android to an iPhone 16", ("uses", "iphone 16")), ("my daughter Zara just turned 3", ("daughter", "zara")),
+           ("been using a Framework laptop since last spring", ("uses", "framework laptop")),
+           ("lactose intolerant, so no milk in my tea", ("is", "lactose intolerant"))],
+    none=["how do I get a job at Revolut?", "my roommate just bought a Pixel 9", "Austin real estate prices are wild",
+          "if I went keto would I lose weight?", "plan a 5-day trip to Iceland for me", "what's the difference between Emacs and Vim",
+          "Bitwarden vs 1Password?", "my mom loves Korean dramas", "install: pip install -r requirements.txt", "Week 3: Trees, heaps and hashing",
+          "Tesla recalled another model", "someone told me pottery is relaxing", "rewrite this paragraph to sound more formal",
+          "Leeds United lost again", "Zara is a clothing brand, right?"],
+    gone=[("left Revolut after the layoffs", "revolut"), ("no more Bitwarden, moved everything elsewhere", "bitwarden"),
+          ("sold my Pixel last week", "pixel"), ("stopped going to pottery class", "pottery"), ("don't live in Leeds anymore", "leeds"),
+          ("not into Korean dramas these days", "korean drama")])
+
 
 def rels_of(g):
     ek = {r[0]: r[1] for r in g.db.execute("SELECT id, key FROM nodes WHERE kind='entity'")}
@@ -649,5 +677,8 @@ if __name__ == "__main__":
     print("\n".join(b for _, _, bad in h3.values() for b in bad))
     (f, fn, fb), (n, nn, nb), (g_, gn, gb) = natural(NATURAL2["facts"], NATURAL2["none"], NATURAL2["gone"])
     print(f"everyday phrasings, fresh set: facts {f}/{fn}, no false facts {n}/{nn}, taken back {g_}/{gn}")
+    print("\n".join(fb + nb + gb))
+    (f, fn, fb), (n, nn, nb), (g_, gn, gb) = natural(NATURAL3["facts"], NATURAL3["none"], NATURAL3["gone"])
+    print(f"everyday phrasings, fresh set 3: facts {f}/{fn}, no false facts {n}/{nn}, taken back {g_}/{gn}")
     print("\n".join(fb + nb + gb))
     sys.exit(0 if ok else 1)

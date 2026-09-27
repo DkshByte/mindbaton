@@ -10,8 +10,10 @@ when it is sure: a missed fact costs less than a made-up one. The weights ship i
 
     python3 learn.py            # self-check
     python3 learn.py --train    # generate examples, train, report held-out accuracy, write the weights (~2 min)
+    python3 learn.py --write    # have a big open model (gpt-oss-120b on Groq, GROQ_KEY) write varied chat examples of
+                                # made-up facts into assets/learn/examples.jsonl.gz (~30 min of a free tier; nothing personal)
 """
-import gzip, json, math, os, random, re, sys
+import gzip, hashlib, json, math, os, random, re, sys
 from collections import defaultdict
 import brain
 
@@ -239,13 +241,42 @@ def prose(n=6000, seed=5):
     return out[:n]
 
 
-def train(epochs=8):
-    data = [c for text, lab, obj in examples() for c in clauses(text, lab, obj)] + \
-        [c for text in prose() for c in clauses(text, "none", None)]
-    data = [d for d in data if chatlike(d[0])]  # what the learner will be asked about
+EXAMPLES = os.path.join(os.path.dirname(PATH), "examples.jsonl.gz")
+WRITERS = {  # who writes examples: (endpoint, model, key variable, file)
+    "groq": ("https://api.groq.com/openai/v1/chat/completions", "openai/gpt-oss-120b", "GROQ_KEY", EXAMPLES),
+    "gemini": ("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "gemini-3-flash-preview", "GEMINI_KEY",
+               EXAMPLES.replace("examples", "examples-gemini")),
+}
+
+
+def written(sources=("groq", "gemini")):
+    """The examples big models wrote (--write): [(text, label, object)]. Gemini's are kept apart (its terms bar training
+    models that compete with it): fine for these patterns, left out of anything bigger."""
+    out = []
+    for src in sources:
+        try:
+            with gzip.open(WRITERS[src][3], "rt", encoding="utf-8") as f:
+                out += [(x["text"], x["label"], x.get("obj")) for x in map(json.loads, f)]
+        except OSError:
+            pass
+    return out
+
+
+def train(epochs=8, weight=3):
+    """weight: how many times each example a big model wrote counts (they are the most like real chat). 15% of them,
+    split by object so no object is in both, are held out to report how it reads chat it never saw."""
+    asked = lambda d: chatlike(d[0]) and brain.mood(d[0]) == "statement"  # what the learner will be asked about
+    w = written()
+    h = lambda x: int(hashlib.md5(x.lower().encode()).hexdigest(), 16) % 100
+    held = lambda text, obj: h(obj) < 15 if obj else h(text) < 15
+    w_dev = [c for text, lab, obj in w if held(text, obj) for c in clauses(text, lab, obj) if asked(c)]
+    w_tr = [c for text, lab, obj in w if not held(text, obj) for c in clauses(text, lab, obj) if asked(c)]
+    data = [c for text, lab, obj in examples() for c in clauses(text, lab, obj) if asked(c)] + \
+        [c for text in prose() for c in clauses(text, "none", None) if asked(c)]
     random.Random(11).shuffle(data)
     cut = len(data) // 10
-    dev, tr = data[:cut], data[cut:]
+    dev, tr = data[:cut], data[cut:] + w_tr * weight
+    random.Random(12).shuffle(tr)
     rel, span = Perceptron(), Perceptron()
     prep = []
     for s, lab, obj in tr:
@@ -279,6 +310,11 @@ def train(epochs=8):
     allowed = int(len(nones) * .002)
     model["margin"] = round(max(wrong[allowed] if len(wrong) > allowed else 0.0, 10.0), 4)  # 10: below it, guesses (real chats)
     W = model
+    if w_dev:
+        pos = [(s, lab) for s, lab, _ in w_dev if lab != "none"]
+        caught = sum(_label(s) == lab for s, lab in pos)
+        false = sum(_label(s) != "none" for s, lab, _ in w_dev if lab == "none")
+        print(f"held-out written examples: facts {caught}/{len(pos)}, made-up facts {false}/{len(w_dev) - len(pos)}")
     ok = sum(_label(s) == lab for s, lab, _ in dev) / len(dev)
     obj_ok = [(_object(s, lab), (brain.Clause(obj).objects(0, lists=False)[0] or [obj])[0]) for s, lab, obj in dev if obj and lab != "none"]
     print(f"held-out: label {ok:.3f}, object {sum(brain.key(a or '') == brain.key(b) for a, b in obj_ok) / max(len(obj_ok), 1):.3f}, "
@@ -288,6 +324,97 @@ def train(epochs=8):
         json.dump(model, f, separators=(",", ":"))
     os.replace(PATH + ".tmp", PATH)
     print(f"wrote {PATH} ({os.path.getsize(PATH) // 1024} KB, {len(model['rel'])} + {len(model['span'])} features)")
+
+
+SAY = {"+works at": 'works at "{o}"', "+lives in": 'lives in "{o}"', "+from": 'grew up in / is originally from "{o}"',
+       "+is": 'is (a) "{o}"', "+has": 'owns or just got (a) "{o}"', "+uses": 'uses "{o}"', "+likes": 'likes or loves "{o}"',
+       "+dislikes": 'dislikes "{o}"', "+avoids": 'avoids or doesn\'t eat/drink "{o}"', "+learning": 'is learning "{o}"',
+       "+working on": 'is working on "{o}"', "+plays": 'plays "{o}"', "+wants": 'wants to get (a) "{o}"',
+       "-works at": 'no longer works at "{o}"', "-lives in": 'no longer lives in "{o}"', "-uses": 'stopped using "{o}"',
+       "-has": 'no longer has (sold or gave away) "{o}"', "-likes": 'no longer likes "{o}"', "-learning": 'gave up learning "{o}"',
+       "-working on": 'stopped working on "{o}"', "-plays": 'stopped playing "{o}"'}
+ASK_FACTS = """You write training data for a personal memory app. Each numbered line is a fact about the WRITER of a chat message.
+For each fact write {k} different messages the writer might send to an AI chat assistant, each stating that fact the way
+real people type: casual, sometimes long, sometimes a fragment, typos, slang, lowercase, emoji, often without "I", as a side
+remark before or after something else, with varied words and sentence shapes (never just "I <verb> X"). Every message must
+contain the quoted text exactly as written (without the quotes) and must make the fact clear about the writer. Reply with
+JSON only: {{"1": ["...", ...], "2": [...], ...}}
+Facts:
+{facts}"""
+ASK_NONE = """You write training data for a personal memory app. Each numbered line is a thing. For each, write {k} different chat
+messages to an AI assistant that contain the quoted text exactly (without the quotes) but say NOTHING lasting about the
+writer: questions about it, requests to the AI, facts about other people, news, hypotheticals ("if I ..."), comparisons,
+jokes, technical notes. Vary the style like real chat (typos, lowercase, fragments). Reply with JSON only:
+{{"1": ["...", ...], "2": [...], ...}}
+Things:
+{facts}"""
+
+
+def write(per=4, batch=20, facts_per_label=45, none_per_pool=70, seed=13, budget=140, writer="groq"):
+    """Examples in other words: a big model (gpt-oss-120b, open weights, on Groq's free tier; or Gemini) writes chat
+    messages for made-up facts drawn from POOLS. Nothing about anyone real is sent. Kept only if the message holds the
+    object verbatim."""
+    import time, urllib.error, urllib.request
+    url, model, var, out_path = WRITERS[writer]
+    key = os.environ.get(var)
+    if not key:
+        sys.exit(f"set {var}")
+    rnd = random.Random(seed)
+    jobs = []
+    for lab, pool, _ in TEMPLATES:
+        if lab != "none" and lab in SAY and pool:
+            jobs += [(lab, o) for o in rnd.sample(POOLS[pool], min(facts_per_label // 2 + 1, len(POOLS[pool])))]
+    for pool in ("like", "org", "place", "thing", "tool", "topic"):
+        jobs += [("none", o) for o in rnd.sample(POOLS[pool], min(none_per_pool // 5, len(POOLS[pool])))]
+    rnd.shuffle(jobs)
+    got, sent = [], 0
+    try:  # a run adds to what earlier runs wrote (a free tier's daily limit may cut a run short)
+        with gzip.open(out_path, "rt", encoding="utf-8") as f:
+            got = [json.loads(line) for line in f]
+    except OSError:
+        pass
+
+    def save():
+        keep = list({x["text"].lower(): x for x in got}.values())
+        with gzip.open(out_path + ".tmp", "wt", encoding="utf-8") as f:
+            f.write("".join(json.dumps(dict(x, by=x.get("by") or model), ensure_ascii=False) + "\n" for x in keep))
+        os.replace(out_path + ".tmp", out_path)
+        return len(keep)
+    for i in range(0, len(jobs), batch):
+        part = jobs[i:i + batch]
+        facts = [j for j in part if j[0] != "none"]
+        nones = [j for j in part if j[0] == "none"]
+        for group, ask in ((facts, ASK_FACTS), (nones, ASK_NONE)):
+            if not group or sent >= budget:
+                continue
+            lines = "\n".join(f"{n + 1}. " + (SAY[lab].format(o=o) if lab != "none" else f'"{o}"') for n, (lab, o) in enumerate(group))
+            body = json.dumps({"model": model, "messages": [{"role": "user", "content": ask.format(k=per, facts=lines)}],
+                               "temperature": 1.0, "max_tokens": 8000, "response_format": {"type": "json_object"},
+                               "reasoning_effort": "low"}).encode()  # thinking counts against max_tokens: keep it short
+            req = urllib.request.Request(url, body,
+                                         {"Content-Type": "application/json", "Authorization": "Bearer " + key,
+                                          "User-Agent": "mindbaton/1.0 (+self-hosted)"})
+            for attempt in range(6):
+                try:
+                    with urllib.request.urlopen(req, timeout=180) as r:
+                        text = json.load(r)["choices"][0]["message"]["content"]
+                        out = json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip()))
+                    break
+                except urllib.error.HTTPError as e:
+                    wait = float(e.headers.get("retry-after") or 20) if e.code == 429 else 10
+                    print(f"  HTTP {e.code}, waiting {wait:.0f}s", flush=True)
+                    time.sleep(min(wait, 120) + 1)
+                except (OSError, ValueError, KeyError, IndexError) as e:
+                    print(f"  {type(e).__name__}, retrying", flush=True)
+                    time.sleep(5)
+            else:
+                continue
+            sent += 1
+            for n, (lab, o) in enumerate(group):
+                for msg in out.get(str(n + 1), []) if isinstance(out, dict) else []:
+                    if isinstance(msg, str) and 3 <= len(msg) <= 300 and o.lower() in msg.lower():
+                        got.append({"text": " ".join(msg.split()), "label": lab, "obj": o if lab != "none" else None})
+        print(f"{min(i + batch, len(jobs))}/{len(jobs)} facts, {sent} requests, {save()} examples saved", flush=True)
 
 
 def _margin(s):
@@ -523,4 +650,8 @@ TEMPLATES = [
 
 
 if __name__ == "__main__":
-    train() if "--train" in sys.argv else selfcheck()
+    if "--write" in sys.argv:
+        g = "--gemini" in sys.argv
+        write(writer="gemini" if g else "groq", seed=29 if g else 13, budget=60 if g else 140, batch=10 if g else 20)
+    else:
+        train() if "--train" in sys.argv else selfcheck()

@@ -1229,6 +1229,7 @@ def _about(rest, subj, add):
                 add(subj, "lives in" if c.next_word(stop) != "at" else "works at", o, "place")
     for rx, rel in ((r"\b(?:lives|living|stays|based)\s+in\s+", "lives in"), (r"\bworks?\s+(?:at|for)\s+", "works at"),
                     (r"\b(?:likes|loves)\s+", "likes"), (r"\b(?:hates|dislikes)\s+", "dislikes"), (r"\bstudies\s+", "studies"),
+                    (r"\bplays\s+(?:the\s+)?", "plays"), (r"\buses\s+", "uses"),
                     (r"\b(?:moved|relocated|shifted)\s+(?:back\s+)?to\s+", "lives in")):
         for m in re.finditer(rx, rest, re.I):
             objs, stop = c.objects(c.at(m.end()))
@@ -1348,7 +1349,10 @@ def analyse(text, ref=None, prev=None, who=None, people=(), learner=True):
         found = entities(s)
         rels, extra, slots, retracts, person, more = facts(s, md, person, prev, people)
         learned = []
-        if learner and md == "statement" and t not in ("task", "question") and not retracts and \
+        kin_does = re.match(r"\s*(?:my|our)\s+(?:\w+\s+)?(?:" + "|".join(KIN) + r")\s+(\w+)", s, re.I)
+        about_other = kin_does and kin_does[1].lower() in VERB or \
+            (m := re.match(r"\s*([A-Za-z][a-z]+)\b", s)) and key(m[1]) in people  # "my dad plays tennis": not about the user
+        if learner and not about_other and md == "statement" and t not in ("task", "question") and not retracts and \
                 not any(r not in more["weak"] and not (r[0] == "me" and r[1] in KIN) for r in rels):  # nothing firm: ask the learner
             learned = _learned(s)
             if learned:  # it read the clause; a bare "my X" guess ("my comfort food" -> has) gives way
