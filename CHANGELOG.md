@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- **Understands meaning, not just words.** A built-in table of word meanings (Model2Vec potion-base-8M, 7.7 MB, plain
+  Python, offline) finds "I love cricket" for "what do I do for fun?" and links memories about one subject in other
+  words. Questions asked in other words: 15/23 → 23/23 on the benchmark; 11/11 for a new person it was never tuned on.
+- **Keeps up when things change.** A dislike replaces the like, buying what you wanted closes the wish, a move you
+  made ends the plan, giving something up ends it, and switching tools retires the old one of the same kind.
+  Changing facts: 6/17 → 17/17. The history stays: "where did I live before?" has an answer.
+- **One person, one name.** "my wife" becomes Sarah once you say her name; renamed projects keep one history and the
+  old name still finds them; "he works at Amazon now" knows who "he" is from earlier in the chat.
+- **Says when it doesn't know.** Questions about things you never mentioned ("what's my blood type?") get nothing
+  instead of look-alikes, and "what's my favourite colour?" no longer lists everything you like.
+- Search results say how they matched (a direct answer, a thing you named, your words, or meaning only).
+- The memory is rebuilt once on update (logic version 16).
+
 ## 0.1.3
 
 - Automatic updates, opt-in, every night. Each update is tested; a version that fails is rolled back and skipped until

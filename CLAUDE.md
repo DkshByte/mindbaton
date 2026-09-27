@@ -23,6 +23,17 @@ The app's visual system: `DESIGN.md`. How to contribute: `CONTRIBUTING.md`. What
 - **Rules decide, AI only words things.** Understanding (`brain.py`, rules + the bundled SCOWL word list in `assets/words`)
   and topic assignment (`Graph.cluster`) are deterministic and offline. Improve them with general rules, never
   one-off string matches.
+- **Meaning is a lookup, not a model run.** `sense.py` reads a static embedding table (`assets/sense`, Model2Vec
+  potion-base-8M, MIT, int8): a sentence is the mean of its word pieces' vectors, ~0.2 ms, the same on every computer.
+  Each memory stores its vector (`nodes.vec`); recall fuses it with bm25/tf-idf/graph (`mean`), and a new memory links
+  (`similar`) to its closest one at ≥ .28, more at ≥ .36. Meaning alone never answers a question about "my X" or a
+  relative that was never mentioned (`lost`), and weak or off-anchor matches are dropped: saying nothing beats padding.
+  Every result says how it matched (`match`: answer / thing / words / meaning).
+- **Facts settle each other.** A new fact closes older ones in the history (`facts.valid_to`), never deletes them:
+  `brain.SETTLES` (likes ↔ dislikes, a move made ends the plan), `brain.BOUGHT` (an event like "I bought X" ends the
+  want), `ONGOING` for "I gave up X", a switch closes the old tool of the same category. One thing under two names is
+  merged (`Graph.merge`): "my wife" into Sarah once exactly one wife is named (`canon`), renames ("X is now called Y"),
+  and the old name stays searchable (`nodes.aka`). "he/she" carries across a chat (`last_person`).
 - **Everything that arrives goes through `brain.scrub()`** (agent harness wrappers, Gemini's hidden "You said",
   Perplexity's glued clocks, pasted hand-off packs) and `brain.hints()` (model + true time from wrappers). Add new noise
   patterns there, never in a caller. Short agent-steering messages (`brain.steering`) and typos (`brain.typo`) never
@@ -39,7 +50,9 @@ The app's visual system: `DESIGN.md`. How to contribute: `CONTRIBUTING.md`. What
 ## Measure every logic change
 
 - `python3 bench.py` must stay **all green, holdout included** — with and without `data/private/`. When a message is
-  misread, add a synthetic equivalent to `bench.py` (`PHRASINGS`, `V1`, `QUERIES`, …) first, then fix the rule.
+  misread, add a synthetic equivalent to `bench.py` (`PHRASINGS`, `V1`, `QUERIES`, `BRAIN`, …) first, then fix the rule.
+  `BRAIN` gates meaning, answers about people, links, "doesn't know" and changing facts; `HOLDOUT2`/`HOLDOUT3` and
+  `NATURAL` are only reported. Never tune against a holdout: when one has been used to fix something, write a new one.
   `data/private/bench_real.json` (same shape as `V1`) adds a gate for the owner's own messages when present.
 - `python3 topics_check.py` scores topics against a hand-labelled key of the owner's real memories in
   `data/private/topics_gold.json` (precision must stay 1.0); without the key it says so and exits 0.

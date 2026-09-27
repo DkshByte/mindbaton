@@ -19,7 +19,7 @@ that account's memory: <data>/auth.db holds the accounts, sessions and tokens; <
 
   python3 server.py [--check | --setup-code | --reset-password [username]]
 """
-import difflib, glob, hashlib, hmac, io, ipaddress, json, math, os, re, secrets, shutil, sqlite3, threading, time, uuid, zipfile
+import difflib, glob, hashlib, heapq, hmac, io, ipaddress, json, math, os, re, secrets, shutil, sqlite3, statistics, threading, time, uuid, zipfile
 from datetime import datetime
 from collections import deque, Counter, defaultdict
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
@@ -40,7 +40,7 @@ def load_env(path=os.path.join(HERE, "mindbaton.env")):
 
 
 load_env()
-import ai, brain, handoff, live  # noqa: E402  (after the env file: ai.py reads its settings at import)
+import ai, brain, handoff, live, sense  # noqa: E402  (after the env file: ai.py reads its settings at import)
 
 HOST = os.environ.get("MINDBATON_HOST", "127.0.0.1")
 PORT = int(os.environ.get("MINDBATON_PORT", 3004))
@@ -87,7 +87,7 @@ def update_watch():
     threading.Thread(target=check, daemon=True).start()
 LOCK = threading.RLock()  # one request touches the databases at a time; threads only keep idle sockets from blocking others
 # ponytail: one lock for every account's graph; per-account locks if many people use one install at once
-LOGIC_VERSION = "15"  # 15: "the user always runs / was born" -> "I always run / was born" (14: hand-off packs and briefings are marked [mindbaton])
+LOGIC_VERSION = "16"  # 16: meaning vectors, facts that settle older ones, kin/rename merges (15: "the user always runs / was born" -> "I always run / was born" (14: hand-off packs and briefings are marked [mindbaton])
 PERSONAL = brain.PERSONAL
 AI_SITE = {}  # "ChatGPT" -> "chatgpt.com"
 LINKISH = ("mentions", "about", "context")
@@ -130,7 +130,8 @@ DERIVED = """
 CREATE TABLE IF NOT EXISTS nodes(id INTEGER PRIMARY KEY, kind TEXT NOT NULL, key TEXT NOT NULL, label TEXT NOT NULL,
   type TEXT, importance REAL DEFAULT .5, created REAL, updated REAL, hits INTEGER DEFAULT 0, count INTEGER DEFAULT 1,
   status TEXT DEFAULT 'active', slots TEXT DEFAULT '[]', terms TEXT DEFAULT '{}', sources TEXT DEFAULT '[]', cluster INTEGER,
-  rels TEXT DEFAULT '[]', sig TEXT, at REAL, conf REAL DEFAULT .5, ctx TEXT, cat TEXT, rank REAL, UNIQUE(kind, key));
+  rels TEXT DEFAULT '[]', sig TEXT, at REAL, conf REAL DEFAULT .5, ctx TEXT, cat TEXT, rank REAL, vec BLOB, aka TEXT,
+  UNIQUE(kind, key));
 CREATE TABLE IF NOT EXISTS facts(id INTEGER PRIMARY KEY, subj TEXT, rel TEXT, obj TEXT, valid_from REAL, valid_to REAL,
   memory INTEGER, ended_by INTEGER);
 CREATE INDEX IF NOT EXISTS facts_open ON facts(subj, rel, obj, valid_to);
@@ -399,7 +400,7 @@ class Graph:
                     if os.path.exists(path + suffix):
                         os.replace(path + suffix, path.replace(".db", ".v1.db") + suffix)
             else:
-                if cols and ("rels" not in cols or "rank" not in cols):
+                if cols and not {"rels", "rank", "vec", "aka"} <= set(cols):
                     db.executescript("DROP TABLE IF EXISTS edges; DROP TABLE IF EXISTS nodes; DROP TABLE IF EXISTS fts; DROP TABLE IF EXISTS facts;")
                 db.close()
         db = sqlite3.connect(path, isolation_level=None, check_same_thread=False)  # used under LOCK only
@@ -416,23 +417,38 @@ class Graph:
         self.db.execute("INSERT OR REPLACE INTO meta VALUES(?,?)", (k, v))
 
     def load(self):
-        self.vec, self.post = {}, defaultdict(set)
-        for i, t in self.db.execute("SELECT id, terms FROM nodes WHERE kind='memory' AND status='active'"):
-            self.index(i, json.loads(t))
-        self.ekeys, self.ebucket = {}, defaultdict(set)
-        for i, k in self.db.execute("SELECT id, key FROM nodes WHERE kind='entity'"):
+        self.vec, self.post, self.emb, self.sig = {}, defaultdict(set), {}, {}
+        for i, t, v in self.db.execute("SELECT id, terms, vec FROM nodes WHERE kind='memory' AND status='active'"):
+            self.index(i, json.loads(t), sense.unpack(v))
+        self.ekeys, self.ebucket, self.alias = {}, defaultdict(set), {}
+        for i, k, aka in self.db.execute("SELECT id, key, aka FROM nodes WHERE kind='entity'"):
             self.ekeys[k] = i
             self.ebucket[k[:1]].add(k)
+            self.alias.update((a, k) for a, _ in json.loads(aka or "[]"))  # [[old key, old label], …]
         self.dirty = True
 
-    def index(self, mid, terms):
+    def index(self, mid, terms, emb=None):
         self.vec[mid] = terms
         for t in terms:
             self.post[t].add(mid)
+        if emb is not None:
+            self.emb[mid], self.sig[mid] = emb, sense.sig(emb)
 
     def unindex(self, mid):
         for t in self.vec.pop(mid, {}):
             self.post[t].discard(mid)
+        self.emb.pop(mid, None)
+        self.sig.pop(mid, None)
+
+    def near(self, v, k=40, skip=None):
+        """The k memories closest in meaning to v: [(cosine, id)], best first."""
+        if v is None:
+            return []
+        ids = [i for i in self.emb if i != skip]
+        if len(ids) > 600:  # ponytail: sign bits pick candidates, then exact cosines; an ANN index past ~100k memories
+            s = sense.sig(v)
+            ids = heapq.nsmallest(max(5 * k, 300), ids, key=lambda i: sense.popcount(self.sig[i] ^ s))
+        return heapq.nlargest(k, ((sense.cos(v, self.emb[i]), i) for i in ids))
 
     def idf(self, t):
         return math.log((2 + len(self.vec)) / (1 + len(self.post.get(t, ()))))
@@ -596,7 +612,8 @@ class Graph:
             m["relations"] = brain._dedupe(m["relations"] + rels)
             m["terms"] = brain.terms(text, m["entities"], m.get("phrases", []))
         else:
-            mems = brain.analyse(text, ts, self.last_thing(ctx, ai, ts))
+            people = {k for (k,) in self.db.execute("SELECT key FROM nodes WHERE kind='entity' AND type='person'")}
+            mems = brain.analyse(text, ts, self.last_thing(ctx, ai, ts), self.last_person(ctx, ts), people)
         src = {k: v for k, v in {"ai": ai, "chat": chat, "ts": ts, "ctx": ctx, "model": live.model_name(meta.get("model")),
                                  "note": 1 if (url or "").startswith("memory://") else None}.items() if v}
         for m in mems:
@@ -622,9 +639,13 @@ class Graph:
         k = mkey(m["text"])
         if not k or self.forgotten("memory", k):
             return None
+        for f in ("relations", "retracts"):  # "my wife" once her name is known, a renamed project's new name
+            m[f] = [(self.canon(a), r, self.canon(b)) for a, r, b in m[f]]
+        m["entities"] = [(self.canon(e), lab, t) for e, lab, t in m["entities"]]
         personal = m["type"] in PERSONAL
         rels = sorted({tuple(r) for r in m["relations"]})
-        sig = json.dumps(sorted(r for r in rels if r[0] == "me")) if personal and any(r[0] == "me" for r in rels) else None
+        # the claims it makes (about the user and the people and things around them): the same claims again is a repeat
+        sig = json.dumps(sorted(r for r in rels if r[1] != "related")) if personal and any(r[0] == "me" for r in rels) else None
         # 1. the same thing said again -> reinforce: exact text, the same claims, or near-identical wording
         dup = self.db.execute("SELECT id FROM nodes WHERE kind='memory' AND key=?", (k,)).fetchone()
         if not dup and sig and not m["retracts"]:
@@ -643,11 +664,12 @@ class Graph:
                                sources=?, conf=? WHERE id=?""", (ts, json.dumps(sources), round(conf, 3), dup[0]))
             return dup[0]
         # 2. a new memory
+        emb = sense.vec(m["text"])
         mid = self.db.execute("""INSERT INTO nodes(kind, key, label, type, importance, created, updated, slots, terms, sources,
-                                 rels, sig, at, conf, ctx) VALUES('memory',?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                                 rels, sig, at, conf, ctx, vec) VALUES('memory',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                               (k, m["text"], m["type"], round(m["importance"], 3), ts, ts, json.dumps(m["slots"]),
                                json.dumps(m["terms"]), json.dumps([src]), json.dumps([list(r) for r in rels]), sig,
-                               m.get("when"), m["conf"], ctx)).lastrowid
+                               m.get("when"), m["conf"], ctx, sense.pack(emb))).lastrowid
         self.db.execute("INSERT INTO fts(rowid, label) VALUES(?,?)", (mid, m["text"]))
         ent = {}
         for ek, label, etype in m["entities"]:
@@ -669,15 +691,37 @@ class Graph:
                         self.retract((a, rel, old_key), mid)
                 self.edge(ent[a], ent[b], rel)
                 self.open_fact(a, rel, b, mid, self.when_of(mid, ts))
-        # 3. things taken back: "I don't use pihole anymore", "I left Infosys"
+        # 3. things taken back: "I don't use pihole anymore", "I left Infosys", "I gave up on Rust", "I quit piano lessons"
         for a, rel, b in m["retracts"]:
-            ia, ib = (ent.get("me") or self.ekeys.get("me")), self.resolve(b)
-            if not ia or not ib:
+            ib = self.resolve(b)
+            for r in [rel] if rel else brain.ONGOING:
+                for i2, k2, *_ in self.me_edges(r):
+                    if i2 == ib or brain.same_thing(b, k2):
+                        self.retract(("me", r, k2), mid)
+        # 3b. what the new facts settle: a like turned dislike, a planned move made, a want bought, a tool switched away from
+        for a, rel, b in rels:
+            if a != "me":
                 continue
-            b_key = self.db.execute("SELECT key FROM nodes WHERE id=?", (ib,)).fetchone()[0]
-            for r in [rel] if rel else ["works at", "lives in", "uses", "has"]:
-                if self.db.execute("SELECT 1 FROM edges WHERE src=? AND dst=? AND rel=?", (ia, ib, r)).fetchone():
-                    self.retract(("me", r, b_key), mid)
+            for old_rel in brain.SETTLES.get(rel, []) + (brain.BOUGHT.get(rel, []) if m["type"] == "event" else []):
+                for _, k2, *_ in self.me_edges(old_rel):
+                    if brain.same_thing(b, k2):
+                        self.retract(("me", old_rel, k2), mid)
+        for new in m.get("switched", ()):
+            cat = brain.category_of(new)
+            for _, k2, _, cat2, _ in self.me_edges("uses") if cat else []:
+                if cat2 == cat and k2 != new:
+                    self.retract(("me", "uses", k2), mid)
+        # 3c. two names turn out to be one: "my wife" is Sarah; DoorTalk was renamed HearthLink
+        for a, rel, b in rels:
+            if a == "me" and rel in brain.KIN and not b.startswith("my ") and "my " + rel in self.ekeys and \
+                    len([r for r in self.me_edges(rel) if not r[1].startswith("my ")]) == 1:
+                self.merge("my " + rel, b)
+        for old, label in m.get("renames", ()):
+            old, new = self.canon(old), brain.key(label)
+            if old in self.ekeys and new != old and not self.forgotten("entity", new):
+                if new not in self.ekeys:
+                    self.entity(new, label, self.db.execute("SELECT type FROM nodes WHERE id=?", (self.ekeys[old],)).fetchone()[0], ts)
+                self.merge(old, new)
         # 4. a newer value for the same slot ("my favourite movie is ...") replaces the older memory
         for slot in m["slots"]:
             if slot.startswith("me.") and slot[3:] in brain.EXCLUSIVE:
@@ -685,12 +729,15 @@ class Graph:
             for (old,) in self.db.execute("""SELECT id FROM nodes WHERE kind='memory' AND status='active' AND id!=?
                                              AND slots LIKE ?""", (mid, '%' + json.dumps(slot) + '%')).fetchall():
                 self.retire(old, mid)
-        # 5. links to the most similar memories
+        # 5. links to the most similar memories: the same words, or the same subject in other words
         cands = [i for i in self.candidates(m["terms"]) if i in self.vec and i != mid]
         for s, other in sorted(((self.sim(m["terms"], self.vec[i]), i) for i in cands), reverse=True)[:3]:
             if s >= .2:
                 self.edge(min(mid, other), max(mid, other), "similar", round(s, 3))
-        self.index(mid, m["terms"])
+        for n, (c, other) in enumerate(self.near(emb, 3, skip=mid)):
+            if c >= (.28 if n == 0 else .36):  # the closest in meaning; more only when clearly the same subject
+                self.edge(min(mid, other), max(mid, other), "similar", round(c, 3))
+        self.index(mid, m["terms"], emb)
         # 6. a phrase said in two memories becomes a concept ("thumbnail generator")
         for t in m["terms"]:
             if t.startswith("#") and len(self.post[t]) >= 2:
@@ -702,6 +749,49 @@ class Graph:
                 elif p in self.ekeys:
                     self.edge(mid, self.ekeys[p], "mentions")
         return mid
+
+    def canon(self, k):
+        """The key a name stands for now: a renamed thing's new name; "my wife" once exactly one wife has a name."""
+        k = self.alias.get(k, k)
+        if k.startswith("my ") and k[3:] in brain.KIN:
+            named = [r[1] for r in self.me_edges(k[3:]) if not r[1].startswith("my ")]
+            if len(named) == 1:
+                return named[0]
+        return k
+
+    def merge(self, old, new):
+        """Two keys are one thing: old's links, facts and mentions move to new, and old answers as a name of new."""
+        io, inew = self.ekeys.get(old), self.ekeys.get(new)
+        if not io or not inew or io == inew:
+            return
+        for a, b, rel, w in self.db.execute("SELECT src, dst, rel, weight FROM edges WHERE src=? OR dst=?", (io, io)).fetchall():
+            self.db.execute("DELETE FROM edges WHERE src=? AND dst=? AND rel=?", (a, b, rel))
+            a, b = inew if a == io else a, inew if b == io else b
+            if a != b:
+                self.edge(a, b, rel, w)
+        self.db.execute("UPDATE facts SET subj=? WHERE subj=?", (new, old))
+        self.db.execute("UPDATE facts SET obj=? WHERE obj=?", (new, old))
+        for mid, rels, sig in self.db.execute("SELECT id, rels, sig FROM nodes WHERE kind='memory' AND rels LIKE ?",
+                                              ('%' + json.dumps(old) + '%',)).fetchall():
+            fixed = sorted({tuple(new if x == old else x for x in t) for t in json.loads(rels)})
+            claims = sorted(t for t in fixed if t[1] != "related")
+            self.db.execute("UPDATE nodes SET rels=?, sig=? WHERE id=?", (json.dumps(fixed), json.dumps(claims) if sig else None, mid))
+        (olab, oaka), (nlab, naka) = [self.db.execute("SELECT label, aka FROM nodes WHERE id=?", (i,)).fetchone() for i in (io, inew)]
+        aka = [x for x in json.loads(naka or "[]") + json.loads(oaka or "[]") + [[old, olab]] if x[0] != new]
+        self.db.execute("UPDATE nodes SET aka=?, count=count+(SELECT count FROM nodes WHERE id=?) WHERE id=?", (json.dumps(aka), io, inew))
+        self.db.execute("DELETE FROM fts WHERE rowid IN (?, ?)", (io, inew))
+        self.db.execute("INSERT INTO fts(rowid, label) VALUES(?,?)", (inew, " ".join([nlab] + [lab for _, lab in aka])))  # found by any name
+        self.db.execute("DELETE FROM nodes WHERE id=?", (io,))
+        self.ekeys.pop(old, None)
+        self.ebucket[old[:1]].discard(old)
+        self.alias.update({a: new for a, t in self.alias.items() if t == old} | {old: new})
+
+    def last_person(self, ctx, ts):
+        """Who this chat was last about in the last few hours, so "he works at amazon now" has someone to be about."""
+        row = self.db.execute("""SELECT e.key FROM nodes m JOIN edges x ON x.src = m.id AND x.rel = 'mentions'
+            JOIN nodes e ON e.id = x.dst AND e.type = 'person' WHERE m.kind='memory' AND m.ctx = ? AND m.created BETWEEN ? AND ?
+            ORDER BY m.created DESC, x.rowid DESC LIMIT 1""", (ctx, ts - 6 * 3600, ts)).fetchone() if ctx else None
+        return row and row[0]
 
     def edge_live(self, triple):
         a, rel, b = triple
@@ -1024,6 +1114,10 @@ class Graph:
         return self.db.execute("""SELECT n.id, n.key, n.label, n.cat, x.weight FROM edges x JOIN nodes n ON n.id = x.dst
                                   WHERE x.src=? AND x.rel=? ORDER BY x.weight DESC, n.updated DESC""", (me, rel)).fetchall()
 
+    def kin_people(self, kin):
+        """People the user named for a kin word, any word of its group: "partner" finds a wife, "mother" a mom."""
+        return [r + (rel,) for rel in brain.kin_rels(kin) for r in self.me_edges(rel)]
+
     PAST = {"lives in": "you lived in {}", "works at": "you worked at {}", "uses": "you used {}", "has": "you had {}",
             "likes": "you liked {}", "dislikes": "you disliked {}", "named": "your name was {}", "is": "you were {}",
             "working on": "you were working on {}", "learning": "you were learning {}", "from": "you were from {}"}
@@ -1051,17 +1145,16 @@ class Graph:
             if past:
                 return past
         for kin in Q["kin"]:
-            people = self.me_edges(kin)
+            people = self.kin_people(kin)
             if people:
-                parts = []
-                for pid, pkey, plabel, _, _ in people[:2]:
+                parts, src = [], []
+                for pid, pkey, plabel, _, _, rel in people[:2]:
                     about = self.db.execute("""SELECT x.rel, n.label FROM edges x JOIN nodes n ON n.id = x.dst
                                                WHERE x.src=? AND x.rel IN ('is','lives in','works at','likes','studies')""", (pid,)).fetchall()
                     desc = "; ".join(("a " + l if r == "is" else f"{r} {l}") for r, l in about)
                     name = plabel if not plabel.startswith("your ") else ""
-                    parts.append((f"Your {kin} is {name}" if name else f"Your {kin}") + (f" — {desc}" if desc else "") + ".")
-                    src = [i for pk in [pkey] for i in self.asserting(("me", kin, pk))] + \
-                          [i for r, l in about for i in self.asserting((pkey, r, brain.key(l)))]
+                    parts.append((f"Your {rel} is {name}" if name else f"Your {rel}") + (f" — {desc}" if desc else "") + ".")
+                    src += self.asserting(("me", rel, pkey)) + [i for r, l in about for i in self.asserting((pkey, r, brain.key(l)))]
                 return {"text": " ".join(parts), "relation": kin, "sources": sorted(set(src))[-5:]}
         if Q["favourite"]:
             slot = "me.favourite " + Q["favourite"]
@@ -1072,10 +1165,24 @@ class Graph:
                 labels = [self.db.execute("SELECT label FROM nodes WHERE key=? AND kind='entity'", (b,)).fetchone() for b in likes]
                 if labels and labels[0]:
                     return {"text": f"Your favourite {Q['favourite']} is {labels[0][0]}.", "relation": "likes", "sources": [row[0]]}
+            if Q["favourite"] not in brain.CAT_FROM_WORD:
+                return None  # a favourite nobody mentioned: listing everything they like would be a made-up answer
+        if Q["before"]:  # "where did I live before": the latest value that stopped being true
+            for rel in Q["intent"]:
+                r = self.db.execute("""SELECT f.obj, f.memory, n.label FROM facts f LEFT JOIN nodes n ON n.kind='entity' AND n.key=f.obj
+                                         WHERE f.subj='me' AND f.rel=? AND f.valid_to IS NOT NULL ORDER BY f.valid_to DESC""", (rel,)).fetchone()
+                if r and rel in self.PAST:
+                    return {"text": "Before that, " + self.PAST[rel].format(r[2] or r[0]) + ".", "relation": rel,
+                            "sources": [r[1]] if r[1] else []}
+                if rel == "lives in" and (f := self.me_edges("from")):
+                    return {"text": f"Before that, you lived in {f[0][2]}, where you're from.", "relation": "from",
+                            "sources": self.asserting(("me", "from", f[0][1]))[-3:]}
         for rel in Q["intent"]:
             if rel == "kin":
                 continue
             rows = self.me_edges(rel)
+            if Q["cats"] and rel in ("uses", "has"):  # "what computer do I use": the laptop they have counts
+                rows = rows + [r for r in self.me_edges("has" if rel == "uses" else "uses") if r not in rows]
             if Q["cats"]:
                 keep = []
                 for i, k, lab, cat, w in rows:
@@ -1125,9 +1232,9 @@ class Graph:
             for (i,) in self.db.execute("SELECT id FROM nodes WHERE kind='entity' AND cat=?", (cat,)):
                 act[i] = max(act.get(i, 0), .7)
         me = self.ekeys.get("me")
-        for kin in Q["kin"]:
-            for i, *_ in self.me_edges(kin):
-                act[i] = 1.0
+        known_kin = [p for kin in Q["kin"] for p in self.kin_people(kin)]
+        for i, *_ in known_kin:
+            act[i] = 1.0
         if me and Q["about_me"]:
             act[me] = 1.0
         graph = defaultdict(float)
@@ -1160,11 +1267,32 @@ class Graph:
             for (m,) in self.db.execute("SELECT id FROM nodes WHERE kind='memory' AND status='active' AND ctx=?", (c,)):
                 tboost[m] += .6 * share
         pool = set(text) | set(graph) | set(tboost) | set(bonus) | self.candidates(Q["terms"])
+        # meaning: the question without its question words, against every memory's vector
+        qe = sense.vec(Q["gist"])
+        ranked_m = self.near(qe, 41)
+        mcos = {i: c for c, i in ranked_m}
+        pool |= {i for i, c in mcos.items() if c >= .22}
+        # a short question ("exercise", "any animals") scores low against whole sentences, but its best match stands out
+        runners = [c for c, _ in ranked_m[1:]]
+        spread = (statistics.pstdev(runners) if len(runners) > 1 else 0) or 1
+        stands_out = bool(ranked_m) and len(Q["gist"].split()) <= 2 and ranked_m[0][0] >= .1 and \
+            (ranked_m[0][0] - sum(runners) / max(len(runners), 1)) / spread >= 2
+        best_m = ranked_m[0][1] if stands_out else None
+        if best_m:
+            pool.add(best_m)
+        anchor = max(re.findall(r"[\w'+#.-]+", Q["gist"]) or [""], key=sense.weight)  # its weightiest word ("blood" in "blood type")
+        ae = sense.vec(anchor) if anchor else None
+        # a relative, or a thing of theirs, that was never mentioned ("my boat"): look-alikes (their car) are no answer
+        mine = [w for g in re.findall(r"\bmy\s+((?:[a-z]+\s+){0,2}[a-z]+)", brain.clean(q).lower()) for w in g.split()
+                if w not in brain.STOP and w not in brain.ABSTRACT and w not in brain.STRIP]  # things: not "my job", "my new"
+        kin_lost = Q["kin"] and not known_kin
+        lost = kin_lost or mine and not any(brain.stem(w) in self.post or brain.key(w) in self.ekeys for w in mine)
         info = {r[0]: r for r in self.db.execute(
             f"SELECT {MEM_COLS} FROM nodes WHERE kind='memory' AND id IN ({','.join('?' * len(pool)) or 'NULL'})", list(pool))}
         now = time.time()
 
         qweight = sum(self.idf(t) for t in qwords)
+        how = {}  # why each memory matched: the answer's source, a thing it names, its words, or only its meaning
 
         def score_all(qv):
             out = {}
@@ -1181,7 +1309,18 @@ class Graph:
                 damp = (.35 + .65 * cover) if words is not qwords else 1   # a sibling that misses the rest of the question fades
                 sem = (self.sim(qv, vec) if vec else 0) * damp
                 tx = text.get(m, 0) * damp
-                rel = .45 * tx + .35 * sem + .3 * cover + .3 * (min(graph.get(m, 0), 1.5) * damp + tboost.get(m, 0)) + bonus.get(m, 0)
+                if m not in mcos:
+                    mcos[m] = sense.cos(qe, self.emb[m]) if qe is not None and m in self.emb else 0.0
+                mc = mcos[m]
+                if lost and not (graph.get(m) or bonus.get(m)) and (kin_lost or mc < .25):
+                    continue  # "my blood type" when blood never came up: a memory that says "type" is no answer
+                if not (tx or cover or graph.get(m) or tboost.get(m) or bonus.get(m)) and (m != best_m or lost) and (
+                        mc < .22 or ae is not None and m in self.emb and sense.cos(ae, self.emb[m]) < .2):
+                    continue  # meaning alone, and weak or beside the point: saying nothing beats padding
+                mean = min(1.0, max(.35 if m == best_m else 0.0, (mc - .15) / .55))  # .15 ~ unrelated, .7 ~ the same in other words
+                how[m] = "answer" if bonus.get(m) else "thing" if graph.get(m) else "words" if tx or cover or tboost.get(m) else "meaning"
+                rel = .45 * tx + .35 * sem + .3 * cover + .3 * (min(graph.get(m, 0), 1.5) * damp + tboost.get(m, 0)) + .5 * mean + \
+                    bonus.get(m, 0)
                 if rel <= .08:
                     continue
                 if Q["types"] and r[2] in Q["types"]:
@@ -1217,7 +1356,7 @@ class Graph:
         for a, b, w in self.db.execute("SELECT src, dst, weight FROM edges WHERE rel='similar'").fetchall() if not Q["about_me"] else []:
             for x, y in ((a, b), (b, a)):  # a strong neighbour lends a little relevance
                 if x in score and y not in score and y in self.vec:
-                    score[y] = .25 * w * score[x]
+                    score[y] = .25 * min(w, 1) * score[x]
                     if y not in info:
                         info[y] = self.db.execute(f"SELECT {MEM_COLS} FROM nodes WHERE id=?", (y,)).fetchone()
         # maximal marginal relevance: don't spend the top slots on three wordings of the same thing
@@ -1237,7 +1376,7 @@ class Graph:
         for i in top:
             ids.update(r[0] for r in self.db.execute("SELECT dst FROM edges WHERE src=? AND rel IN ('mentions','about')", (i,)))
         convs = live.search(self, q, 3)
-        return {"answer": ans, "intent": Q["intent"], "memories": [self.mem(info[i], score[i]) for i in top],
+        return {"answer": ans, "intent": Q["intent"], "memories": [dict(self.mem(info[i], score[i]), match=how.get(i, "linked")) for i in top],
                 "conversations": convs, **self.subgraph(ids)}
 
     def mem(self, r, score=None):
@@ -1470,6 +1609,7 @@ class Graph:
         self.db.executescript("DROP TABLE IF EXISTS edges; DROP TABLE IF EXISTS nodes; DROP TABLE IF EXISTS fts; "
                               "DROP TABLE IF EXISTS facts;" + DERIVED)
         self.vec, self.post, self.ekeys, self.ebucket = {}, defaultdict(set), {}, defaultdict(set)
+        self.emb, self.sig, self.alias = {}, {}, {}
         rows = self.db.execute("SELECT text, site, chat, url, ts, extra FROM captures ORDER BY ts, id").fetchall()
         for text, site, chat, url, ts, extra in rows:
             x = json.loads(extra) if extra else {}
@@ -1546,7 +1686,8 @@ def mcp_call(g, name, a, client=None):
         r = g.recall(str(a.get("query", "")), max(1, min(int(a.get("k", 8)), 20)))
         lines = ([f"Answer: {r['answer']['text']}"] if r["answer"] else []) + [
             f"[{m['id']}] {m['text']} ({m['type']}; {', '.join(m['ais']) or 'agent'}{' · ' + ', '.join(m['models']) if m['models'] else ''}; "
-            f"{datetime.fromtimestamp(m['updated']).strftime('%-d %b %Y')})" for m in r["memories"]]
+            f"{datetime.fromtimestamp(m['updated']).strftime('%-d %b %Y')}{'; related by meaning only' if m.get('match') == 'meaning' else ''})"
+            for m in r["memories"]]
         return "\n".join(lines) or "Nothing in memory about that yet."
     if name == "remember":
         fact = str(a.get("fact") or a.get("text") or "").strip()
@@ -2663,6 +2804,19 @@ def selfcheck():
     assert len(jf) == 2 and len({m["topic"] for m in jf}) == 1 and jf[0]["topic"], jf               # sorted together
     assert "transcoding" in g.recall("container transcoding")["memories"][0]["text"]
     assert g.recall("jellyfn")["memories"], "typo tolerance"
+    # the brain: one person under two names, facts that settle older ones, a rename, meaning, and saying nothing
+    h = Graph(":memory:")
+    for i, t in enumerate(["my wife loves hiking", "my wife's name is Sarah", "I want to buy a PS5", "I finally bought a PS5",
+                           "I'm building DoorTalk", "I renamed DoorTalk to HearthLink", "I love cricket and play every sunday"]):
+        h.ingest(t, "chatgpt.com", "c", "https://chatgpt.com/c/1", t0 + i * 60)
+    ek = dict(h.db.execute("SELECT id, key FROM nodes WHERE kind='entity'"))
+    have = {(ek.get(a), r, ek.get(b)) for a, b, r in h.db.execute("SELECT src, dst, rel FROM edges")}
+    assert {("sarah", "likes", "hiking"), ("me", "has", "ps5"), ("me", "working on", "hearthlink")} <= have, have
+    assert ("me", "wants", "ps5") not in have and "my wife" not in ek.values() and "doortalk" not in ek.values(), have
+    assert "HearthLink" in {n["label"] for n in h.recall("doortalk")["nodes"]}, "an old name still finds the thing"
+    assert not h.recall("what's my blood type")["memories"] and not h.recall("tell me about my boat")["memories"]
+    if sense.DIM:
+        assert h.recall("what do I do for fun")["memories"][0]["text"].startswith("I love cricket"), "found by meaning"
     pasta = g.recall("pasta")["memories"][0]
     assert pasta["topic"] != jf[0]["topic"]
     g.recall('AND OR "( NEAR*')                                                                     # no FTS crash
@@ -3132,6 +3286,7 @@ if __name__ == "__main__":
     if "--check" in sys.argv:
         os.environ["MINDBATON_AI"] = "0"  # tests never call the AI
         brain.selfcheck()
+        sense.selfcheck()
         handoff.selfcheck()
         selfcheck()
         authcheck()

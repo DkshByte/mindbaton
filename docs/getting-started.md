@@ -1,7 +1,7 @@
 # Getting started
 
-Mindbaton is one small Python program. Put it on a computer that is usually on — a home server, a NAS, a Mac mini, a
-Raspberry Pi 4, or just your laptop — and every AI you use can share one memory.
+Mindbaton is one small Python program. Put it on a computer that is usually on — a home server, a NAS, a Mac mini, or
+just your laptop — and every AI you use can share one memory.
 
 You need **either** Python 3.9 or newer (with SQLite's FTS5, which almost every Python has), **or** Docker. Nothing else: no pip packages, no database server, no build step. The installer checks all
 of it for you.

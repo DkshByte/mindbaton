@@ -13,7 +13,7 @@ The system dictionary (/usr/share/dict) tells real words from names: "jellyfin" 
 they are names even when typed in lower case. Without the file everything still works, just less sharp.
 """
 import calendar, gzip, math, os, re, time
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 
 
@@ -85,9 +85,18 @@ IDENTITY = set("""vegetarian vegan pescatarian eggetarian jain student developer
 founder teacher doctor nurse lawyer gamer beginner retired unemployed married single engaged divorced pregnant diabetic
 lactose-intolerant left-handed colorblind introvert extrovert remote self-employed atheist muslim hindu christian sikh
 parent dad mom""".split())
-KIN = set("""wife husband brother sister mom mother dad father friend son daughter boss partner girlfriend boyfriend fiance
-fiancee dog cat kid child colleague roommate cousin uncle aunt grandma grandmother grandpa grandfather niece nephew manager
+KIN = set("""wife husband brother sister mom mother mum dad father friend son daughter boss partner spouse girlfriend boyfriend
+fiance fiancee dog cat kid child colleague roommate cousin uncle aunt grandma grandmother grandpa grandfather niece nephew manager
 teammate puppy kitten pet bestie""".split())
+KIN_ANY = {"partner": "wife husband spouse girlfriend boyfriend fiance fiancee", "spouse": "wife husband",  # asking for the
+           "kid": "child son daughter", "child": "kid son daughter", "pet": "dog cat puppy kitten"}        # kind finds each one
+KIN_SAME = ["mom mother mum", "dad father", "grandma grandmother", "grandpa grandfather"]
+
+
+def kin_rels(kin):
+    """A kin word -> the relations it can mean: 'partner' is a wife, a husband…; 'mother' is also 'mom'."""
+    group = KIN_ANY.get(kin) or next((g for g in KIN_SAME if kin in g.split()), "")
+    return list(dict.fromkeys([kin] + group.split()))
 GREET = r"^(?:(?:hey|hi|hello|yo|ok|okay|so|and|also|now|btw|um+|hmm+|well|oh|actually|alright|right|thanks|thank you)[ ,!.]+)*"
 ACK = set("ok okay k kk thanks thank you thx ty cool great nice perfect awesome got it yes yeah yep no nope sure alright done lol haha "
           "continue go ahead proceed next retry again do run try fix please pls then now on that this".split())  # steering, not content
@@ -210,9 +219,13 @@ CAT_WORDS = {  # words in a question that name a category
     "vpn": "vpn remote", "media": "media streaming", "container": "container containers virtualization",
     "design": "design designing", "framework": "framework frameworks library libraries", "ai": "ai llm llms model models chatbot",
     "music": "music song songs genre genres playlist", "food": "food diet eat eating meal meals dinner lunch breakfast cooking",
-    "gpu": "gpu gpus graphics", "cpu": "cpu processor", "laptop": "laptop notebook", "phone": "phone mobile smartphone",
-    "hardware": "hardware board boards microcontroller"}
-CAT_FROM_WORD = {w: c for c, ws in CAT_WORDS.items() for w in ws.split()}
+    "gpu": "gpu gpus graphics", "cpu": "cpu processor", "laptop": "laptop notebook computer pc machine", "phone": "phone mobile smartphone",
+    "hardware": "hardware board boards microcontroller", "computer": "computer pc desktop machine server"}
+CAT_FROM_WORD = defaultdict(set)  # a word can name several kinds: a "computer" is a laptop or a desktop
+for _c, _ws in CAT_WORDS.items():
+    for _w in _ws.split():
+        CAT_FROM_WORD[_w].add(_c)
+CAT_FROM_WORD = dict(CAT_FROM_WORD)
 
 SYNONYMS = [g.split(",") for g in """gpu,graphics card,video card,graphics|car,vehicle,auto|laptop,notebook|phone,mobile,smartphone
 |server,homelab,home server|house,home,flat,apartment|job,work,career,employer,company,office|salary,pay,income|movie,film,cinema
@@ -507,8 +520,9 @@ def tag(words):
         if l in PARTICIPLE and nxt in PREP:             # "a designer living in mumbai"
             out[i] = "V"
         elif l in VERB and not l.endswith("ing") and (l.endswith(("s", "ed")) or l != VERB[l]) and \
-                (not nxt or out[i + 1] in "PDOAR.V" or nxt in VERB and nxt.endswith("ing")) and _subjecty(words[i - 1]):
-            out[i] = "V"                                # "my brother works at", "jellyfin keeps crashing"
+                (not nxt or out[i + 1] in "PDOAR.V" or nxt in VERB and nxt.endswith("ing") or words[i - 1].lower() in KIN) \
+                and _subjecty(words[i - 1]):
+            out[i] = "V"                                # "my brother works at", "jellyfin keeps crashing", "my wife loves hiking"
     return out
 
 
@@ -690,7 +704,7 @@ TYPE_RX = [
              r"(building|making|creating|working on|learning|setting up|developing|writing|designing|redesigning|studying)\b|"
              r"\bmy (goal|plan|project|dream|side project)\b|\bget better at\b"),
     ("event", r"\b(i|we)(?:'ve| have)? (?:just |finally |recently )?(moved|bought|joined|left|quit|started|switched|sold|got|"
-              r"visited|finished|turned|graduated|adopted|installed|ordered|migrated|launched|shipped)\b"),
+              r"visited|finished|turned|graduated|adopted|installed|ordered|migrated|launched|shipped|renamed)\b"),
     ("fact", r"\b(i|we)(?:'m| am| are| was|'ve| have| had| own| use| run| live| work| study| drive| got|'re)\b|\bmy \w+(?:'s)? "
              r"(?:\w+ )?(?:is|are|was)\b|\bmy (name|age|job|" + "|".join(KIN) + r")\b|\bi don't\b"),
 ]
@@ -768,8 +782,10 @@ _rule(IM + r"on an?\s+(?=\w+\s+diet\b)", "is", kind="role", one=True)
 _rule(IM + r"(?=(?:lactose intolerant|gluten intolerant|gluten free|left handed|colou?r ?blind|a night owl|an early bird|"
       r"a morning person|a night person)\b)", "is", kind="role", maxwords=3)
 _rule(r"\b(?:i|we)(?:'ve| have)?\s+(?:just\s+|recently\s+|finally\s+)?(?:installed|set up|setup|started using|deployed|"
-      r"switched over to|switched to|migrated to|moved over to|changed to|upgraded to|started with)\s+", "uses", event=True)
-_rule(r"(?:^|[,;]\s*|\band\s+|\bnow\s+)(?:switched|migrated|moved over|changed|upgraded)\s+to\s+", "uses", event=True)
+      r"started with)\s+", "uses", event=True)
+_rule(r"\b(?:i|we)(?:'ve| have)?\s+(?:just\s+|recently\s+|finally\s+)?(?:switched over to|switched to|migrated to|moved over to|"
+      r"changed to|upgraded to)\s+", "uses", event=True, switch=True)
+_rule(r"(?:^|[,;]\s*|\band\s+|\bnow\s+)(?:switched|migrated|moved over|changed|upgraded)\s+to\s+", "uses", event=True, switch=True)
 _rule(S2 + r"(?:like|love|enjoy|prefer|adore|dig|really like)\s+" + NOT_OBJ + r"(?!being\b|the way\b)", "likes", firstperson=True)
 _rule(IM + r"into\s+", "likes")
 _rule(S + r"(?:hate|dislike|detest|can't stand|cannot stand|don't like|do not like|don't enjoy|really don't like)\s+" + NOT_OBJ, "dislikes")
@@ -793,7 +809,8 @@ WANT_REL = {"buy": "wants", "get": "wants", "adopt": "wants", "visit": "wants to
 WANT_VERB = {"buying": "buy", "getting": "get", "visiting": "visit", "trying": "try", "switching to": "switch to",
              "moving to": "move to", "building": "build", "adopting": "adopt", "upgrading to": "upgrade to"}
 NEG = re.compile(r"\b(?:i|we)\s+(?:(?:really|just|actually|kinda)\s+)?(?:don't|do not|no longer|never|don't really|stopped)\s+"
-                 r"(use|using|run|running|have|own|live in|living in|work at|work for|working at|working for|like|love|drive)\s+", re.I)
+                 r"(use|using|run|running|have|own|live in|living in|work at|work for|working at|working for|like|love|drive|"
+                 r"play|playing|learn|learning|study|studying|work on|working on)\s+", re.I)
 DROP = re.compile(r"\b(?:i|we)(?:'ve| have)?\s+(?:(?:finally|just|recently|already)\s+)?(stopped using|quit using|gave up on|gave up|"
                   r"dropped|uninstalled|ditched|got rid of|sold|deleted|abandoned|moved off|moved away from|switched away from|"
                   r"left|quit|moved out of)\s+(?:of\s+)?", re.I)
@@ -802,16 +819,33 @@ CHANGE = re.compile(r"\b(switched|moved|migrated|changed|went|upgraded|shifted)\
 REPLACED = re.compile(r"\breplaced\s+(?:my\s+)?(.+?)\s+with\s+(.+)$", re.I)
 VERB_REL = {"use": "uses", "using": "uses", "run": "uses", "running": "uses", "have": "has", "own": "has", "drive": "has",
             "live in": "lives in", "living in": "lives in", "work at": "works at", "work for": "works at",
-            "working at": "works at", "working for": "works at", "like": "likes", "love": "likes",
-            "stopped using": "uses", "quit using": "uses", "gave up on": "uses", "gave up": "uses", "dropped": "uses",
-            "uninstalled": "uses", "ditched": "uses", "deleted": "uses", "abandoned": "uses", "moved off": "uses",
+            "working at": "works at", "working for": "works at", "like": "likes", "love": "likes", "play": "plays", "playing": "plays",
+            "learn": "learning", "learning": "learning", "study": "studies", "studying": "studies", "work on": "working on",
+            "working on": "working on",
+            "stopped using": "uses", "quit using": "uses", "gave up on": None, "gave up": None, "dropped": "uses",
+            "uninstalled": "uses", "ditched": "uses", "deleted": "uses", "abandoned": None, "moved off": "uses",
             "switched away from": "uses", "got rid of": "has", "sold": "has", "moved away from": "lives in",
             "moved out of": "lives in", "left": None, "quit": None}
 POSSESSIVE = re.compile(r"\bmy\s+(?P<kin>(?:" + "|".join(sorted(KIN, key=len, reverse=True)) + r"))'s\s+|\bmy\s+", re.I)
 SLOT = re.compile(r"\bmy\s+(?P<s>(?:[a-z][\w-]*\s+){0,3}?[a-z][\w-]*)(?:'s\s+(?P<attr>[a-z][\w -]{1,20}?))?\s+(?:is|are|was)\s+"
                   r"(?:called\s+|named\s+)?", re.I)
 KIN_RE = re.compile(r"\bmy\s+(?P<kin>" + "|".join(sorted(KIN, key=len, reverse=True)) + r")(?:'s name is|\s+is\s+(?:called|named)|"
-                    r"\s+(?:called|named)|,)?\s+(?P<name>[A-Za-z][a-z]+)\b", re.I)
+                    r"\s+(?:called|named)|\s+is(?=\s+(?-i:[A-Z]))|,)?\s+(?P<name>[A-Za-z][a-z]+)\b", re.I)
+ONGOING = ["works at", "lives in", "uses", "has", "learning", "working on", "plays", "does", "studies"]  # what "I gave up X" can end
+SETTLES = {"likes": ["dislikes"], "dislikes": ["likes"], "lives in": ["plans to move to"], "working on": ["wants to build"],
+           "built": ["wants to build"], "uses": ["wants to try", "wants to switch to"]}  # a new fact ends these older ones
+BOUGHT = {"has": ["wants"], "uses": ["wants"]}  # only when it was an event: "I bought a PS5" ends "I want a PS5"
+RENAME = [re.compile(p, re.I) for p in (  # the same thing under a new name
+    r"\brenamed\s+(?:my\s+|our\s+|the\s+)?(?P<old>.+?)\s+(?:to|as)\s+(?P<new>.+?)\s*$",
+    r"^\s*(?:my\s+|our\s+|the\s+)?(?P<old>.+?)\s+is\s+now\s+(?:called|named)\s+(?P<new>.+?)\s*$",
+    r"\bchanged\s+(?:the\s+)?name\s+of\s+(?:my\s+|our\s+|the\s+)?(?P<old>.+?)\s+to\s+(?P<new>.+?)\s*$",
+    r"^\s*(?P<new>[^(]+?)\s*\((?:formerly|previously|was)\s+(?P<old>[^)]+)\)")]
+
+
+def same_thing(a, b):
+    """Two keys for one thing when settling a want or a drop: 'kindle' ~ 'kindle paperwhite', 'piano' ~ 'piano lesson'."""
+    wa, wb = set(a.split()), set(b.split())
+    return a == b or bool(wa & wb) and (wa <= wb or wb <= wa)
 TOOLISH = set("editor ide os distro browser vpn stack setup db database shell terminal language framework".split())  # my X is Y -> uses Y
 DEVICE = set("phone laptop server nas router gpu cpu keyboard car bike computer pc desktop tablet watch camera monitor machine rig "
              "workstation console".split())
@@ -840,6 +874,7 @@ class Clause:
         """Noun phrases starting at token i: 'jellyfin, pihole and n8n in docker' -> ([jellyfin, pihole, n8n], stop index)."""
         items, cur = [], []
         w, t = self.words, self.tags
+        first = i
         while i < len(w):
             l = w[i].lower()
             if l in CUT and cur:
@@ -857,6 +892,9 @@ class Clause:
                 pass
             elif t[i] == "V" and not cur and l == "used":
                 pass
+            elif t[i] == "V" and i == first and l.endswith("ing"):  # a gerund object: "loves drawing", "love playing guitar"
+                if not (i + 1 < len(w) and t[i + 1] in "ND"):
+                    cur.append(w[i])  # the activity itself; else what it acts on comes next
             elif l == "," and cur and i + 1 < len(w) and w[i + 1].lower() in ("a", "an") and not items:
                 desc, j = Clause(" ".join(w[i + 2:])).objects(0, maxwords=4, lists=False)
                 if desc:
@@ -905,12 +943,15 @@ def _typed(lab, rel, kind):
     return (k, lab, typ)
 
 
-def facts(s, md=None, prev_person=None, prev_thing=None):
-    """Relations stated in one clause -> (relations, entities, slots, retracts, person).
-    relations: [(subj_key, rel, obj_key)], retracts: [(subj_key, rel|None, obj_key)] (rel None = whatever the user had)."""
+def facts(s, md=None, prev_person=None, prev_thing=None, people=()):
+    """Relations stated in one clause -> (relations, entities, slots, retracts, person, more).
+    relations: [(subj_key, rel, obj_key)], retracts: [(subj_key, rel|None, obj_key)] (rel None = whatever the user had).
+    people: keys of people already known, so "Sarah works at …" is about Sarah. more: {switched: [keys of tools switched
+    to], renames: [(old key, new label)]}."""
     md = md or mood(s)
     c = Clause(s)
     rels, ents, slots, retracts = [], [], [], []
+    more = {"switched": [], "renames": []}
     person = prev_person
     low = s.lower()
     firstperson = bool(re.search(r"\b(i|i'm|i've|i'd|my|me|we|we're|our)\b", low))
@@ -970,7 +1011,7 @@ def facts(s, md=None, prev_person=None, prev_thing=None):
         elif md != "hypothetical":
             add("me", "has", o, "thing")
     if md == "question":
-        return _dedupe(rels), ents, slots, retracts, person
+        return _dedupe(rels), ents, slots, retracts, person, more
 
     # 2. wishes and plans hold even in hypothetical clauses
     for m in WANT.finditer(s):
@@ -979,7 +1020,7 @@ def facts(s, md=None, prev_person=None, prev_thing=None):
         for o in c.objects(c.at(m.end()))[0]:
             add("me", rel, o, "place" if "visit" in rel or "move" in rel else "thing")
     if md == "hypothetical":
-        return _dedupe(rels), ents, slots, retracts, person
+        return _dedupe(rels), ents, slots, retracts, person, more
 
     # 3. retractions and changes of state
     if m := CHANGE.search(s):
@@ -1020,7 +1061,10 @@ def facts(s, md=None, prev_person=None, prev_thing=None):
         rels.append(("me", m["kin"].lower(), k))
         person = k
         _about(s[m.end():], k, add)
-    if person and re.match(r"\s*(?:she|he|they)\b", low):
+    if people and (m := re.match(r"\s*([A-Za-z][a-z]+)\b", s)) and key(m[1]) in people:  # "Sarah works at Apollo Hospital"
+        person = key(m[1])
+        _about(s[m.end():], person, add)
+    elif person and re.match(r"\s*(?:she|he|they)\b", low):
         _about(re.sub(r"^\s*(?:she|he|they)\b", "", s, flags=re.I), person, add)
 
     # 5. the rule table
@@ -1060,6 +1104,8 @@ def facts(s, md=None, prev_person=None, prev_thing=None):
                 if key(o) in retracted or (rel == "is" and o.lower() in FEELING):
                     continue
                 k = add("me", rel, o, opt.get("kind"))
+                if k and opt.get("switch"):
+                    more["switched"].append(k)
                 if k and o in c.appos:                   # "hearthlink, a voice intercom" -> hearthlink is voice intercom
                     add(k, "is", c.appos[o], "thing")
                     if rel == "named":
@@ -1136,9 +1182,15 @@ def facts(s, md=None, prev_person=None, prev_thing=None):
                     rels.append((k, "is", e[0]))
                     if sl in DEVICE:
                         rels.append(("me", "has", e[0]))
+    for rx in RENAME:  # "I renamed DoorTalk to HearthLink": one thing, a new name
+        if m := rx.search(s):
+            old, new = Clause(m["old"]).objects(0, lists=False)[0], Clause(m["new"]).objects(0, lists=False)[0]
+            if old and new and any(w[:1].isupper() or namey(w) for w in old[0].split()):
+                more["renames"].append((key(old[0]), new[0]))
+            break
     gone = {r[2] for r in retracts}
     rels = [r for r in rels if not (r[0] == "me" and r[2] in gone)]
-    return _dedupe(rels), ents, slots, retracts, person
+    return _dedupe(rels), ents, slots, retracts, person, more
 
 
 def _tool(after, ents, rels, retracted):
@@ -1160,10 +1212,15 @@ def _about(rest, subj, add):
             for o in c.objects(stop + 1, lists=False)[0]:
                 add(subj, "lives in" if c.next_word(stop) != "at" else "works at", o, "place")
     for rx, rel in ((r"\b(?:lives|living|stays|based)\s+in\s+", "lives in"), (r"\bworks?\s+(?:at|for)\s+", "works at"),
-                    (r"\b(?:likes|loves)\s+", "likes"), (r"\bstudies\s+", "studies")):
+                    (r"\b(?:likes|loves)\s+", "likes"), (r"\b(?:hates|dislikes)\s+", "dislikes"), (r"\bstudies\s+", "studies"),
+                    (r"\b(?:moved|relocated|shifted)\s+(?:back\s+)?to\s+", "lives in")):
         for m in re.finditer(rx, rest, re.I):
-            for o in c.objects(c.at(m.end()))[0]:
+            objs, stop = c.objects(c.at(m.end()))
+            for o in objs:
                 add(subj, rel, o, "place" if rel == "lives in" else None)
+            if rel == "works at" and objs and c.next_word(stop) == "in" and stop + 1 < len(c.words):  # "at amazon in seattle"
+                for o in c.objects(stop + 1, lists=False)[0]:
+                    add(subj, "lives in", o, "place")
 
 
 def _dedupe(rels):
@@ -1247,15 +1304,16 @@ def steering(body):
     return 0 < len(words) <= 10 and all(w in STOP or w.isalpha() and len(w) <= 2 or stem(w) in STEER for w in words)
 
 
-def analyse(text, ref=None, prev=None):
+def analyse(text, ref=None, prev=None, who=None, people=()):
     """Raw message -> memories. Personal statements become one memory each; questions/tasks collapse into one topic memory.
-    prev: the named thing the conversation was last about, so "it is ..." has a subject."""
+    prev: the named thing the conversation was last about, so "it is ..." has a subject; who: the person it was last
+    about, so "he works at amazon now" has one; people: keys of people already known by name."""
     body = clean(redact(text))
     if not body or all(w in ACK for w in re.findall(r"[a-z]+", body.lower())) or steering(body):
         return []
     sents = sentences(body)
     long_paste = len(body) > 1500  # pasted docs and logs: keep personal lines and the first line only
-    out, rest, person = [], [], None
+    out, rest, person = [], [], who
     for s in sents:
         explicit = bool(EXPLICIT.search(s))
         if explicit:                                  # "can you remember that I prefer short answers?" is a statement
@@ -1263,7 +1321,7 @@ def analyse(text, ref=None, prev=None):
         md = mood(s)
         t = classify(s, md)
         found = entities(s)
-        rels, extra, slots, retracts, person = facts(s, md, person, prev)
+        rels, extra, slots, retracts, person, more = facts(s, md, person, prev, people)
         ents = list({e[0]: e for e in found + extra}.values())
         big = {w for e in extra for w in e[0].split() if len(e[0].split()) > 1}
         ents = [e for e in ents if not (e[2] == "name" and e[0] in big)]
@@ -1280,7 +1338,7 @@ def analyse(text, ref=None, prev=None):
             t, personal = "fact", True
         phr = phrases(s)
         mem = dict(text=s[:500], type=t, mood=md, entities=ents, relations=rels, retracts=retracts, slots=slots, when=at,
-                   conf=conf, phrases=phr)
+                   conf=conf, phrases=phr, **more)
         if personal:
             mem["importance"] = min(1, IMPORTANCE[t] + .03 * min(len(ents), 3) + (.05 if at else 0) + (.1 if explicit else 0))
             mem["terms"] = terms(s, ents, phr)
@@ -1299,6 +1357,7 @@ def analyse(text, ref=None, prev=None):
             at = next((m["when"] for m in rest if m["when"]), None)
             out.append(dict(text=s, type=t, mood=rest[0]["mood"], entities=ents, relations=_dedupe(rels),
                             retracts=[r for m in rest for r in m["retracts"]], slots=[], when=at, conf=.5, phrases=phr,
+                            switched=[k for m in rest for k in m["switched"]], renames=[r for m in rest for r in m["renames"]],
                             importance=min(1, IMPORTANCE[t] + .03 * min(len(ents), 3)), terms=terms(s, ents, phr)))
     return out
 
@@ -1307,11 +1366,14 @@ def analyse(text, ref=None, prev=None):
 # the query side
 # ---------------------------------------------------------------------------------------------------------------------
 INTENTS = [  # question pattern -> relation(s) it asks about
+    (r"\b(?:grow up|grew up|born|raised|hometown|home town)\b|\bwhere am i from\b|\bwhere (?:\w+ )?i (?:come|am) from\b", ["from"]),
     (r"\bwhere\b.*\b(live|lived|living|stay|stayed|based|home)\b|\b(my|which) (city|town|place)\b|\bwhere am i\b|\bwhere.*\bi (?:moved|am)\b", ["lives in"]),
     (r"\bwhere\b.*\bwork(ed)?\b|\b(my|which) (job|company|employer|office|workplace)\b|\bwho do i work for\b|\bwhat do i do for (?:a living|work)\b", ["works at", "is"]),
     (r"\b(what'?s|what is|tell me) my name\b|\bwho am i\b|\bmy name\b", ["named"]),
     (r"\bhow old\b|\bmy age\b", ["age"]),
-    (r"\bwhat do i do\b|\bmy (profession|role)\b|\bwhat'?s my job\b", ["is", "works at"]),
+    (r"\bwhat do i do\b(?!\s+(?:for fun|to relax|in my (?:free|spare) time|on (?:the )?weekends?|after work|outside work))|"
+     r"\bmy (profession|role)\b|\bwhat'?s my job\b", ["is", "works at"]),
+    (r"\bfor fun\b|\bhobb(?:y|ies)\b|\b(?:free|spare) time\b|\bto relax\b", ["plays", "does", "likes"]),
     (r"\bwhat (?:\w+ )?(?:do|am) i (?:use|using|run|running)\b|\bwhich \w+(?: \w+)? do i (?:use|run)\b|\bmy (stack|setup|tools)\b|\bwhat (?:\w+ ){0,2}do i use\b", ["uses"]),
     (r"\bwhat (?:\w+ ){0,2}do i (?:have|own)\b|\bwhich \w+ do i (?:have|own)\b|\bmy (car|laptop|phone|server|gpu|computer|pc|nas)\b", ["has"]),
     (r"\bwhat do i (like|love|enjoy)\b|\bmy (favou?rite|interests|hobbies)\b|\bwhat am i into\b|\b(music|food|movie) taste\b|\bmy \w+ taste\b", ["likes"]),
@@ -1338,13 +1400,21 @@ def expand(q):
     return q + " " + " ".join(extra)
 
 
+ABSTRACT = NOT_THING | ATTRIBUTE | set(CAT_FROM_WORD) | set("""favourite favorite fav hobby hobbies interest interests taste
+preference preferences profession career diet health condition conditions allergy allergies plans plan goals life family stuff
+things info details profile""".split())  # "my X" that isn't an object one owns
+SCAFFOLD = QWORD | AUX | PRON | DET | set("tell please remind know remember of for to in on at about with".split())
+
+
 def query(q):
-    """Understand a question: expanded text, terms, named things, categories, relation intent, kin, time window."""
+    """Understand a question: expanded text, terms, named things, categories, relation intent, kin, time window, and its
+    gist (the question minus its question words), which the meaning vectors compare with memories."""
     low = clean(q).lower()
+    gist = " ".join(w for w in re.findall(r"[\w+#.-]+", re.sub(r"'s\b|'", " ", low)) if w not in SCAFFOLD) or low
     x = expand(low)
     base = entities(q)
     ents = base + [e for e in entities(x) if e[0] not in {k for k, _, _ in base}]
-    cats = sorted({CAT_FROM_WORD[w] for w in re.findall(r"[a-z]+", low) if w in CAT_FROM_WORD})
+    cats = sorted({c for w in re.findall(r"[a-z]+", low) for c in CAT_FROM_WORD.get(w, ())})
     intent = []
     for rx, rels in INTENTS:
         if re.search(rx, low):
@@ -1362,8 +1432,10 @@ def query(q):
     types = {"likes": ["preference"], "dislikes": ["preference"], "working on": ["goal"], "learning": ["goal"],
              "wants": ["goal"]}.get(intent[0] if intent else "", [])
     past_at = at if at and (tense == "past" or re.search(r"\b(did|was|were|used to|back then|ago|last)\b", low)) else None
+    before = bool(re.search(r"\b(?:before|previously|formerly|used to|earlier)\b", low))
     return dict(text=x, terms=terms(x, ents), base=terms(low), entities=ents, cats=cats, intent=intent, kin=kin, at=past_at,
-                favourite=fav[1] if fav else None, window=window, about_me=about_me, first_person=first_person, types=types)
+                favourite=fav[1] if fav else None, window=window, about_me=about_me, first_person=first_person, types=types,
+                gist=gist, before=before)
 
 
 # ---------------------------------------------------------------------------------------------------------------------

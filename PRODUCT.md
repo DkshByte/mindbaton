@@ -21,8 +21,8 @@ check that capture from each AI is working, and pass a chat that hit its limit t
 
 ## Positioning
 Memory that belongs to the user, not to one AI vendor: one graph fed by every AI chat, hosted on their own box;
-understanding and topics are deterministic (brain.py, cluster) and every graph is rebuildable from raw captures — an
-optional free AI only writes summaries and topic names. Open source (AGPL-3.0), no account, no cloud, no telemetry.
+understanding and topics are deterministic (brain.py, cluster; meaning from a static word-meaning table, sense.py) and every
+graph is rebuildable from raw captures — an optional free AI only writes summaries and topic names. Open source (AGPL-3.0), no account, no cloud, no telemetry.
 
 ## Operating Context
 - Served by `server.py` on the owner's machine (default port 3004), reached on the LAN or over HTTPS through Tailscale,
