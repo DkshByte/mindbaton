@@ -38,6 +38,13 @@ The app's visual system: `DESIGN.md`. How to contribute: `CONTRIBUTING.md`. What
   `python3 learn.py --write` has gpt-oss-120b (Groq, open weights) write chat examples of made-up facts into
   `assets/learn/examples.jsonl.gz` (saved per batch; runs add up). Gemini can write too (`--gemini`, its own file): its
   terms bar training models that compete with it, so keep its examples out of anything bigger than these patterns.
+- **Mindbaton's own model reads what the rules and the learner can't** (`deep.py`): Qwen3.5-2B fine-tuned on made-up
+  examples (`train/brain-2b.ipynb` on Kaggle, `learn.py --dataset`), served by a pinned llama.cpp build it downloads
+  into `<data>/brain`, or any OpenAI-compatible server in `MINDBATON_BRAIN_URL`. One background thread (`deep.work`)
+  asks it about messages `deep.need` picks (no firm fact from the rules), the rules veto its answer (`deep.check`), and
+  the capture keeps it (`extra.deep`), so `Graph.deep_read` applies it now and `rebuild` replays it without the model.
+  Facts reach the graph through `add()`'s own steps (`_assert`, `_more`), so they settle, merge and link like any other.
+  Never let the model write without `check`; never ask it in tests (the self-check uses a stand-in server).
 - **Facts settle each other.** A new fact closes older ones in the history (`facts.valid_to`), never deletes them:
   `brain.SETTLES` (likes ↔ dislikes, a move made ends the plan), `brain.BOUGHT` (an event like "I bought X" ends the
   want), `ONGOING` for "I gave up X", a switch closes the old tool of the same category. One thing under two names is

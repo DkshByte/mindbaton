@@ -8,7 +8,8 @@ RUN useradd --system --uid 10001 --home-dir /data mindbaton && mkdir -m 700 /dat
 WORKDIR /app
 COPY . .
 
-ENV MINDBATON_DATA=/data MINDBATON_HOST=0.0.0.0 MINDBATON_PORT=3004 MINDBATON_WATCH_CLAUDE=0 PYTHONUNBUFFERED=1
+# The model (deep.py) doesn't run inside the container: point MINDBATON_BRAIN_URL at a llama-server elsewhere to use it.
+ENV MINDBATON_DATA=/data MINDBATON_HOST=0.0.0.0 MINDBATON_PORT=3004 MINDBATON_WATCH_CLAUDE=0 MINDBATON_BRAIN=off PYTHONUNBUFFERED=1
 USER mindbaton
 VOLUME /data
 EXPOSE 3004
