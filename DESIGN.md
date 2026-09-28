@@ -17,8 +17,8 @@ write-ups list as the default AI-generated palette. Values are Radix Colors' own
 | `--panel` `--panel-2` `--panel-3` | #191918 · #222221 · #2a2a28 (sand 2–4) | cards · hover · pressed/current |
 | `--line` `--line-2` `--line-3` | warm white at 7% · 11% · 19% | hairlines, control borders, hover borders |
 | `--fg` `--fg-2` `--fg-3` | #eeeeec · #b5b3ad · #908e87 | text, secondary, tertiary (all ≥4.5:1 on the panels) |
-| `--brand` / `--brand-hi` | #cc3f1f / #d9472a | primary buttons — deep enough for white text (4.9:1) |
-| `--accent` / `--accent-strong` | #ec6142 / #ff977d (tomato 10/11) | focus rings, selection, the answer card, current nav icon, pressed chips |
+| `--brand` / `--brand-ink` | warm white #eeeeec / #111110 (Light: ink #21201c / white) | primary buttons — neutral; no colour on what you touch |
+| `--accent` / `--accent-strong` | warm white (Light: ink) | focus rings, selection, the answer card, pressed chips — neutral since 2026-09-28: vermilion on buttons read badly |
 | `--ok` / `--danger` | #3dd68c / #ff8fa3 (crimson, kept apart from the signature) | live dot / forgetting |
 | `--c-who … --c-other` | 11 hues (Radix dark, step 11) | kind of fact — icon tiles, kind titles, map spokes and pills |
 | `--t1 … --t12` | 12 hues (Radix dark, step 11) | a topic's identity — its mark, its map bubble |
