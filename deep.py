@@ -25,7 +25,9 @@ MODE = os.environ.get("MINDBATON_BRAIN", "auto").strip().lower()
 IDLE_S = 300
 RELS = {"works at", "lives in", "from", "is", "has", "uses", "likes", "dislikes", "avoids", "learning", "working on", "plays",
         "wants", "studies", "allergic to", "built", "wants to visit", "wants to try", "plans to move to"} | brain.KIN
-STATE = {"state": "off", "read": 0, "left": None, "progress": None, "error": None}
+STATE = {"state": "off", "read": 0, "left": None, "progress": None, "error": None, "sec": None}
+FORCED = PAUSED = False  # an admin asked to re-read everything (Setup, with warnings) / paused it
+RUN = {"graphs": None, "lock": None, "thread": None}
 
 
 def home():
@@ -60,7 +62,7 @@ def asset():
 
 
 def enabled():
-    return MODE != "off" and bool(URL or asset()) and (MODE == "on" or bool(URL) or memory_gb() >= 12)
+    return MODE != "off" and bool(URL or asset()) and (MODE == "on" or bool(URL) or FORCED or memory_gb() >= 12)
 
 
 def on_battery():
@@ -212,9 +214,14 @@ def check(text, facts):
     return out
 
 
+def chat(text, url, site):
+    """A message someone typed in a chat: not an agent's notes, not a tool's structured fact, not a pasted document."""
+    return not (url or "").startswith("memory://") and site != "agent" and len(text) <= 1500
+
+
 def need(text, url, site):
     """Is the model worth asking? Only chat in which the rules found no firm fact about the user."""
-    if (url or "").startswith("memory://") or site == "agent" or len(text) > 1500:
+    if not chat(text, url, site):
         return False
     return any(m["mood"] == "statement" and m["type"] != "task" and
                not any(r[0] == "me" and r[1] not in brain.KIN for r in m["relations"]) for m in brain.analyse(text))
@@ -227,16 +234,22 @@ def step(graphs, lock, eng):
         for g in graphs():
             row, n = g.unread()
             left += n
+            if not n and g.meta("deep_force") == "1":  # everything re-read: the graph once more from the captures, cleanly
+                g.meta("deep_force", "")
+                g.rebuild()
             if row and not job:
-                job = (g,) + tuple(row)
+                job = (g, g.meta("deep_force") == "1") + tuple(row)
     STATE["left"] = left
     if not job:
         return False
-    g, cid, text, url, site = job
+    g, forced, cid, text, url, site = job
     facts = None
-    if need(text, url, site):
-        STATE["state"] = "reading"
+    if forced and chat(text, url, site) and any(brain.mood(c) == "statement" for c in brain.sentences(brain.clean(text))) \
+            or need(text, url, site):  # forced: every statement, not only where the rules found nothing; never a question
+        STATE["state"], t0 = "reading", time.time()
         facts = check(text, ask(eng.up(), text))
+        dt = time.time() - t0
+        STATE["sec"] = round(dt if STATE["sec"] is None else .8 * STATE["sec"] + .2 * dt, 2)
     with lock:
         g.deep_read(cid, facts or [], f"{MODEL}@{BUILD}")
         if facts:
@@ -249,6 +262,11 @@ def work(graphs, lock, stop=None):
     """The background reader: reads while there is something to read and the laptop is plugged in; idle -> engine off."""
     eng, last = Engine(), time.time()
     while not (stop and stop.is_set()):
+        if PAUSED:
+            STATE["state"] = "paused"
+            eng.down()
+            time.sleep(5)
+            continue
         if not enabled() or on_battery():
             STATE["state"] = "paused: on battery" if enabled() else "off"
             eng.down()
@@ -270,13 +288,38 @@ def work(graphs, lock, stop=None):
 
 
 def start(graphs, lock):
-    if enabled():
+    RUN.update(graphs=graphs, lock=lock)
+    if enabled() and not (RUN["thread"] and RUN["thread"].is_alive()):
         STATE["state"] = "starting"
-        threading.Thread(target=work, args=(graphs, lock), daemon=True, name="deep").start()
+        RUN["thread"] = threading.Thread(target=work, args=(graphs, lock), daemon=True, name="deep")
+        RUN["thread"].start()
+
+
+def force(g):
+    """An admin asked (with warnings) to re-read every chat message of this account with the model: what it read before is
+    set aside, "is it needed" is skipped, and when all is read the graph is rebuilt once, so it holds this reading only."""
+    global FORCED, PAUSED
+    if MODE == "off":
+        raise ValueError("the model is turned off in this install (MINDBATON_BRAIN=off)")
+    if not (URL or asset()):
+        raise ValueError("this computer can't run the model: set MINDBATON_BRAIN_URL to a model server on another computer")
+    g.db.execute("UPDATE captures SET extra=json_remove(extra, '$.deep') WHERE json_extract(extra, '$.deep') IS NOT NULL")
+    g.meta("deep_force", "1")
+    FORCED, PAUSED = True, False
+    if RUN["graphs"]:
+        start(RUN["graphs"], RUN["lock"])
+    return {"messages": g.unread()[1]}
+
+
+def pause(paused):
+    global PAUSED
+    PAUSED = bool(paused)
+    return {"paused": PAUSED}
 
 
 def status():
-    return dict(STATE, enabled=enabled(), model=MODEL, engine=URL or BUILD)
+    return dict(STATE, enabled=enabled(), paused=PAUSED, model=MODEL, engine=URL or BUILD, mode=MODE, can=bool(URL or asset()),
+                memory_gb=round(memory_gb(), 1), downloaded=bool(URL or glob.glob(os.path.join(home(), "*.gguf"))))
 
 
 def selfcheck():
@@ -314,6 +357,14 @@ def selfcheck():
         assert {("me", "plays", "football"), ("me", "avoids", "caffeine"), ("me", "lives in", "pune")} <= have, have
         assert ("me", "likes", "tennis") not in have and ("me", "wants", "ps5") not in have, "vetoed"
         assert g.unread() == (None, 0) and STATE["read"] == 2, (g.unread(), STATE)  # not asked: Pune (rules) and the question
+        global FORCED
+        assert force(g)["messages"] == 4 and g.meta("deep_force") == "1"
+        while step(lambda: [g], lock, eng):
+            pass
+        step(lambda: [g], lock, eng)  # nothing left: the forced pass ends with one rebuild
+        assert not g.meta("deep_force") and STATE["read"] == 5, STATE  # forced: "I live in Pune" asked too; the question never
+        assert {("me", "plays", "football"), ("me", "avoids", "caffeine")} <= rels()
+        FORCED = False
         srv.shutdown()
         g.rebuild()  # the stand-in is gone: a rebuild replays what was read
         assert {("me", "plays", "football"), ("me", "avoids", "caffeine")} <= rels(), "kept with the capture"

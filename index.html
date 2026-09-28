@@ -234,6 +234,9 @@ code { font: 12px var(--mono); color: var(--fg); background: var(--panel-3); bor
 .tick svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 .step ol { margin: 0; padding-left: 20px; color: var(--fg-2); font-size: 13.5px; display: grid; gap: 4px; }
 .step ol b { color: var(--fg); font-weight: 500; }
+.warns { margin: 0 0 14px; padding-left: 20px; color: var(--fg-2); font-size: 14px; line-height: 1.5; display: grid; gap: 8px; }
+.warns b { color: var(--fg); font-weight: 500; }
+.warns .bad, .warns .bad b { color: var(--danger); }
 .cmd { display: flex; align-items: flex-start; gap: 8px; background: var(--bg); border: 1px solid var(--line-2); border-radius: 8px; padding: 8px 8px 8px 12px; }
 .cmd pre { margin: 0; flex: 1; min-width: 0; font: 12.5px/1.5 var(--mono); color: var(--fg); white-space: pre-wrap; overflow-wrap: anywhere; padding-top: 3px; }
 .cmd .btn { flex: none; }
@@ -1077,6 +1080,7 @@ async function renderSetup() {
         or <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style="color:var(--accent-strong)">Groq ↗</a>.</li><li>Paste it here — it's tested before it's saved:</li></ol>
       <form class="keyform" id="keyform"><select name="provider" aria-label="Provider"><option value="gemini">Google Gemini</option><option value="groq">Groq</option></select>
         <input name="key" type="password" autocomplete="off" placeholder="Paste your key" aria-label="API key" required><button class="btn primary sm">Test and save</button></form>`)}
+    ${brainStep(st, step)}
     ${step(6, st.connector.ok, "Claude and ChatGPT apps (optional, phone too)",
       st.connector.ok ? "Connected · last used " + ago(st.connector.last) : !st.server.https ? "Needs a public HTTPS address first — Tailscale Funnel or Cloudflare Tunnel (see the README). Then open Mindbaton at that address."
         : st.connector.configured ? "Ready — add the connector in Claude or ChatGPT." : "Claude.ai and ChatGPT reach your memory through a private address.",
@@ -1102,6 +1106,53 @@ async function renderSetup() {
 }
 
 // ---------- import your old memory (Setup) ----------
+const IC_BRAIN = '<svg class="i" viewBox="0 0 24 24"><path d="M12 5.5A3.5 3.5 0 0 0 5.6 4.3 3 3 0 0 0 3.5 9a3.5 3.5 0 0 0 .7 5.8A3.5 3.5 0 0 0 8.5 20 3.5 3.5 0 0 0 12 18.5m0-13a3.5 3.5 0 0 1 6.4-1.2A3 3 0 0 1 20.5 9a3.5 3.5 0 0 1-.7 5.8 3.5 3.5 0 0 1-4.3 5.2 3.5 3.5 0 0 1-3.5-1.5m0-13v13"/></svg>';
+const eta = s => s >= 5400 ? `${Math.round(s / 3600)} hours` : s >= 90 ? `${Math.round(s / 60)} minutes` : "a minute or two";
+function brainStep(st, step) {  // Mindbaton's own model: what it's doing, and (admins) re-reading everything with it
+  const b = st.brain || {}, busy = b.forced && b.left;
+  const sub = b.progress ? esc(b.progress)
+    : b.state === "waiting" && b.error ? "Will try again in a few minutes: " + esc(b.error)
+    : b.paused ? "Paused. Resume it below."
+    : b.state === "reading" ? `Reading · ${b.left} left · about ${eta(b.left * (b.sec || 4))}${b.forced ? " · then one quick rebuild" : ""}`
+    : (b.state || "").startsWith("paused") ? "Waiting for the charger — it doesn't read on battery."
+    : b.enabled ? `On · ${plural(b.read || 0, "message")} read since Mindbaton started. It reads new messages the rules find nothing in.`
+    : b.mode === "off" ? "Turned off in this install (MINDBATON_BRAIN=off)."
+    : !b.can ? "This computer can't run it. Set MINDBATON_BRAIN_URL to a model server on another computer."
+    : `Off — it turns on by itself with 12 GB of memory or more; this computer has ${b.memory_gb} GB.`;
+  const body = ACCT.role !== "admin" ? `<p class="set-note">It runs on this computer for everyone here, so only an admin can start it.</p>`
+    : `<div class="keybar"><div><b>${busy ? "Re-reading everything" : "Re-read everything with the model"}</b><p>${busy
+      ? "Pause it any time; it picks up where it left off."
+      : "Reads all your messages again, not only the ones the rules found nothing in. You'll see what it costs before it starts."}</p></div>
+      ${busy ? `<button class="btn sm" data-brain="${b.paused ? "resume" : "pause"}">${b.paused ? "Resume" : "Pause"}</button>`
+        : `<button class="btn sm" data-brain="ask"${b.can && b.mode !== "off" ? "" : " disabled"}>Re-read everything…</button>`}</div>`;
+  return step(IC_BRAIN, b.enabled && !b.paused && b.state !== "waiting", "Mindbaton's own model (optional) — reads what the rules can't", sub, body);
+}
+async function brainAction(what, btn) {
+  if (what === "pause" || what === "resume") {
+    try { await send("/brain/pause", { paused: what === "pause" }); } catch (e) { toast(e.message); }
+    return renderSetup();
+  }
+  if (what === "go") {
+    btn.disabled = true;
+    try { const r = await send("/brain/reread"); $("#sheet").close(); toast(`Re-reading ${plural(r.messages, "message")} in the background`); renderSetup(); }
+    catch (e) { btn.disabled = false; $("#sheet .form-err").textContent = e.message; }
+    return;
+  }
+  let st;
+  try { st = await api("/status"); } catch { return toast("Can't reach the server"); }
+  const b = st.brain, n = b.messages || 0, low = b.memory_gb < 12, d = $("#sheet");
+  d.innerHTML = `<div class="sheet-h"><h2 id="sheet-title">Re-read everything with the model?</h2><button class="icon-btn" data-close aria-label="Close">${IC.x}</button></div>
+    <div class="sheet-b"><div class="sheet-sec"><ul class="warns">
+      <li>It reads <b>${plural(n, "message")}</b> again, one at a time. On this computer that takes <b>about ${eta(n * (b.sec || 4))}</b>. Mindbaton keeps working meanwhile.</li>
+      ${b.downloaded ? "" : `<li>First it downloads <b>about 1.3 GB</b>: the model and the engine that runs it. Only once.</li>`}
+      <li>While it reads it uses <b>about 1.5 GB of memory</b> and half the processor, at low priority. On a laptop, keep it plugged in: it waits while on battery.</li>
+      ${low ? `<li class="bad">This computer has <b>${b.memory_gb} GB</b> of memory, less than the 12 GB it needs to run comfortably. Other apps may slow down while it reads.</li>` : ""}
+      <li>Every fact it reads is checked by the rules before it's saved, and nothing is deleted. When it has read everything, your memory is rebuilt once, in a few seconds.</li>
+      <li>You can pause it any time from this page.</li></ul>
+      <p class="form-err" role="alert"></p>
+      <div class="set-row"><button class="btn primary sm" data-brain="go">Re-read everything</button><button class="btn sm" data-close>Cancel</button></div></div></div>`;
+  d.showModal();
+}
 const IC_IMPORT = '<svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg>';
 let impInfo = null, impAI = null, impFacts = null;
 async function wireImport() {
@@ -2460,7 +2511,7 @@ $("#sheet").addEventListener("click", ev => { if (ev.target === ev.currentTarget
 document.addEventListener("click", ev => {
   if (!ev.target.closest(".acct")) closeMenu();
   const t = ev.target.closest("[data-copy],[data-reveal],[data-forget],[data-cancel],[data-handoff],[data-id],[data-topic],[data-view],[data-kind],[data-more],[data-source],[data-ai],[data-all],#rebuild,#copy-brief,#panel-close,"
-    + "[data-gate],[data-profile],[data-go],[data-acct],[data-mkkey],[data-pair],[data-revoke],[data-keep],[data-person],[data-close],#acct-btn");
+    + "[data-gate],[data-profile],[data-go],[data-acct],[data-mkkey],[data-pair],[data-revoke],[data-keep],[data-person],[data-close],[data-brain],#acct-btn");
   if (!t || t.disabled) return;
   if (t.dataset.gate) return gate(t.dataset.gate, t.dataset.user ? PROFILES.find(p => p.username === t.dataset.user) || { username: t.dataset.user } : null, t.dataset.user);
   if (t.dataset.profile) return gate("password", PROFILES.find(p => p.username === t.dataset.profile), t.dataset.profile);
@@ -2472,6 +2523,7 @@ document.addEventListener("click", ev => {
   }
   if (t.dataset.acct) return signOut(t.dataset.acct, t);
   if (t.dataset.mkkey) return makeKey(t.dataset.mkkey, t);
+  if (t.dataset.brain) return brainAction(t.dataset.brain, t);
   if (t.dataset.pair) return answerPair(t.dataset.pair, t.dataset.code, t);
   if (t.dataset.revoke) return revoke(+t.dataset.revoke, t);
   if (t.dataset.keep !== undefined) {  // disarm just this row: a freshly made key above must stay on screen

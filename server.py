@@ -2189,7 +2189,8 @@ def setup_status(g, base):
                        "claude_code": {"last": cc[0], "chats": cc[1]}, "apps": apps},
             "phone": {"ok": bool(phone or dev["phone"]["recent"]), "last": last(phone, dev["phone"]["last"]), "url": base},
             "connector": {"ok": dev["connector"]["recent"], "configured": dev["connector"]["tokens"] > 0, "last": dev["connector"]["last"]},
-            "ai": ai.status(), "brain": deep.status()}
+            "ai": ai.status(), "brain": dict(deep.status(), forced=g.meta("deep_force") == "1", messages=q(
+                "SELECT count(*) FROM captures WHERE coalesce(url, '') NOT LIKE 'memory://%' AND site IS NOT 'agent' AND length(text) <= 1500")[0])}
 
 
 def save_ai_key(provider, key):
@@ -2803,6 +2804,10 @@ class Handler(SimpleHTTPRequestHandler):
         routes = {"/capture": capture, "/remember": remember, "/rebuild": self.g.rebuild, "/session": session}
         if p == "/import":  # takes the lock per fact itself
             return self.api(lambda: import_memory(self.g, b), lock=False)
+        if p in ("/brain/reread", "/brain/pause"):  # the model runs on this computer for everyone: admins only
+            if self.me["role"] != "admin":
+                return self.reply(403, {"error": "only an admin can run the model"})
+            return self.api(lambda: deep.force(self.g) if p == "/brain/reread" else deep.pause(b.get("paused", True)))
         if p == "/settings/ai-key":  # install-wide, so admins only; tests the key with the provider: never under the lock
             if self.me["role"] != "admin":
                 return self.reply(403, {"error": "only an admin can set the AI key"})
