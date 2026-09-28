@@ -87,7 +87,7 @@ def update_watch():
     threading.Thread(target=check, daemon=True).start()
 LOCK = threading.RLock()  # one request touches the databases at a time; threads only keep idle sockets from blocking others
 # ponytail: one lock for every account's graph; per-account locks if many people use one install at once
-LOGIC_VERSION = "17"  # 17: the learner reads everyday phrasing (16: meaning vectors, facts that settle older ones, kin/rename merges (15: "the user always runs / was born" -> "I always run / was born" (14: hand-off packs and briefings are marked [mindbaton])
+LOGIC_VERSION = "18"  # 18: "I'm Nikhil, a data analyst at Deloitte" works there too (17: the learner reads everyday phrasing (16: meaning vectors, facts that settle older ones, kin/rename merges (15: "the user always runs / was born" -> "I always run / was born" (14: hand-off packs and briefings are marked [mindbaton])
 PERSONAL = brain.PERSONAL
 AI_SITE = {}  # "ChatGPT" -> "chatgpt.com"
 LINKISH = ("mentions", "about", "context")
@@ -954,6 +954,8 @@ class Graph:
         alias = lambda u, ns: {d for d in [dirs[u].most_common(1)[0][0]] if d in ns or d not in files} if dirs[u] else set()
         own = {u: ns | alias(u, ns) for u, ns in own.items() if u in vec}  # a note naming ~/<another note's project> stays apart
         parent = {u: u for u in vec}
+        mkeys = dict(db.execute("SELECT id, key FROM nodes WHERE kind='memory' AND status='active'"))
+        tok_unit = {ctx or "k:" + mkeys.get(m, ""): unit[m] for m, ctx, *_ in rows}  # how a topic's parts are named in meta
 
         def find(u):
             while parent[u] != u:
@@ -967,6 +969,10 @@ class Graph:
                     parent[find(u)] = find(first[n])
                 else:
                     first[n] = u
+        for grp in json.loads(self.meta("topic_merges") or "[]"):  # topics the user merged stay one, whatever they discuss
+            us = [tok_unit[t] for t in grp if t in tok_unit]
+            for u in us[1:]:
+                parent[find(u)] = find(us[0])
         pooled, gown = defaultdict(Counter), defaultdict(set)
         for u in vec:
             pooled[find(u)].update(vec[u])
@@ -1064,10 +1070,10 @@ class Graph:
             if c is not None:
                 members[c].append(m)
         weight = {r[0]: (r[3] or 0) + .05 * (r[4] or 1) for r in rows}
-        mkeys = dict(db.execute("SELECT id, key FROM nodes WHERE kind='memory' AND status='active'"))
         ctx_of = {m: ctx for m, ctx, *_ in rows}
         named = json.loads(self.meta("topic_names") or "{}")  # AI names, keyed by what the topic is made of
-        self._naming = {}
+        renamed = json.loads(self.meta("topic_renames") or "{}")  # the user's names, per conversation: they outlive new chats
+        self._naming, self._topic_toks = {}, {}
         for c, ms in members.items():
             rep = max(ms, key=lambda m: weight.get(m, 0))
             summ = (db.execute("SELECT label FROM nodes WHERE id=?", (rep,)).fetchone() or [""])[0][:200]
@@ -1101,11 +1107,14 @@ class Graph:
                                 tc[t] += v * self.idf(t)
                     nm = [t for t, _ in tc.most_common(2)]
                 name = " · ".join(nm) or "misc"
-            sig = hashlib.sha1("|".join(sorted({ctx_of.get(m) or "k:" + mkeys.get(m, "") for m in ms})).encode()).hexdigest()[:16]
+            toks = sorted({ctx_of.get(m) or "k:" + mkeys.get(m, "") for m in ms})
+            sig = hashlib.sha1("|".join(toks).encode()).hexdigest()[:16]
             ai_name = named.get(sig) if c != 0 else None
-            self.topics[c] = {"id": c, "name": ai_name["name"] if ai_name else name, "size": len(ms),
-                              "summary": (ai_name or {}).get("summary") or summ, "by": "ai" if ai_name else "rules", "sig": sig}
-            if c != 0 and not ai_name:
+            yours = max((renamed[t] for t in toks if t in renamed), key=lambda x: x[1], default=None) if c != 0 else None
+            self._topic_toks[c] = toks
+            self.topics[c] = {"id": c, "name": yours[0] if yours else ai_name["name"] if ai_name else name, "size": len(ms),
+                              "summary": (ai_name or {}).get("summary") or summ, "by": "you" if yours else "ai" if ai_name else "rules", "sig": sig}
+            if c != 0 and not ai_name and not yours:
                 self._naming[sig] = {"ref": f"t{c}", "sig": sig, "rule_name": name, "project": owners[0] if owners else None,
                                      "chats": [titled[k] for k, _ in convs.most_common(4)],
                                      "lines": [brain.redact(db.execute("SELECT label FROM nodes WHERE id=?", (m,)).fetchone()[0])[:160]
@@ -1129,6 +1138,53 @@ class Graph:
             if t.get("sig") in got:
                 t.update(name=got[t["sig"]]["name"], summary=got[t["sig"]]["summary"] or t["summary"], by="ai")
                 self._naming.pop(t["sig"], None)
+
+    def _toks(self, tid):
+        self.ensure()
+        toks = self._topic_toks.get(tid) if isinstance(tid, int) and tid else None
+        if not toks:
+            raise ValueError("no such topic")
+        return toks
+
+    def rename_topic(self, tid, name):
+        """The user's name for a topic, kept on each of its conversations; an empty name goes back to the automatic one."""
+        name, toks = " ".join(str(name or "").split())[:60], self._toks(tid)
+        got = json.loads(self.meta("topic_renames") or "{}")
+        for t in toks:
+            got.pop(t, None)
+            if name:
+                got[t] = [name, time.time()]
+        self.meta("topic_renames", json.dumps(dict(list(got.items())[-5000:])))
+        self.dirty = True
+        return {"ok": True, "name": name or None}
+
+    def merge_topics(self, tid, into):
+        """Two topics the sorter kept apart become one, for good; it keeps the name of the one merged into."""
+        if tid == into:
+            raise ValueError("pick another topic")
+        a, b, name = self._toks(tid), self._toks(into), self.topics[into]["name"]
+        self.meta("topic_undo", json.dumps([self.meta("topic_merges") or "[]", self.meta("topic_renames") or "{}"]))  # one step back
+        merges = json.loads(self.meta("topic_merges") or "[]")
+        grp = set(a) | set(b)
+        grp |= {t for g in merges if grp & set(g) for t in g}  # ponytail: merges only grow; a "split" would drop a group here
+        self.meta("topic_merges", json.dumps([g for g in merges if not grp & set(g)] + [sorted(grp)]))
+        got = json.loads(self.meta("topic_renames") or "{}")
+        got.update({t: [name, time.time()] for t in grp})
+        self.meta("topic_renames", json.dumps(dict(list(got.items())[-5000:])))
+        self.dirty = True
+        return {"ok": True, "name": name}
+
+    def undo_merge(self):
+        """Puts the topics back the way they were before the last merge."""
+        saved = self.meta("topic_undo")
+        if not saved:
+            raise ValueError("nothing to undo")
+        merges, renames = json.loads(saved)
+        self.meta("topic_merges", merges)
+        self.meta("topic_renames", renames)
+        self.db.execute("DELETE FROM meta WHERE k='topic_undo'")
+        self.dirty = True
+        return {"ok": True}
 
     def pagerank(self, by_ent, iters=30, d=.85):
         """How central each thing is: PageRank over relations and shared mentions (sizes things in the map)."""
@@ -1482,7 +1538,8 @@ class Graph:
         first = " — ".join(x for x in (who, "; ".join(y for y in (role, place) if y)) if x)
         if first:
             lines.append(first)
-        for rel, title in (("working on", "Working on"), ("built", "Built"), ("learning", "Learning"), ("studies", "Studies"), ("uses", "Uses"),
+        for rel, title in (("working on", "Working on"), ("built", "Built"), ("learning", "Learning"), ("studies", "Studies"),
+                           ("plays", "Plays"), ("does", "Does"), ("uses", "Uses"),
                            ("has", "Has"), ("likes", "Likes"), ("dislikes", "Dislikes"), ("allergic to", "Allergic to"),
                            ("avoids", "Avoids"), ("wants", "Wants"), ("wants to visit", "Wants to visit"),
                            ("wants to try", "Wants to try"), ("plans to move to", "Plans to move to")):
@@ -1716,7 +1773,10 @@ MCP_TOOLS = [
      "open questions and what you should know about the user. With no arguments it uses their most recent conversation; pass `session` "
      "(an id from `sessions`, or words from its title) for another. Read it, then carry on from where it left off.",
      "inputSchema": {"type": "object", "properties": {"session": {"type": "string"}, "budget": {"type": "integer", "minimum": 200, "maximum": 12000,
-                     "description": "Size of the pack in tokens (default 2500)."}}}, "annotations": {"readOnlyHint": True}},
+                     "description": "Size of the pack in tokens (default 2500)."},
+                     "about": {"type": "boolean", "description": "Also include what Mindbaton knows about the user (name, work, tools, "
+                               "people…). Only for an AI that doesn't know them yet; default false: the chat only."}}},
+     "annotations": {"readOnlyHint": True}},
     {"name": "sessions", "description": "List the user's recent conversations across AIs (Live mode): id, AI, title, messages, how full each "
      "one's context is, and whether it hit a limit. Use with `handoff` to continue one here.",
      "inputSchema": {"type": "object", "properties": {"limit": {"type": "integer", "minimum": 1, "maximum": 50}}}, "annotations": {"readOnlyHint": True}},
@@ -1775,7 +1835,7 @@ def mcp_call(g, name, a, client=None):
     if name == "forget":
         return "Forgotten." if g.forget(int(a["id"])) else "No memory with that id."
     if name == "handoff":
-        return live.make_handoff(g, a.get("session"), int(a.get("budget") or 2500))["text"]
+        return live.make_handoff(g, a.get("session"), int(a.get("budget") or 2500), about=a.get("about") is True)["text"]
     if name == "sessions":
         rows = live.sessions(g, int(a.get("limit") or 15))
         return "\n".join(f"[{s['id']}] {s['ai']} — {s['chat'] or 'untitled'} · {s['turns']} messages · {s['pct']}% of context"
@@ -2189,8 +2249,9 @@ def setup_status(g, base):
                        "claude_code": {"last": cc[0], "chats": cc[1]}, "apps": apps},
             "phone": {"ok": bool(phone or dev["phone"]["recent"]), "last": last(phone, dev["phone"]["last"]), "url": base},
             "connector": {"ok": dev["connector"]["recent"], "configured": dev["connector"]["tokens"] > 0, "last": dev["connector"]["last"]},
-            "ai": ai.status(), "brain": dict(deep.status(), forced=g.meta("deep_force") == "1", messages=q(
-                "SELECT count(*) FROM captures WHERE coalesce(url, '') NOT LIKE 'memory://%' AND site IS NOT 'agent' AND length(text) <= 1500")[0])}
+            "ai": ai.status(), "brain": dict(deep.status(), forced=g.meta("deep_force") == "1", **dict(zip(("messages", "checked", "found"), q(
+                "SELECT count(*), count(json_extract(extra, '$.deep')), sum(coalesce(json_array_length(extra, '$.deep.facts'), 0) > 0) "
+                "FROM captures WHERE coalesce(url, '') NOT LIKE 'memory://%' AND site IS NOT 'agent' AND length(text) <= 1500"))))}
 
 
 def save_ai_key(provider, key):
@@ -2753,7 +2814,8 @@ class Handler(SimpleHTTPRequestHandler):
             "/update": lambda: update_info(self.me["role"] == "admin"),
             "/sessions": lambda: live.sessions(self.g, num("limit", 40)),
             "/session": lambda: live.transcript(self.g, live.find(self.g, qs.get("id"))) or {},
-            "/handoff": lambda: live.make_handoff(self.g, qs.get("session"), max(200, min(num("budget", 1500), 12000)), qs.get("to")),
+            "/handoff": lambda: live.make_handoff(self.g, qs.get("session"), max(200, min(num("budget", 1500), 12000)), qs.get("to"),
+                                                  qs.get("about") == "1"),
             "/handoff/pending": lambda: live.take_pending(self.g, qs.get("host", "")),
             "/timeline": lambda: self.g.timeline(qs.get("subject", "me")),
             "/neighbors": lambda: (self.g.ensure(), live.neighbors(self.g, num("id", 0), num("depth", 1)))[1],
@@ -2801,7 +2863,10 @@ class Handler(SimpleHTTPRequestHandler):
                 ai.warm(self.g, LOCK, m["id"])  # a hand-off is coming: have its summary ready
             return m
 
-        routes = {"/capture": capture, "/remember": remember, "/rebuild": self.g.rebuild, "/session": session}
+        routes = {"/capture": capture, "/remember": remember, "/rebuild": self.g.rebuild, "/session": session,
+                  "/topic/rename": lambda: self.g.rename_topic(b.get("id"), b.get("name")),
+                  "/topic/merge": lambda: self.g.merge_topics(b.get("id"), b.get("into")),
+                  "/topic/undo": self.g.undo_merge}
         if p == "/import":  # takes the lock per fact itself
             return self.api(lambda: import_memory(self.g, b), lock=False)
         if p in ("/brain/reread", "/brain/pause"):  # the model runs on this computer for everyone: admins only
@@ -2895,6 +2960,29 @@ def selfcheck():
         assert h.recall("what do I do for fun")["memories"][0]["text"].startswith("I love cricket"), "found by meaning"
     pasta = g.recall("pasta")["memories"][0]
     assert pasta["topic"] != jf[0]["topic"]
+    for x in ("I'm restoring a 1972 Vespa scooter in my garage", "The Vespa scooter needs a new carburettor and a clutch cable"):
+        g.ingest(x, "claude.ai", "Vespa restoration", "https://claude.ai/chat/vespa-1")
+    ta, tb = [t for t in g.graph()["topics"] if t["id"]][:2]                                        # rename, merge: yours for good
+    g.rename_topic(ta["id"], "  Home   server ")
+    assert [(t["name"], t["by"]) for t in g.graph()["topics"] if t["id"] == ta["id"]] == [("Home server", "you")]
+    g.merge_topics(tb["id"], ta["id"])
+    one = lambda: [t for t in g.graph()["topics"] if t["name"] == "Home server"]
+    assert len(one()) == 1 and one()[0]["size"] >= ta["size"] + tb["size"], g.graph()["topics"]
+    g.rebuild()
+    assert len(one()) == 1 and one()[0]["size"] >= ta["size"] + tb["size"], "a merge and a name survive a rebuild"
+    g.undo_merge()
+    assert len(one()) == 1 and one()[0]["size"] < ta["size"] + tb["size"], "undo splits the merge and keeps the earlier rename"
+    try:
+        g.undo_merge()
+        raise AssertionError("undid twice")
+    except ValueError:
+        pass
+    for bad in (0, 10 ** 9, "x", None):
+        try:
+            g.rename_topic(bad, "x")
+            raise AssertionError("renamed a topic that isn't one")
+        except ValueError:
+            pass
     g.recall('AND OR "( NEAR*')                                                                     # no FTS crash
     before = g.graph()["stats"]
     assert g.forget(pasta["id"]) == 1 and not g.recall("pasta")["memories"]

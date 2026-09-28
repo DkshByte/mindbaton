@@ -37,7 +37,7 @@ chrome.runtime.onMessage.addListener((m, _sender, reply) => {
   if (m.handoff) {  // pack the conversation; with a target AI, it waits for that AI's new chat, which opens now
     const h = m.handoff;
     api(`/handoff?budget=${h.budget || 2500}&session=${encodeURIComponent(h.session || "")}` +
-        (h.to ? "&to=" + encodeURIComponent(h.to) : ""))
+        (h.to ? "&to=" + encodeURIComponent(h.to) : "") + (h.about ? "&about=1" : ""))
       .then(r => r.json()).then(r => {
         if (r.open && h.open) chrome.tabs.create({ url: r.open });
         reply(r);

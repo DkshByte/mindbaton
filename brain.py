@@ -891,7 +891,7 @@ class Clause:
         first = i
         while i < len(w):
             l = w[i].lower()
-            if l in CUT and cur:
+            if l in CUT:  # "play every sunday", "have it by friday": when, never what
                 break
             if l in ("called", "named") and cur and i + 1 < len(w) and t[i + 1] in "N":
                 name, j = Clause(" ".join(w[i + 1:])).objects(0, maxwords=4, lists=False)
@@ -1109,6 +1109,9 @@ def facts(s, md=None, prev_person=None, prev_thing=None, people=()):
                     if c.next_word(stop) == "from":
                         for o in c.objects(stop + 1, lists=False)[0]:
                             add("me", "from", o, "place")
+                    elif c.next_word(stop) in ("at", "for") and stop + 1 < len(c.words):  # "Nikhil, a data analyst at Deloitte"
+                        for o in c.objects(stop + 1, lists=False)[0]:
+                            add("me", "works at", o, "org")
                 continue
             if rel in ("uses", "likes", "plays") and c.next_word(i) == "my":
                 continue

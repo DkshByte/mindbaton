@@ -315,13 +315,14 @@ def search(g, q, k=3):
 
 
 # ---- hand-offs --------------------------------------------------------------------------------------------------------
-def make_handoff(g, ref=None, budget=1500, to=None):
+def make_handoff(g, ref=None, budget=1500, to=None, about=False):
+    """about: add what Mindbaton knows about the user, for an AI that doesn't know them yet (off: the chat only)."""
     sid = find(g, ref)
     if not sid:
         raise ValueError("no conversation to hand off yet — turn on Live mode in the extension, or save one over MCP")
     m = transcript(g, sid)
     turns = [{"role": t["role"], "text": t["text"]} for t in m["messages"]]
-    about, _ = g.summary()
+    about = g.summary()[0] if about else []
     seed = " ".join([m["chat"] or ""] + [t["text"][:300] for t in turns if t["role"] == "user"][-2:])
     said = {S().mkey(t["text"])[:200] for t in turns}
     related = [x["text"] for x in g.recall(seed, 8)["memories"] if S().mkey(x["text"])[:200] not in said][:5] if seed.strip() else []

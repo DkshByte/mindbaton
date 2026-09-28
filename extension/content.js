@@ -261,7 +261,8 @@
       const b = e.target.closest("button");
       if (!b) return;
       if (b.classList.contains("x")) { dismissed = meter.key; host.remove(); return; }
-      const r = await send({ handoff: { session: meter.id, to: b.dataset.to || null, open: !!b.dataset.to } });
+      const { handoffAbout } = await chrome.storage.local.get({ handoffAbout: false });  // the popup's "New AI?" choice
+      const r = await send({ handoff: { session: meter.id, to: b.dataset.to || null, open: !!b.dataset.to, about: handoffAbout } });
       if (!r || !r.text) return toast(r && r.error ? r.error : "Can't reach Mindbaton");
       const by = r.summary_by ? ` · summarised by ${r.summary_by}` : "";
       if (b.classList.contains("copy")) { await navigator.clipboard.writeText(r.text); toast(`Hand-off copied · ~${r.tokens} tokens${by}`); }
