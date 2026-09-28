@@ -852,7 +852,6 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
       <b>Mindbaton</b>
       <span class="live" id="live"><span class="dot"></span><span>—</span></span>
     </div>
-    <button class="jump" id="jump" type="button"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>Jump to…<kbd id="jump-k">Ctrl K</kbd></button>
     <nav class="nav" aria-label="Views">
       <button data-view="overview" aria-current="page"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/></svg>You<kbd>1</kbd></button>
       <button data-view="topics"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>Topics<kbd>2</kbd></button>
@@ -3356,8 +3355,6 @@ async function hideToast() {
 }
 $("#toast").addEventListener("click", ev => { if (ev.target.closest(".toast-act") && toastAct) { const f = toastAct; clearTimeout(toastTimer); hideToast(); f(); } });
 
-$("#jump").onclick = openPalette;
-$("#jump-k").textContent = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘ K" : "Ctrl K";
 addEventListener("keydown", e => { if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === "k" && ACCT) { e.preventDefault(); $("#palette").open ? $("#palette").close() : openPalette(); } });
 $("#pal-q").addEventListener("input", () => { palAt = 0; palRender(); });
 $("#pal-q").addEventListener("keydown", e => {
