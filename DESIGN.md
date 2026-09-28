@@ -8,19 +8,23 @@ HTML comment at the top of `<body>` in `index.html` (seed b8503b2b).
 logo lands). Every icon is generated from `assets/brand/mark.svg` by one script (`make-icons.mjs`); UIs reference those
 files and never inline a copy of the mark's paths.
 
-## Colour
+## Colour — "Graphite + vermilion" (2026-09-28)
+Warm greys from Radix **sand** with one **tomato** (vermilion) signature. Chosen over violet and cyan, which design
+write-ups list as the default AI-generated palette. Values are Radix Colors' own (dark scale).
 | token | value | job |
 |---|---|---|
-| `--bg` / `--side` | #09090b / #0c0c0e | page / sidebar (on desktop the sidebar is frosted glass: `--side` at 58%) |
-| `--panel` `--panel-2` `--panel-3` | #111113 · #17171a · #1d1d21 | cards · hover · pressed/current |
-| `--line` `--line-2` `--line-3` | white at 7% · 11% · 18% | hairlines, control borders, hover borders |
-| `--fg` `--fg-2` `--fg-3` | #ededef · #a1a1aa · #71717a | text, secondary, tertiary |
-| `--accent` (+ `-strong`, `-soft`, `-line`) | #8b95ff | **only** focus rings, selection, the answer card, the brand mark |
-| `--ok` / `--danger` | #3dd68c / #ff6369 | live dot / forgetting |
-| `--c-who … --c-other` | 11 hues (Radix Colors dark, step 11) | kind of fact (who, where, building, uses, has, learning, likes, dislikes, people, wants) — icon tiles, map spokes and pills |
-| `--t1 … --t12` | 12 hues (Radix Colors dark, step 11) | a topic's identity — its mark (initials tile), its map bubble |
+| `--bg` / `--side` | #111110 / #141413 | page / sidebar (frosted over the aurora on desktop) |
+| `--panel` `--panel-2` `--panel-3` | #191918 · #222221 · #2a2a28 (sand 2–4) | cards · hover · pressed/current |
+| `--line` `--line-2` `--line-3` | warm white at 7% · 11% · 19% | hairlines, control borders, hover borders |
+| `--fg` `--fg-2` `--fg-3` | #eeeeec · #b5b3ad · #908e87 | text, secondary, tertiary (all ≥4.5:1 on the panels) |
+| `--brand` / `--brand-hi` | #cc3f1f / #d9472a | primary buttons — deep enough for white text (4.9:1) |
+| `--accent` / `--accent-strong` | #ec6142 / #ff977d (tomato 10/11) | focus rings, selection, the answer card, current nav icon, pressed chips |
+| `--ok` / `--danger` | #3dd68c / #ff8fa3 (crimson, kept apart from the signature) | live dot / forgetting |
+| `--c-who … --c-other` | 11 hues (Radix dark, step 11) | kind of fact — icon tiles, kind titles, map spokes and pills |
+| `--t1 … --t12` | 12 hues (Radix dark, step 11) | a topic's identity — its mark, its map bubble |
 
-Primary buttons are inverted (near-white on black), as Vercel does; there is no second accent.
+No category colour may equal the signature (Dislikes is crimson, topic 10 is sky). The aurora is warm: vermilion,
+amber, rose, orange.
 
 ## Type
 **Geist** (sans, variable) for everything; **Geist Mono** for numbers, dates, ids and key hints. Both OFL, served from
