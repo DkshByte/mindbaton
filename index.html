@@ -210,6 +210,22 @@ code { font: 12px var(--mono); color: var(--fg); background: var(--panel-3); bor
 .msg.all .body { -webkit-line-clamp: unset; display: block; }
 
 /* AI: summaries, answers, hand-off (the AI words things; the rules decide) */
+/* motion that means something: the baton passes across your AIs; a shimmer outline while an AI is working (the
+   Apple Intelligence convention); the AI a new memory came from lands in the stack */
+.stack.baton > * { animation: baton 7s 1.2s infinite; }
+.stack.baton > :nth-child(2) { animation-delay: 1.52s; } .stack.baton > :nth-child(3) { animation-delay: 1.84s; }
+.stack.baton > :nth-child(4) { animation-delay: 2.16s; } .stack.baton > :nth-child(5) { animation-delay: 2.48s; } .stack.baton > :nth-child(6) { animation-delay: 2.8s; }
+@keyframes baton { 0%, 9%, 100% { transform: none; box-shadow: 0 0 0 2px var(--bg); }
+  4% { transform: translateY(-3px) scale(1.14); box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--accent-strong); } }
+.stack.baton > .land { animation: land .7s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes land { from { transform: translateY(-16px) scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+@property --sh { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.ai-card.loading, .feat.working { position: relative; }
+.ai-card.loading::before, .feat.working::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--sh), transparent 0 55%, var(--accent-strong) 72%, #ffc53d 80%, transparent 90%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: shimmer 2.4s linear infinite; }
+@keyframes shimmer { to { --sh: 360deg; } }
 .ai-card { display: grid; gap: 8px; padding: 14px 16px; border-radius: var(--r); border: 1px solid var(--line-2); background: var(--panel); margin: 12px 0 8px; }
 .ai-card .ai-h { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--fg-3); }
 .ai-card .ai-h svg.i { width: 14px; height: 14px; color: var(--accent-strong); }
@@ -786,7 +802,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
 .toast-act:hover { background: rgba(255, 255, 255, .16); }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .fresh { animation: rise .4s var(--ease) both; }
-@media (prefers-reduced-motion: reduce) { .fstack.deal > .feat, .fresh, .skel, .sk, .listen i, .sc.pop .tick, .aurora i { animation: none; } * { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .stack.baton > *, .ai-card.loading::before, .feat.working::before, .fstack.deal > .feat, .fresh, .skel, .sk, .listen i, .sc.pop .tick, .aurora i { animation: none; } * { transition: none !important; } }
 
 @media (max-width: 1100px) { .grid, .ygrid { grid-template-columns: 1fr; } .tgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .t-body { grid-template-columns: 1fr; } .wrap { padding: 28px 24px 56px; } }
 @media (max-width: 820px) {
@@ -1336,7 +1352,7 @@ function renderOverview(fresh) {
   const wl = weekLine(mems), ch = changes().slice(0, 5), ask = asks(buckets);
   el.innerHTML = `<div class="wrap">
     <div class="hero"><div><h1 class="hello">${greeting()}${who || ACCT ? ", " + esc(who || ACCT.display_name) : ""}.</h1>
-      <p class="hello-sub"><span class="stack">${ais.slice(0, 6).map(a => aiLogo(a, "")).join("")}</span><span>What ${plural(ais.length, "AI")} know about you</span><span class="sep-dot"></span><span>last capture ${ago(last)}</span></p>
+      <p class="hello-sub"><span class="stack baton">${ais.slice(0, 6).map((a, i) => aiLogo(a, "").replace(/^<(\w+) /, `<$1 data-ai="${esc(a)}" `)).join("")}</span><span>What ${plural(ais.length, "AI")} know about you</span><span class="sep-dot"></span><span>last capture ${ago(last)}</span></p>
       ${wl ? `<p class="week">${ICON.spark}<span>${wl}</span></p>` : ""}</div>
       <div class="hero-act"><button class="btn" data-y="ask">${ICON.spark}Ask your memory</button><button class="btn" data-view="map">${ICON.globe}Explore the map</button></div></div>
     ${kpis([[mems.length, "memories", newMems ? `+${newMems} this week` : "none new this week", 'data-view="topics"', newMems ? "up" : ""],
@@ -1365,6 +1381,8 @@ function renderOverview(fresh) {
       <button class="btn sm" data-view="setup">Open Setup</button></div>
   </div>`;
   if (view === "overview") countUp($("#ov"));
+  const landed = [...fresh].map(id => byId.get(id)?.ais?.[0]).find(Boolean);  // the AI a new memory came from drops into place
+  if (landed) el.querySelector(`.baton [data-ai="${CSS.escape(landed)}"]`)?.classList.add("land");
 }
 $("#overview").addEventListener("click", ev => {
   if (ev.target.closest('[data-y="ask"]')) { $("#q").focus(); $("#q").select(); }
@@ -1819,7 +1837,7 @@ function brainStep(st) {  // Mindbaton's own model: what it's doing, and (admins
   brainPoll(b);
   const on = b.enabled && !b.paused && b.state !== "waiting";
   const word = b.dl ? "Downloading" : b.state === "reading" ? "Reading" : b.paused || (b.state || "").startsWith("paused") ? "Paused" : on ? "On" : "Off";
-  return `<section class="feat" id="brain-step" aria-labelledby="brain-h">
+  return `<section class="feat${b.dl || b.state === "reading" ? " working" : ""}" id="brain-step" aria-labelledby="brain-h">
     <div class="feat-top"><span class="feat-ic">${IC_BRAIN}</span>
       <div class="tx"><h2 id="brain-h">Mindbaton's own model</h2></div>
       <span class="st${on ? " ok" : ""}"><i></i><span>${word}</span></span></div>
