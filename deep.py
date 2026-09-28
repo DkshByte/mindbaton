@@ -25,9 +25,9 @@ MODE = os.environ.get("MINDBATON_BRAIN", "auto").strip().lower()
 IDLE_S = 300
 RELS = {"works at", "lives in", "from", "is", "has", "uses", "likes", "dislikes", "avoids", "learning", "working on", "plays",
         "wants", "studies", "allergic to", "built", "wants to visit", "wants to try", "plans to move to"} | brain.KIN
-STATE = {"state": "off", "read": 0, "left": None, "progress": None, "error": None, "sec": None}
+STATE = {"state": "off", "read": 0, "left": None, "progress": None, "error": None, "sec": None, "dl": None}
 FORCED = PAUSED = False  # an admin asked to re-read everything (Setup, with warnings) / paused it
-RUN = {"graphs": None, "lock": None, "thread": None}
+RUN = {"graphs": None, "lock": None, "thread": None, "engine": None}
 
 
 def home():
@@ -96,8 +96,9 @@ def _get(url, path, label):
             f.write(chunk)
             done += len(chunk)
             STATE["progress"] = f"downloading the {label}: " + (f"{done * 100 // total}%" if total else f"{done >> 20} MB")
+            STATE["dl"] = {"what": label, "done": done, "total": total}
     os.replace(path + ".part", path)
-    STATE["progress"] = None
+    STATE["progress"] = STATE["dl"] = None
 
 
 def fetch():
@@ -163,6 +164,25 @@ class Engine:
                 time.sleep(1)
         self.down()
         raise RuntimeError("the engine didn't start in 3 minutes")
+
+    def usage(self):
+        """What the running engine takes now: {memory: bytes, cpu: % of the whole computer} or None when it's off."""
+        if not (self.proc and self.proc.poll() is None):
+            return None
+        pid = self.proc.pid
+        try:
+            if sys.platform.startswith("linux"):
+                rss = int(re.search(r"VmRSS:\s+(\d+)", open(f"/proc/{pid}/status").read())[1]) * 1024
+                f = open(f"/proc/{pid}/stat").read().rsplit(")", 1)[1].split()
+                now, spent = time.time(), (int(f[11]) + int(f[12])) / os.sysconf("SC_CLK_TCK")
+                last, self.cpu_mark = getattr(self, "cpu_mark", None), (now, spent)
+                pct = (spent - last[1]) / (now - last[0]) * 100 if last and now > last[0] else None  # since the last look
+            else:  # macOS: ps gives memory and a recent CPU share
+                out = subprocess.run(["ps", "-o", "rss=,%cpu=", "-p", str(pid)], capture_output=True, text=True, timeout=5).stdout.split()
+                rss, pct = int(out[0]) * 1024, float(out[1])
+        except Exception:
+            return None
+        return {"memory": rss, "cpu": None if pct is None else round(pct / (os.cpu_count() or 1), 1)}
 
     def down(self):
         if self.proc and self.proc.poll() is None:
@@ -261,6 +281,7 @@ def step(graphs, lock, eng):
 def work(graphs, lock, stop=None):
     """The background reader: reads while there is something to read and the laptop is plugged in; idle -> engine off."""
     eng, last = Engine(), time.time()
+    RUN["engine"] = eng
     while not (stop and stop.is_set()):
         if PAUSED:
             STATE["state"] = "paused"
@@ -318,8 +339,11 @@ def pause(paused):
 
 
 def status():
+    d = home()
+    disk = sum(os.path.getsize(os.path.join(r, f)) for r, _, fs in os.walk(d) for f in fs) if os.path.isdir(d) else 0
     return dict(STATE, enabled=enabled(), paused=PAUSED, model=MODEL, engine=URL or BUILD, mode=MODE, can=bool(URL or asset()),
-                memory_gb=round(memory_gb(), 1), downloaded=bool(URL or glob.glob(os.path.join(home(), "*.gguf"))))
+                memory_gb=round(memory_gb(), 1), downloaded=bool(URL or glob.glob(os.path.join(d, "*.gguf"))), remote=bool(URL),
+                disk=disk, usage=RUN["engine"].usage() if RUN["engine"] else None)
 
 
 def selfcheck():

@@ -234,6 +234,7 @@ code { font: 12px var(--mono); color: var(--fg); background: var(--panel-3); bor
 .tick svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 .step ol { margin: 0; padding-left: 20px; color: var(--fg-2); font-size: 13.5px; display: grid; gap: 4px; }
 .step ol b { color: var(--fg); font-weight: 500; }
+.step .progress { margin: 6px 0 10px; }  /* a bar under a line of the model's step */
 .warns { margin: 0 0 14px; padding-left: 20px; color: var(--fg-2); font-size: 14px; line-height: 1.5; display: grid; gap: 8px; }
 .warns b { color: var(--fg); font-weight: 500; }
 .warns .bad, .warns .bad b { color: var(--danger); }
@@ -1108,7 +1109,22 @@ async function renderSetup() {
 // ---------- import your old memory (Setup) ----------
 const IC_BRAIN = '<svg class="i" viewBox="0 0 24 24"><path d="M12 5.5A3.5 3.5 0 0 0 5.6 4.3 3 3 0 0 0 3.5 9a3.5 3.5 0 0 0 .7 5.8A3.5 3.5 0 0 0 8.5 20 3.5 3.5 0 0 0 12 18.5m0-13a3.5 3.5 0 0 1 6.4-1.2A3 3 0 0 1 20.5 9a3.5 3.5 0 0 1-.7 5.8 3.5 3.5 0 0 1-4.3 5.2 3.5 3.5 0 0 1-3.5-1.5m0-13v13"/></svg>';
 const eta = s => s >= 5400 ? `${Math.round(s / 3600)} hours` : s >= 90 ? `${Math.round(s / 60)} minutes` : "a minute or two";
+let brainTimer, STEP;
+const mb = n => n >= 1e9 ? (n / 1e9).toFixed(2) + " GB" : Math.max(0, Math.round(n / 1e6)) + " MB";
+const bar = (done, total) => `<div class="progress" aria-hidden="true"><b style="width:${total ? Math.min(100, Math.round(done / total * 100)) : 0}%"></b></div>`;
+function brainPoll(b) {  // while it downloads or reads, only this step refreshes (the rest of Setup, forms included, stays put)
+  clearTimeout(brainTimer);
+  if (!(b.dl || b.state === "reading" || b.state === "starting" || b.forced && b.left)) return;
+  brainTimer = setTimeout(async () => {
+    if (view !== "setup" || !$("#brain-step")) return;
+    let st;
+    try { st = await api("/status"); } catch { return brainPoll(b); }
+    const el = $("#brain-step");
+    if (el && view === "setup") { el.outerHTML = brainStep(st, STEP); }
+  }, 4000);
+}
 function brainStep(st, step) {  // Mindbaton's own model: what it's doing, and (admins) re-reading everything with it
+  STEP = step;
   const b = st.brain || {}, busy = b.forced && b.left;
   const sub = b.progress ? esc(b.progress)
     : b.state === "waiting" && b.error ? "Will try again in a few minutes: " + esc(b.error)
@@ -1125,7 +1141,16 @@ function brainStep(st, step) {  // Mindbaton's own model: what it's doing, and (
       : "Reads all your messages again, not only the ones the rules found nothing in. You'll see what it costs before it starts."}</p></div>
       ${busy ? `<button class="btn sm" data-brain="${b.paused ? "resume" : "pause"}">${b.paused ? "Resume" : "Pause"}</button>`
         : `<button class="btn sm" data-brain="ask"${b.can && b.mode !== "off" ? "" : " disabled"}>Re-read everything…</button>`}</div>`;
-  return step(IC_BRAIN, b.enabled && !b.paused && b.state !== "waiting", "Mindbaton's own model (optional) — reads what the rules can't", sub, body);
+  const info = (b.dl ? `<p class="set-note">Downloading the ${esc(b.dl.what)}: <b>${mb(b.dl.done)}</b>${b.dl.total
+      ? ` of ${mb(b.dl.total)} · ${Math.round(b.dl.done / b.dl.total * 100)}%` : ""}</p>${bar(b.dl.done, b.dl.total)}` : "")
+    + (b.messages && (b.enabled || b.checked) ? `<p class="set-note">Checked <b>${b.checked}</b> of ${plural(b.messages, "message")}${b.found
+      ? ` · facts found in <b>${b.found}</b>` : ""}</p>${bar(b.checked, b.messages)}` : "")
+    + (b.remote ? `<p class="set-note">It runs on another computer (MINDBATON_BRAIN_URL), so it uses nothing here.</p>`
+      : b.usage ? `<p class="set-note">Using now: memory <b>${mb(b.usage.memory)}</b>${b.usage.cpu != null ? ` · processor <b>${b.usage.cpu}%</b>` : ""} · on disk <b>${mb(b.disk)}</b></p>`
+      : b.disk ? `<p class="set-note">On disk: <b>${mb(b.disk)}</b> (the model and its engine). The engine is off right now, so it uses no memory or processor.</p>` : "");
+  brainPoll(b);
+  return `<div id="brain-step">${step(IC_BRAIN, b.enabled && !b.paused && b.state !== "waiting", "Mindbaton's own model (optional) — reads what the rules can't",
+    sub, info + body)}</div>`;
 }
 async function brainAction(what, btn) {
   if (what === "pause" || what === "resume") {

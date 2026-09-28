@@ -2189,8 +2189,9 @@ def setup_status(g, base):
                        "claude_code": {"last": cc[0], "chats": cc[1]}, "apps": apps},
             "phone": {"ok": bool(phone or dev["phone"]["recent"]), "last": last(phone, dev["phone"]["last"]), "url": base},
             "connector": {"ok": dev["connector"]["recent"], "configured": dev["connector"]["tokens"] > 0, "last": dev["connector"]["last"]},
-            "ai": ai.status(), "brain": dict(deep.status(), forced=g.meta("deep_force") == "1", messages=q(
-                "SELECT count(*) FROM captures WHERE coalesce(url, '') NOT LIKE 'memory://%' AND site IS NOT 'agent' AND length(text) <= 1500")[0])}
+            "ai": ai.status(), "brain": dict(deep.status(), forced=g.meta("deep_force") == "1", **dict(zip(("messages", "checked", "found"), q(
+                "SELECT count(*), count(json_extract(extra, '$.deep')), sum(coalesce(json_array_length(extra, '$.deep.facts'), 0) > 0) "
+                "FROM captures WHERE coalesce(url, '') NOT LIKE 'memory://%' AND site IS NOT 'agent' AND length(text) <= 1500"))))}
 
 
 def save_ai_key(provider, key):
