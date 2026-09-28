@@ -6,7 +6,7 @@
 <title>Mindbaton</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#111110">
-<script>try { const t = localStorage.getItem("mb-theme"); if (t === "oled" || t === "dim") document.documentElement.setAttribute("data-theme", t); } catch {}</script>
+<script>try { const t = localStorage.getItem("mb-theme"); if (t === "oled" || t === "light") document.documentElement.setAttribute("data-theme", t); } catch {}</script>
 <link rel="apple-touch-icon" href="/assets/app-192.png">
 <meta name="color-scheme" content="dark">
 <link rel="icon" href="/assets/brand/app-icon.svg">
@@ -34,17 +34,37 @@
   --sans: "Geist", ui-sans-serif, system-ui, sans-serif; --mono: "Geist Mono", ui-monospace, monospace;
   --r: 10px; --r-sm: 7px; --ease: cubic-bezier(.2, .8, .2, 1);
 }
-/* themes. Dim: the same warm greys, a few steps lighter. OLED: true black behind everything; cards stay a step above it
-   and edges a touch brighter, so nothing disappears */
-:root[data-theme="dim"] { --bg: #1a1a18; --side: #1d1d1b; --panel: #222221; --panel-2: #2a2a28; --panel-3: #31312e;
-  --line: rgba(255, 253, 243, .08); --line-2: rgba(255, 253, 243, .12); --line-3: rgba(255, 253, 243, .2); }
-:root[data-theme="dim"] .side { background: rgba(29, 29, 27, .6); }
-:root[data-theme="dim"] .top { background: rgba(26, 26, 24, .4); }
+/* themes. Light: Radix light sand + tomato, category colours at their light step 11 (readable on off-white).
+   OLED: true black behind everything; cards stay a step above it and edges a touch brighter, so nothing disappears */
+:root[data-theme="light"] { color-scheme: light;
+  --bg: #f9f9f8; --side: #f1f0ef; --panel: #fdfdfc; --panel-2: #f1f0ef; --panel-3: #e9e8e6;
+  --line: rgba(33, 32, 28, .09); --line-2: rgba(33, 32, 28, .14); --line-3: rgba(33, 32, 28, .24);
+  --fg: #21201c; --fg-2: #63635e; --fg-3: #6f6e68;
+  --accent: #dd4425; --accent-strong: #d13415; --accent-soft: rgba(229, 77, 46, .12); --accent-line: rgba(209, 52, 21, .45);
+  --glass: rgba(33, 32, 28, .03); --glass-hi: rgba(33, 32, 28, .07); --glass-rim: rgba(33, 32, 28, .13);
+  --ok: #218358; --danger: #cb1d63; --danger-soft: rgba(233, 61, 130, .1);
+  --c-who: #ab6400; --c-place: #cc4e00; --c-project: #2a7e3b; --c-tool: #0d74ce; --c-own: #953ea3; --c-learn: #6550b9;
+  --c-like: #c2298a; --c-dislike: #cb1d63; --c-people: #008573; --c-want: #5c7c2f; --c-other: #71624b;
+  --t1: #ab6400; --t2: #0d74ce; --t3: #2a7e3b; --t4: #c2298a; --t5: #6550b9; --t6: #cc4e00; --t7: #008573; --t8: #5c7c2f;
+  --t9: #953ea3; --t10: #00749e; --t11: #107d98; --t12: #71624b;
+  --ai-chatgpt: #52525b; --ai-grok: #52525b; --ai-agent: #63635e; }
+:root[data-theme="light"] .side { background: rgba(241, 240, 239, .74); }
+:root[data-theme="light"] .top { background: rgba(249, 249, 248, .62); }
+:root[data-theme="light"] :is(.toast, dialog.palette, .dg-legend, .dg-tip) { background: rgba(253, 253, 252, .95); }
+:root[data-theme="light"] .brain-stats div { background: rgba(253, 253, 252, .85); }
+:root[data-theme="light"] :is(.kic, .tm, .kcard h3) { color: var(--c); }
+:root[data-theme="light"] :is(.toast, dialog.palette, dialog.sheet, .menu) { box-shadow: 0 14px 36px rgba(33, 32, 28, .14); }
+:root[data-theme="light"] .fstack > .feat.front { box-shadow: 0 -10px 26px rgba(33, 32, 28, .08); }
+:root[data-theme="light"] .aurora i { mix-blend-mode: multiply; }
+:root[data-theme="light"] .app .aurora { opacity: .12; }
+:root[data-theme="light"] .app[data-view="overview"] .aurora { opacity: .32; }
+:root[data-theme="light"] .app[data-view="map"] .aurora { opacity: 0; }
+:root[data-theme="light"] .gate .aurora { opacity: .3; }
+:root[data-theme="light"] .form-err { color: var(--danger); }
 :root[data-theme="oled"] { --bg: #000; --side: #000; --panel: #0d0d0c; --panel-2: #161615; --panel-3: #1e1e1c;
   --line: rgba(255, 253, 243, .09); --line-2: rgba(255, 253, 243, .13); --line-3: rgba(255, 253, 243, .21); }
-:root[data-theme="oled"] .side { background: rgba(0, 0, 0, .55); }
+:root[data-theme="oled"] .side { background: #000; -webkit-backdrop-filter: none; backdrop-filter: none; }  /* solid: no glow through the sidebar */
 :root[data-theme="oled"] .top { background: rgba(0, 0, 0, .4); }
-:root[data-theme="oled"] .nav { background-color: rgba(0, 0, 0, .9); }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 400 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased; overflow: hidden; }
@@ -562,6 +582,7 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
   box-shadow: -24px 0 48px rgba(0, 0, 0, .45); display: flex; flex-direction: column; transform: translateX(104%);
   transition: transform .24s var(--ease); z-index: 5; }
 .panel.open { transform: none; }
+.panel:not(.open) { box-shadow: none; }  /* the closed panel waits off-screen; its shadow would show on the light theme */
 .panel-h { height: 56px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 20px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--fg-2); }
 .panel-h .spacer { flex: 1; }
 .icon-btn { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 7px; color: var(--fg-2); }
@@ -826,6 +847,9 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
   .nav button[aria-current="page"] { background: var(--panel-3); }
   .nav kbd { display: none; }
   .top { position: sticky; top: 0; z-index: 10; background: rgba(17, 17, 16, .72); }
+  :root[data-theme="oled"] .nav { background-color: rgba(0, 0, 0, .92); }
+  :root[data-theme="light"] .nav { background-color: rgba(249, 249, 248, .92); }
+  :root[data-theme="light"] .top { background: rgba(249, 249, 248, .86); }
   .search input, .inp, textarea, select { font-size: 16px; }  /* under 16px, iPhones zoom the page on focus */
   .panel { position: fixed; inset: 0; width: 100%; z-index: 16; border-left: 0; padding-bottom: env(safe-area-inset-bottom); }
   dialog.sheet { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; border: 0; }
@@ -1003,11 +1027,16 @@ function logoKey(x) {
   for (const [rx, brand] of LOGO._models || []) if (new RegExp(rx).test(k)) return brand;
   return null;
 }
+function inkFor(hex, fallback = "var(--fg)") {  // a brand's one-colour mark; too pale for the light theme → ink
+  if (!hex) return fallback;
+  const h = hex.length === 4 ? "#" + [...hex.slice(1)].map(c => c + c).join("") : hex, n = parseInt(h.slice(1), 16);
+  return document.documentElement.dataset.theme === "light" && ((n >> 16 & 255) * .299 + (n >> 8 & 255) * .587 + (n & 255) * .114) / 255 > .72 ? fallback : hex;
+}
 function logo(x, cls = "") {
   const k = logoKey(x), e = k && LOGO[k];
   if (!e) return "";
   const src = "/assets/icons/" + e.src;
-  return e.mono ? `<span class="lg ${cls}" style="--src:url('${src}');--c:${e.hex || "var(--fg)"}" aria-hidden="true"></span>`
+  return e.mono ? `<span class="lg ${cls}" style="--src:url('${src}');--c:${inkFor(e.hex)}" aria-hidden="true"></span>`
     : `<img class="lg ${cls}" src="${src}" alt="" aria-hidden="true">`;
 }
 function badge(x, color, cls = "") {  // a logo if the brand has one, else a lettered tile in the thing's colour
@@ -2197,7 +2226,7 @@ function logoCanvas(k) {
     const x = c.getContext("2d"), ar = (img.naturalWidth || 1) / (img.naturalHeight || 1);
     const w = ar >= 1 ? 80 : 80 * ar, h = ar >= 1 ? 80 / ar : 80;
     x.drawImage(img, (96 - w) / 2, (96 - h) / 2, w, h);
-    if (e.mono) { x.globalCompositeOperation = "source-in"; x.fillStyle = e.hex || css("--fg"); x.fillRect(0, 0, 96, 96); }
+    if (e.mono) { x.globalCompositeOperation = "source-in"; x.fillStyle = inkFor(e.hex, css("--fg")); x.fillRect(0, 0, 96, 96); }
     LOGO_IMG.set(k, c); diagram.draw();
   };
   img.src = "/assets/icons/" + e.src;
@@ -3037,7 +3066,7 @@ function renderAcct() {
     <button role="menuitem" data-go="devices">${IC.devices}Devices</button>
     ${ACCT.role === "admin" ? `<button role="menuitem" data-go="people">${IC.people}People</button>` : ""}<hr>
     <div class="menu-theme"><span><svg class="i" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg>Theme</span>
-      <div class="segs" role="group" aria-label="Theme">${[["", "Dark"], ["dim", "Dim"], ["oled", "OLED"]].map(([k, t]) =>
+      <div class="segs" role="group" aria-label="Theme">${[["", "Dark"], ["light", "Light"], ["oled", "OLED"]].map(([k, t]) =>
         `<button type="button" data-theme-set="${k}" aria-pressed="${(document.documentElement.dataset.theme || "") === k}">${t}</button>`).join("")}</div></div><hr>
     <button role="menuitem" data-acct="out">${IC.out}Sign out / switch person</button>
     <button role="menuitem" data-acct="all">${ICON.globe}<span>Sign out everywhere</span></button>`;
@@ -3443,14 +3472,15 @@ $("#panel").addEventListener("click", ev => {
   if (m) { show("map"); diagram.focus(+m.dataset.pMap); }
 });
 
-document.addEventListener("click", e => {  // themes: Dark (default), Dim, OLED — remembered on this device
+document.addEventListener("click", e => {  // themes: Dark (default), Light, OLED — remembered on this device
   const b = e.target.closest("[data-theme-set]");
   if (!b) return;
   const t = b.dataset.themeSet;
   if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
   b.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
-  document.querySelector('meta[name="theme-color"]').content = { "": "#111110", dim: "#1a1a18", oled: "#000000" }[t];
+  document.querySelector('meta[name="theme-color"]').content = { "": "#111110", light: "#f9f9f8", oled: "#000000" }[t];
   try { localStorage.setItem("mb-theme", t); } catch {}
+  if (ACCT) { LOGO_IMG.clear(); ICON_IMG.clear(); load(true); if (view === "setup") renderSetup(); }  // colours and logos are baked into the markup
 });
 
 boot();

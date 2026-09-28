@@ -24,9 +24,10 @@ write-ups list as the default AI-generated palette. Values are Radix Colors' own
 | `--t1 … --t12` | 12 hues (Radix dark, step 11) | a topic's identity — its mark, its map bubble |
 
 **Themes** (account menu → Theme, remembered per device, applied before first paint): **Dark** (the table above),
-**Dim** (the same sand greys a few steps lighter: bg #1a1a18, panels #222221/#2a2a28/#31312e), **OLED** (bg and chrome
-#000, panels #0d0d0c/#161615/#1e1e1c, hairlines a touch brighter so cards never vanish). Only surfaces change; the
-signature, category colours, aurora and marks are the same in every theme.
+**Light** (Radix light sand + tomato: bg #f9f9f8, panels #fdfdfc/#f1f0ef/#e9e8e6, ink #21201c/#63635e/#6f6e68, the
+category colours at their light step 11; the aurora multiplies at low opacity; pale brand marks turn to ink),
+**OLED** (bg and chrome #000 — the sidebar solid, no glow through it — panels #0d0d0c/#161615/#1e1e1c, hairlines a touch
+brighter so cards never vanish). The signature, marks and layout are the same in every theme.
 
 No category colour may equal the signature (Dislikes is crimson, topic 10 is sky). The aurora is warm: vermilion,
 amber, rose, orange.
