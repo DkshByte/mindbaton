@@ -87,7 +87,7 @@ def update_watch():
     threading.Thread(target=check, daemon=True).start()
 LOCK = threading.RLock()  # one request touches the databases at a time; threads only keep idle sockets from blocking others
 # ponytail: one lock for every account's graph; per-account locks if many people use one install at once
-LOGIC_VERSION = "17"  # 17: the learner reads everyday phrasing (16: meaning vectors, facts that settle older ones, kin/rename merges (15: "the user always runs / was born" -> "I always run / was born" (14: hand-off packs and briefings are marked [mindbaton])
+LOGIC_VERSION = "18"  # 18: "I'm Nikhil, a data analyst at Deloitte" works there too (17: the learner reads everyday phrasing (16: meaning vectors, facts that settle older ones, kin/rename merges (15: "the user always runs / was born" -> "I always run / was born" (14: hand-off packs and briefings are marked [mindbaton])
 PERSONAL = brain.PERSONAL
 AI_SITE = {}  # "ChatGPT" -> "chatgpt.com"
 LINKISH = ("mentions", "about", "context")
@@ -1482,7 +1482,8 @@ class Graph:
         first = " — ".join(x for x in (who, "; ".join(y for y in (role, place) if y)) if x)
         if first:
             lines.append(first)
-        for rel, title in (("working on", "Working on"), ("built", "Built"), ("learning", "Learning"), ("studies", "Studies"), ("uses", "Uses"),
+        for rel, title in (("working on", "Working on"), ("built", "Built"), ("learning", "Learning"), ("studies", "Studies"),
+                           ("plays", "Plays"), ("does", "Does"), ("uses", "Uses"),
                            ("has", "Has"), ("likes", "Likes"), ("dislikes", "Dislikes"), ("allergic to", "Allergic to"),
                            ("avoids", "Avoids"), ("wants", "Wants"), ("wants to visit", "Wants to visit"),
                            ("wants to try", "Wants to try"), ("plans to move to", "Plans to move to")):
@@ -1716,7 +1717,10 @@ MCP_TOOLS = [
      "open questions and what you should know about the user. With no arguments it uses their most recent conversation; pass `session` "
      "(an id from `sessions`, or words from its title) for another. Read it, then carry on from where it left off.",
      "inputSchema": {"type": "object", "properties": {"session": {"type": "string"}, "budget": {"type": "integer", "minimum": 200, "maximum": 12000,
-                     "description": "Size of the pack in tokens (default 2500)."}}}, "annotations": {"readOnlyHint": True}},
+                     "description": "Size of the pack in tokens (default 2500)."},
+                     "about": {"type": "boolean", "description": "Also include what Mindbaton knows about the user (name, work, tools, "
+                               "people…). Only for an AI that doesn't know them yet; default false: the chat only."}}},
+     "annotations": {"readOnlyHint": True}},
     {"name": "sessions", "description": "List the user's recent conversations across AIs (Live mode): id, AI, title, messages, how full each "
      "one's context is, and whether it hit a limit. Use with `handoff` to continue one here.",
      "inputSchema": {"type": "object", "properties": {"limit": {"type": "integer", "minimum": 1, "maximum": 50}}}, "annotations": {"readOnlyHint": True}},
@@ -1775,7 +1779,7 @@ def mcp_call(g, name, a, client=None):
     if name == "forget":
         return "Forgotten." if g.forget(int(a["id"])) else "No memory with that id."
     if name == "handoff":
-        return live.make_handoff(g, a.get("session"), int(a.get("budget") or 2500))["text"]
+        return live.make_handoff(g, a.get("session"), int(a.get("budget") or 2500), about=a.get("about") is True)["text"]
     if name == "sessions":
         rows = live.sessions(g, int(a.get("limit") or 15))
         return "\n".join(f"[{s['id']}] {s['ai']} — {s['chat'] or 'untitled'} · {s['turns']} messages · {s['pct']}% of context"
@@ -2754,7 +2758,8 @@ class Handler(SimpleHTTPRequestHandler):
             "/update": lambda: update_info(self.me["role"] == "admin"),
             "/sessions": lambda: live.sessions(self.g, num("limit", 40)),
             "/session": lambda: live.transcript(self.g, live.find(self.g, qs.get("id"))) or {},
-            "/handoff": lambda: live.make_handoff(self.g, qs.get("session"), max(200, min(num("budget", 1500), 12000)), qs.get("to")),
+            "/handoff": lambda: live.make_handoff(self.g, qs.get("session"), max(200, min(num("budget", 1500), 12000)), qs.get("to"),
+                                                  qs.get("about") == "1"),
             "/handoff/pending": lambda: live.take_pending(self.g, qs.get("host", "")),
             "/timeline": lambda: self.g.timeline(qs.get("subject", "me")),
             "/neighbors": lambda: (self.g.ensure(), live.neighbors(self.g, num("id", 0), num("depth", 1)))[1],

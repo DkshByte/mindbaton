@@ -23,7 +23,11 @@
 - Search results say how they matched (a direct answer, a thing you named, your words, or meaning only).
 - **`mindbaton update`** from any folder, like `claude update`: the installer and the updater add a `mindbaton` command
   (`mindbaton doctor`, `mindbaton keys`, … too); uninstall removes it.
-- The memory is rebuilt once on update (logic version 17).
+- **Hand-offs carry the chat only.** "About me" is left out unless you tick **New AI? Include what Mindbaton knows
+  about me** (app and extension 5.1.0), or an AI asks for it (`handoff` tool, `about: true`).
+- Everything Mindbaton knows now shows in briefings: what you play and do, and "a data analyst at Deloitte" keeps its
+  company. A day or a month is never taken as a thing ("play every sunday").
+- The memory is rebuilt once on update (logic version 18).
 
 ## 0.1.3
 

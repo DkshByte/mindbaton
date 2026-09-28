@@ -768,12 +768,16 @@ function copyText(text) {  // plain http: no async clipboard API
   const ok = document.execCommand("copy"); ta.remove();
   return ok;
 }
+const aboutPref = () => { try { return localStorage.getItem("mb-handoff-about") === "1"; } catch { return false; } };
+document.addEventListener("change", e => {
+  if (e.target.id === "ho-about") try { localStorage.setItem("mb-handoff-about", e.target.checked ? "1" : "0"); } catch {}
+});
 async function handoff(sid, to, btn) {  // the pack (with the AI summary) waits in that AI's new chat; the extension puts it in the box
   const w = to ? window.open("about:blank", "_blank") : null;  // opened now, on the click, so the browser allows it
   const label = btn.innerHTML;
   btn.disabled = true; btn.lastChild.textContent = to ? " Preparing…" : "Preparing…";
   try {
-    const r = await api(`/handoff?budget=2500&session=${sid}` + (to ? "&to=" + encodeURIComponent(to) : ""));
+    const r = await api(`/handoff?budget=2500&session=${sid}` + (to ? "&to=" + encodeURIComponent(to) : "") + ($("#ho-about")?.checked ? "&about=1" : ""));
     if (to) {
       if (w) w.location = r.open || "about:blank";
       toast(`Opening ${HANDOFF_TO.find(x => x[0] === to)?.[1] || to} — the conversation will be in its message box${r.summary_by ? ` · summarised by ${r.summary_by}` : ""}`);
@@ -1323,6 +1327,8 @@ function renderPanel() {
       <div class="p-sec">Continue in</div>
       <div class="handoff">${HANDOFF_TO.filter(([, name]) => name !== ai).map(([host, name]) => `<button data-handoff="${n.sid}" data-to="${host}">${aiLogo(name)}<span>${esc(name)}</span></button>`).join("")}
         <button data-handoff="${n.sid}"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8"/></svg><span>Copy hand-off</span></button></div>
+      <label class="check" style="margin-top:8px"><input type="checkbox" id="ho-about"${aboutPref() ? " checked" : ""}><span>New AI? Include what Mindbaton knows about me
+        <small>Adds your name, work, tools and people. Leave it off when that AI already knows you: then it's this chat only.</small></span></label>
       <dl class="props">
         <dt>App</dt><dd><span class="tag">${aiLogo(ai)}${esc(ai)}</span></dd>
         <dt>Model</dt><dd>${n.models?.length ? n.models.map(m => `<span class="model">${esc(m)}</span>`).join('<span style="color:var(--fg-3)">→</span>')

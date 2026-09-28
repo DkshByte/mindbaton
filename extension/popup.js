@@ -67,12 +67,15 @@ async function chat() {
     <div class="sum" id="sum" hidden></div>
     <div class="cont"><div class="label">Continue in</div>
       <div class="grid">${TARGETS.filter(h => h !== here).slice(0, 6).map(h => `<button data-to="${h}">${logo(h)}${AI[h][0]}</button>`).join("")}</div>
-      <button class="copy">Copy hand-off pack</button></div>`;
+      <button class="copy">Copy hand-off pack</button>
+      <label class="about"><input type="checkbox" id="about"> New AI? Include what Mindbaton knows about me</label></div>`;
+  chrome.storage.local.get({ handoffAbout: false }, s => { $("about").checked = s.handoffAbout; });
+  $("about").onchange = e => chrome.storage.local.set({ handoffAbout: e.target.checked });
   summary(m.id);
   box.onclick = e => {
     const b = e.target.closest("button");
     if (!b) return;
-    chrome.runtime.sendMessage({ handoff: { session: m.id, to: b.dataset.to || null, open: !!b.dataset.to } }, async r => {
+    chrome.runtime.sendMessage({ handoff: { session: m.id, to: b.dataset.to || null, open: !!b.dataset.to, about: $("about").checked } }, async r => {
       if (!r || !r.text) { $("warn").hidden = false; $("warn").textContent = (r && r.error) || "Can't reach Mindbaton"; return; }
       if (b.dataset.to) return window.close();
       await navigator.clipboard.writeText(r.text);
