@@ -101,7 +101,13 @@ img.lg { object-fit: contain; }
 .app { display: grid; grid-template-columns: 248px minmax(0, 1fr); height: 100vh; }
 .side { background: rgba(20, 20, 19, .35); -webkit-backdrop-filter: blur(28px) saturate(150%); backdrop-filter: blur(28px) saturate(150%); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 16px 16px 12px; }
-.brand-mark { width: 26px; height: 26px; border-radius: 7px; box-shadow: 0 0 0 1px var(--line-2); }
+.brand-baton { width: 26px; height: 26px; flex: none; display: grid; place-items: center; color: var(--fg); transition: opacity .4s; }
+.brand-baton svg { width: 26px; height: 26px; transform-origin: 50% 85%; }
+.brand-baton svg.hop { animation: hop .75s cubic-bezier(.3, 1.4, .5, 1); }
+@keyframes hop { 0% { transform: none; } 30% { transform: translate(3px, -5px) rotate(9deg); } 62% { transform: translate(-1px, 0) rotate(-4deg); } 100% { transform: none; } }
+.brand.off .brand-baton { opacity: .4; }
+.wordmark { display: flex; align-items: center; color: var(--fg); }
+.wordmark svg { height: 17px; width: auto; display: block; }
 .brand b { font-weight: 600; font-size: 15px; letter-spacing: -.01em; }
 .brand .live { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--fg-3); }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--fg-3)); flex: none; }
@@ -576,6 +582,7 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
 .answer small button { color: var(--accent-strong); font: 12px var(--mono); }
 .empty { padding: 48px 16px; text-align: center; color: var(--fg-2); }
 .e-art { display: flex; justify-content: center; margin-bottom: 18px; }
+.e-art .e-baton { color: var(--fg-2); transform: rotate(-8deg); }
 .e-art .kic { width: 44px; height: 44px; border-radius: 13px; background: color-mix(in srgb, var(--c) 16%, var(--panel)); }
 .e-art .kic svg.i { width: 21px; height: 21px; }
 .e-act { margin-top: 18px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
@@ -663,7 +670,7 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
 .gate-in, .gate-foot { z-index: 1; }
 .gate-in { position: relative; align-self: center; justify-self: center; width: min(400px, 100%); padding: 56px 16px 32px; display: grid; justify-items: center; text-align: center; }
 .gate-in.wide { width: min(760px, 100%); }
-.gate-mark { width: 44px; height: 44px; border-radius: 11px; box-shadow: 0 0 0 1px var(--line-2), 0 10px 30px rgba(0, 0, 0, .5); margin-bottom: 24px; }
+.gate-mark { width: 60px; height: 60px; border-radius: 15px; box-shadow: 0 0 0 1px var(--line-2), 0 10px 30px rgba(0, 0, 0, .5); margin-bottom: 24px; }
 .gate-in > .av { margin-bottom: 20px; }
 .gate h1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -.02em; line-height: 1.2; text-wrap: balance; }
 .gate-sub { margin: 8px 0 0; color: var(--fg-2); font-size: 14.5px; max-width: 38ch; text-wrap: pretty; }
@@ -673,6 +680,7 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
 .gate-foot { position: relative; margin: 0; padding: 16px; display: flex; gap: 8px; justify-content: center; align-items: center; font-size: 12px; color: var(--fg-3); }
 .gate-foot svg.i { width: 13px; height: 13px; vertical-align: -2px; margin-right: 2px; }
 .gate-foot span { text-wrap: balance; text-align: center; }
+.gate-line { color: var(--fg-2); font-weight: 500; margin-right: 6px; }
 [tabindex="-1"]:focus { outline: none; }
 @media (pointer: coarse) {  /* 44px to tap, same look: the extra height is padding */
   .gate-links .link, .gate-back, .set-tabs button, .menu [role="menuitem"] { min-height: 44px; }
@@ -833,7 +841,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
 .toast-act:hover { background: rgba(255, 255, 255, .16); }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .fresh { animation: rise .4s var(--ease) both; }
-@media (prefers-reduced-motion: reduce) { .fstack.deal > .feat, .fresh, .skel, .sk, .listen i, .sc.pop .tick, .aurora i { animation: none; } * { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .brand-baton svg.hop, .fstack.deal > .feat, .fresh, .skel, .sk, .listen i, .sc.pop .tick, .aurora i { animation: none; } * { transition: none !important; } }
 
 @media (max-width: 1100px) { .grid, .ygrid { grid-template-columns: 1fr; } .tgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .t-body { grid-template-columns: 1fr; } .wrap { padding: 28px 24px 56px; } }
 @media (max-width: 820px) {
@@ -917,8 +925,8 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
   <div class="aurora" id="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
   <aside class="side" aria-label="Sidebar">
     <div class="brand">
-      <img class="brand-mark" src="/assets/brand/app-icon.svg" alt="" width="26" height="26">
-      <b>Mindbaton</b>
+      <span class="brand-baton" id="brand-baton" aria-hidden="true"></span>
+      <span class="wordmark" id="wordmark"><b>Mindbaton</b></span>
       <span class="live" id="live"><span class="dot"></span><span>—</span></span>
     </div>
     <nav class="nav" aria-label="Views">
@@ -982,7 +990,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 <main class="gate" id="gate" hidden>
   <div class="aurora" id="gate-aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
   <div class="gate-in" id="gate-in"></div>
-  <p class="gate-foot"><span><svg class="i" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg> Private — your memory stays on the computer Mindbaton runs on.</span></p>
+  <p class="gate-foot"><span><b class="gate-line">Tell one AI. Every AI knows.</b> <svg class="i" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg> Private — your memory stays on the computer Mindbaton runs on.</span></p>
 </main>
 <dialog class="sheet" id="sheet" aria-labelledby="sheet-title"></dialog>
 <div class="toast" id="toast" role="status" hidden></div>
@@ -1080,7 +1088,7 @@ async function load(force) {
   const fresh = new Set(g.nodes.filter(n => n.kind === "memory" && !seen.has(n.id)).map(n => n.id));
   g.nodes.forEach(n => seen.add(n.id));
   renderSide(); renderFoot(); renderOverview(first ? new Set() : fresh); renderTopics(first ? new Set() : fresh); renderChats();
-  if (before && (g.stats.captures || 0) > before.caps) celebrate(before);
+  if (before && (g.stats.captures || 0) > before.caps) { celebrate(before); batonHop(); }
   diagram.sync();
   if (selected != null && !byId.has(selected)) select(null); else renderPanel();
 }
@@ -1118,9 +1126,10 @@ async function handoff(sid, to, btn) {  // the pack (with the AI summary) waits 
     const r = await api(`/handoff?budget=2500&session=${sid}` + (to ? "&to=" + encodeURIComponent(to) : "") + ($("#ho-about")?.checked ? "&about=1" : ""));
     if (to) {
       if (w) w.location = r.open || "about:blank";
-      toast(`Opening ${HANDOFF_TO.find(x => x[0] === to)?.[1] || to} — the conversation will be in its message box${r.summary_by ? ` · summarised by ${r.summary_by}` : ""}`);
+      toast(`Baton passed to ${HANDOFF_TO.find(x => x[0] === to)?.[1] || to} — the conversation will be in its message box${r.summary_by ? ` · summarised by ${r.summary_by}` : ""}`, { icon: baton(18) });
     } else {
-      toast(copyText(r.text) ? `Hand-off copied · ~${r.tokens} tokens${r.summary_by ? ` · summarised by ${r.summary_by}` : ""}` : "Copy blocked by the browser");
+      const ok = copyText(r.text);
+      toast(ok ? `Baton passed — hand-off copied · ~${r.tokens} tokens${r.summary_by ? ` · summarised by ${r.summary_by}` : ""}` : "Copy blocked by the browser", ok ? { icon: baton(18) } : {});
     }
   } catch (e) { if (w) w.close(); toast("Hand-off failed: " + e.message); }
   finally { btn.disabled = false; btn.innerHTML = label; }
@@ -1193,6 +1202,7 @@ function renderSide() {
 function renderFoot() {
   const s = G.stats, last = Math.max(0, ...G.nodes.filter(n => n.kind === "memory").map(n => n.updated || 0));
   $("#live").innerHTML = `<span class="dot ${online ? "on" : "off"}"></span><span>${online ? "Live" : "Offline"}</span>`;
+  $(".brand")?.classList.toggle("off", !online);
   $("#side-foot").innerHTML = `
     <div class="row-s"><span>Last capture</span><b>${last ? ago(last) : "—"}</b></div>
     <div class="row-s"><span>${plural(s.memories ?? 0, "memory").replace("memorys", "memories")} · ${plural(s.entities ?? 0, "thing")}</span><b>${s.captures ?? 0} captured</b></div>
@@ -1225,6 +1235,14 @@ function greeting() {
   return h < 5 ? "Up late" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }
 const WEEK = () => Date.now() / 1000 - 7 * 86400;
+let BATON = "";  // the mark, from assets/brand (never a copy of its paths here)
+const baton = (size, cls = "") => BATON ? BATON.replace("<svg ", `<svg class="baton ${cls}" width="${size}" height="${size}" aria-hidden="true" `) : "";
+const brandReady = Promise.all([fetch("/assets/brand/mark.svg").then(r => r.text()), fetch("/assets/brand/wordmark.svg").then(r => r.text())]).then(([m, w]) => {
+  BATON = m.replace(/<!--[\s\S]*?-->/g, "");
+  $("#brand-baton").innerHTML = baton(26);
+  $("#wordmark").innerHTML = w.replace(/<svg ([^>]*?)viewBox="0 0 110.5 24"/, '<svg $1viewBox="21.6 0 88.9 24"');  // the lettering only; the mark sits beside it, alive
+}).catch(() => {});
+function batonHop() { const m = $("#brand-baton svg"); if (!m || RM.matches) return; m.classList.remove("hop"); void m.getBBox(); m.classList.add("hop"); }
 const kpiSeen = new Map();
 function countUp(root) {  // numbers roll up the first time you see them, and from the old value when they change
   root?.querySelectorAll(".stat b").forEach(b => {
@@ -1236,7 +1254,7 @@ function countUp(root) {  // numbers roll up the first time you see them, and fr
     b.textContent = from; requestAnimationFrame(step);
   });
 }
-const emptyState = (keys, title, text, act = "") => `<div class="empty"><span class="e-art" aria-hidden="true">${kic(keys[0], css("--fg-2"))}</span><h3>${title}</h3><p>${text}</p>${act ? `<div class="e-act">${act}</div>` : ""}</div>`;
+const emptyState = (keys, title, text, act = "") => `<div class="empty"><span class="e-art" aria-hidden="true">${baton(52, "e-baton") || kic(keys[0], css("--fg-2"))}</span><h3>${title}</h3><p>${text}</p>${act ? `<div class="e-act">${act}</div>` : ""}</div>`;
 const EXT_URL = "https://chromewebstore.google.com/detail/mindbaton/nfadphcjimkchbapapbcphnbpajmfmih";
 function celebrate(before) {  // a first: a new topic formed, or an AI that never sent anything before
   const t = G.topics.find(x => x.id && !before.topics.has(x.id));
@@ -2902,7 +2920,7 @@ async function boot() {
   PROFILES = st.profiles || []; CODE_REQUIRED = !!st.code_required;
   gate(st.setup_needed ? "setup" : PROFILES.length ? "tiles" : "manual");
 }
-const MARK = `<img class="gate-mark" src="/assets/brand/app-icon.svg" alt="" width="44" height="44">`;
+const MARK = `<img class="gate-mark" src="/assets/brand/app-icon.svg" alt="" width="60" height="60">`;
 function why() {  // what's waiting behind the sign-in: a device to approve, something shared from the phone
   const pair = location.hash.match(/^#pair\/([\w-]+)/);
   if (qs.has("out")) return `<p class="gate-note">${IC.out}<span>You were signed out. Sign in again to pick up where you left off.</span></p>`;

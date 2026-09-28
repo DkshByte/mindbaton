@@ -4,9 +4,15 @@ Chosen on 2026-09-22 over three bolder directions: the standard modern dark app,
 of **Linear** and **Vercel**. Convention is the commitment — no costume, no smuggled quirk. The direction contract is the
 HTML comment at the top of `<body>` in `index.html` (seed b8503b2b).
 
-**Brand:** the Mindbaton mark, app icons and favicons live in `assets/brand/` (the mark is a placeholder until the final
-logo lands). Every icon is generated from `assets/brand/mark.svg` by one script (`make-icons.mjs`); UIs reference those
+**Brand:** the mark is **Baton** (final): a relay baton as a character, black and white, so the brand is monochrome and
+the interface stays neutral around it. Mark, wordmark, app icons and favicons live in `assets/brand/`. Every icon is generated from `assets/brand/mark.svg` by one script (`make-icons.mjs`); UIs reference those
 files and never inline a copy of the mark's paths.
+
+## Baton in the product
+The sidebar shows Baton beside the real wordmark lettering (both inlined at runtime from `assets/brand/`, so there is one
+source and `currentColor` follows the theme). Baton **reacts**: it hops forward when a memory arrives and dims when the
+server is offline. It appears where people pause: empty states, the "Baton passed" hand-off toast, the sign-in screen
+(with "Tell one AI. Every AI knows."). Nowhere as decoration.
 
 ## Colour — "Graphite + vermilion" (2026-09-28)
 Warm greys from Radix **sand** with one **tomato** (vermilion) signature. Chosen over violet and cyan, which design
