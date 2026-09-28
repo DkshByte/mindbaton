@@ -21,6 +21,8 @@
   `auto` with 12 GB of memory or more; `MINDBATON_BRAIN_URL` uses a model server on another computer. Unseen everyday
   sentences: 28/30 facts, no made-up facts (the rules and learner alone: 14/30).
 - Search results say how they matched (a direct answer, a thing you named, your words, or meaning only).
+- **`mindbaton update`** from any folder, like `claude update`: the installer and the updater add a `mindbaton` command
+  (`mindbaton doctor`, `mindbaton keys`, … too); uninstall removes it.
 - The memory is rebuilt once on update (logic version 17).
 
 ## 0.1.3

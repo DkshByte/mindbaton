@@ -295,6 +295,29 @@ def write_file(path, text, mode=0o600):
     os.replace(tmp, path)
 
 
+LINK_DIRS = ('.local/bin', 'bin')  # in the home folder; plus Homebrew's, which its owner can write to
+OWN = b'mindbaton.py'           # what marks a `mindbaton` command as ours
+
+
+def command_link():
+    """`mindbaton update` from any folder, like `claude update`: a tiny launcher in a folder the shell already searches.
+    -> (its path, whether that folder is on PATH), or None on Windows or when another program already has the name."""
+    if os.name == 'nt':
+        return None
+    target = MB / 'mindbaton.py' if (MB / 'mindbaton.py').exists() else HERE / 'mindbaton.py'
+    home = Path.home()
+    on_path = [Path(d) for d in os.environ.get('PATH', '').split(os.pathsep) if d]
+    ours = [home / d for d in LINK_DIRS] + [Path('/opt/homebrew/bin'), Path('/usr/local/bin')]
+    ok = [d for d in on_path if d in ours and d.is_dir() and os.access(d, os.W_OK)]
+    where = ok[0] if ok else home / LINK_DIRS[0]
+    path = where / 'mindbaton'
+    if path.exists() and OWN not in path.read_bytes()[:400]:
+        return None
+    write_file(path, "#!/bin/sh\n# the mindbaton command, made by Mindbaton's installer (uninstall removes it)\n"
+                     f'exec {shlex.quote(sys.executable)} {shlex.quote(str(target))} "$@"\n', 0o755)
+    return path, where in on_path
+
+
 def load_cfg():
     try:
         return json.loads(CFG.read_text())
@@ -2885,7 +2908,12 @@ def cmd_install(o):
         log('install: linking instead' if where else 'install: quit at the start')
         return cmd_connect(o, welcome=False) if where == 'link' else print(f'\n  Run ./install.sh again any time.\n')
     local, lan = ctx['urls']
+    link = command_link()
+    global CLI
+    CLI = 'mindbaton' if link and link[1] else CLI
     print(f"\n  Mindbaton  {local}" + (f"\n  Phone      {lan}" if lan else '') +
+          (f"\n  Command    mindbaton update · mindbaton doctor" + ('' if link[1] else f"  (open a new terminal first, or add "
+                                                                    f"{tilde(link[0].parent)} to your PATH)") if link else '') +
           (f"\n  Start it   {START_HINT}" if ctx['mode'] == 'manual' else '') +
           (f"\n  Not done   {', '.join(ctx['failed'])}" if ctx['failed'] else '') +
           f"\n  Check      {CLI} doctor\n  Log        {tilde(LOG)}\n")
@@ -3393,6 +3421,8 @@ def cmd_update(o):
                         f"Please open an issue with the details from {tilde(LOG)}.") from None
                 raise
         ui.task('Self-test', tested, lambda _: 'all good')
+        ui.task('The mindbaton command', command_link, lambda r: 'mindbaton update works from any folder' if r and r[1]
+                else f'open a new terminal to use it (or add {tilde(r[0].parent)} to your PATH)' if r else 'the name is taken: skipped')
         if CFG.exists():
             ui.task('Capture script updated', install_client)
         kind = service_kind()
@@ -3559,6 +3589,9 @@ def cmd_uninstall(o):
                    f'the lines with "mindbaton.py hook" in {tilde(codex_toml() if t == "codex" else HOOKS[t][0]())}')
         for p in ('config.json', 'queue.json', '.queue.lock', 'mcp_stdio.py', 'server.log') + (() if left else ('mindbaton.py',)):
             (MB / p).unlink(missing_ok=True)
+        for d in [Path.home() / d for d in LINK_DIRS] + [Path('/opt/homebrew/bin'), Path('/usr/local/bin')]:
+            if (d / 'mindbaton').is_file() and OWN in (d / 'mindbaton').read_bytes()[:400]:
+                (d / 'mindbaton').unlink(missing_ok=True)
         for p in ('chats', 'assets'):
             shutil.rmtree(MB / p, ignore_errors=True)
         for p in MB.glob('*-snippet.json'):
@@ -3793,6 +3826,22 @@ def selfcheck():
         for k, v in saved.items():
             os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
         shutil.rmtree(home, ignore_errors=True)
+    if os.name != 'nt':  # the `mindbaton` command: in a folder on PATH, again the same file, never over another program
+        import tempfile
+        tmp, env = Path(tempfile.mkdtemp()), {k: os.environ.get(k) for k in ('HOME', 'PATH')}
+        try:
+            os.environ['HOME'] = str(tmp)
+            (tmp / '.local/bin').mkdir(parents=True)
+            os.environ['PATH'] = str(tmp / '.local/bin') + os.pathsep + (env['PATH'] or '')
+            path, on = command_link()
+            assert on and path == tmp / '.local/bin/mindbaton' and os.access(path, os.X_OK) and OWN in path.read_bytes()
+            assert command_link()[0] == path
+            path.write_text('#!/bin/sh\necho another program\n')
+            assert command_link() is None and 'another program' in path.read_text()
+        finally:
+            for k, v in env.items():
+                os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+            shutil.rmtree(tmp, ignore_errors=True)
     print('cli ok')
 
 
