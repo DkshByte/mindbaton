@@ -61,9 +61,12 @@ it to forget stays forgotten. A backup first never hurts.
 **Installed with `install.sh`:**
 
 ```sh
-cd ~/mindbaton
-python3 mindbaton.py update   # downloads, runs the self-test (goes back if it fails), restarts the service
+mindbaton update   # from any folder: downloads, runs the self-test (goes back if it fails), restarts the service
 ```
+
+The installer adds the `mindbaton` command (to `~/.local/bin`, or Homebrew's folder on a Mac). On an install older than
+that, run `cd ~/mindbaton && python3 mindbaton.py update` once: the update adds the command, and from then on
+`mindbaton update` is all you need. `mindbaton doctor` checks everything; `mindbaton --help` lists the rest.
 
 **Docker** (Windows, macOS, Linux, NAS), in the folder with `compose.yaml`:
 
