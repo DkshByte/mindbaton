@@ -3903,6 +3903,11 @@ def main(argv):
     p, o = parse(argv)
     if not o.cmd:
         return p.print_help()
+    if o.cmd != 'uninstall':  # any command (not just a fresh install or update) makes sure `mindbaton` works from any folder
+        try:
+            command_link()
+        except OSError as e:
+            log('command link:', repr(e))
     try:
         {'install': cmd_install, 'connect': cmd_connect, 'doctor': cmd_doctor, 'update': cmd_update, 'keys': cmd_keys,
          'models': cmd_models, 'uninstall': cmd_uninstall, 'import': cmd_import, 'autoupdate': cmd_autoupdate}[o.cmd](o)
