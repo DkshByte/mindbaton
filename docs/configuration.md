@@ -19,6 +19,10 @@ restart Mindbaton. Real environment variables win over the file. With Docker, us
 | `MINDBATON_GEMINI_MODEL` | `gemini-3.6-flash` | Gemini model for hand-off summaries. |
 | `MINDBATON_GROQ_MODEL` | `openai/gpt-oss-120b` | Groq model, used when Gemini isn't available. |
 | `GEMINI_KEY`, `GROQ_KEY` | *(none)* | Keys for the optional AI. Easier: paste them on the Setup page, which tests and saves them to `ai_keys` in your data folder. |
+| `MINDBATON_BRAIN` | `auto` | Mindbaton's own model reads, in the background, what the rules couldn't (see below). `auto` = on when this computer has 12 GB of memory or more; `on`; `off`. |
+| `MINDBATON_BRAIN_URL` | *(none)* | Use a model server elsewhere instead (a `llama-server` or LM Studio on your laptop, e.g. `http://192.168.1.20:8080`): nothing is downloaded here. |
+| `MINDBATON_BRAIN_MODEL` | `1972521116s/mindbaton-brain-2b` | The Hugging Face repo the model comes from. |
+| `MINDBATON_BRAIN_BATTERY` | `0` | `1` lets the model read while a laptop runs on battery. |
 | `MINDBATON_WATCH_CLAUDE` | `1` | `0` stops Mindbaton reading Claude Code's chat history from `~/.claude/projects` on this computer. Docker sets `0` (there's nothing to read inside the container). |
 | `MINDBATON_UPDATE_CHECK` | `1` | `0` stops the once-a-day check with GitHub for a newer release (the "update available" notice admins see). |
 
@@ -41,6 +45,21 @@ short answers on the search page (with the memories they came from). It tries Ge
   that provider only.
 - No key, or `MINDBATON_AI=0`: Mindbaton uses rule-made topic names and a plain extract as the hand-off pack.
 
+## Mindbaton's own model
+
+Rules read most of what you tell your AIs. For the rest (the way people really type: "5-a-side football every thursday",
+"zero caffeine since march") Mindbaton has its own small model: Qwen3.5-2B fine-tuned on made-up examples only, 1.3 GB.
+
+- On a computer with 12 GB of memory or more it turns on by itself. The first time, it downloads the model and the
+  llama.cpp engine (about 1.3 GB, once) into `brain/` in your data folder.
+- It only reads messages the rules found nothing in, one at a time, at low priority on half the processor, and shuts the
+  engine down after 5 idle minutes. On a laptop it waits while you're on battery. It uses about 1.5 GB of memory while
+  reading.
+- Everything stays on your computer. The rules check every fact it reads (the words must be in your message, never from
+  a question or a "maybe") before it's saved, and what it read is kept, so it never reads the same message twice.
+- Mindbaton on a small server, but a laptop with memory to spare? Run `llama-server` on the laptop and set
+  `MINDBATON_BRAIN_URL` on the server; it reads whenever the laptop is on.
+
 ## What's in the data folder
 
 | File | What it is |
@@ -48,6 +67,7 @@ short answers on the search page (with the memories they came from). It tries Ge
 | `mindbaton.db` | Everything: every message as it arrived (secrets removed), and the memory graph built from it. |
 | `ai_keys` | Optional AI keys (only readable by you). |
 | `access.log` | One line per request made with a connector token (the Claude and ChatGPT apps). |
+| `brain/` | Mindbaton's own model and its engine, if this computer runs it (about 1.3 GB). Safe to delete; it downloads again. |
 
 The folder is created readable only by you. Back it up — see [backup and upgrade](backup-and-upgrade.md).
 

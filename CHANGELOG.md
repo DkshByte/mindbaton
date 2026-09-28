@@ -16,6 +16,10 @@
   e-bike yesterday!": a small learner in plain Python (trained on made-up examples, some written by an open model,
   never on your messages) reads what no rule covers, only when it's sure. Everyday phrasings: 2/30 → 29/30 on the
   benchmark; on sets it never saw, 17/30 and 14/30, with no made-up facts.
+- **Mindbaton's own model.** Qwen3.5-2B fine-tuned on made-up examples, run by a downloaded llama.cpp at low priority,
+  reads in the background the messages the rules found nothing in; the rules check every fact before it's saved. On in
+  `auto` with 12 GB of memory or more; `MINDBATON_BRAIN_URL` uses a model server on another computer. Unseen everyday
+  sentences: 28/30 facts, no made-up facts (the rules and learner alone: 14/30).
 - Search results say how they matched (a direct answer, a thing you named, your words, or meaning only).
 - The memory is rebuilt once on update (logic version 17).
 

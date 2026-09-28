@@ -40,7 +40,7 @@ def load_env(path=os.path.join(HERE, "mindbaton.env")):
 
 
 load_env()
-import ai, brain, handoff, learn, live, sense  # noqa: E402  (after the env file: ai.py reads its settings at import)
+import ai, brain, deep, handoff, learn, live, sense  # noqa: E402  (after the env file: ai.py reads its settings at import)
 
 HOST = os.environ.get("MINDBATON_HOST", "127.0.0.1")
 PORT = int(os.environ.get("MINDBATON_PORT", 3004))
@@ -567,7 +567,7 @@ class Graph:
 
     # ---- ingest --------------------------------------------------------------------------------------------------
     def ingest(self, text, site=None, chat=None, url=None, ts=None, entities=None, relations=None, store=True, recluster=True,
-               meta=None, ctx=None):
+               meta=None, ctx=None, deep=None, again=True):
         """meta: where it came from beyond the site — session (conversation key), model, model_src, ai, client.
         Stored with the capture, so a rebuild re-derives the same attribution."""
         hint = brain.hints(text)
@@ -615,6 +615,7 @@ class Graph:
             people = {k for (k,) in self.db.execute("SELECT key FROM nodes WHERE kind='entity' AND type='person'")}
             mems = brain.analyse(text, ts, self.last_thing(ctx, ai, ts), self.last_person(ctx, ts), people,
                                  learner=not (url or "").startswith("memory://"))  # notes are an agent's prose, not chat
+            self.with_deep(mems, deep)
         src = {k: v for k, v in {"ai": ai, "chat": chat, "ts": ts, "ctx": ctx, "model": live.model_name(meta.get("model")),
                                  "note": 1 if (url or "").startswith("memory://") else None}.items() if v}
         for m in mems:
@@ -623,7 +624,7 @@ class Graph:
         try:
             ids = []
             for m in mems:
-                i = self.add(m, src, ts, ctx)
+                i = self.add(m, src, ts, ctx, again)
                 if i:
                     ids.append(i)
                     if ctx and not [e for e in m["entities"] if e[2] not in ("value",)]:
@@ -636,7 +637,8 @@ class Graph:
         self.dirty = True
         return ids
 
-    def add(self, m, src, ts, ctx):
+    def add(self, m, src, ts, ctx, again=True):
+        """again: this is the message said (a repeat counts); False when the model re-reads a message already stored."""
         k = mkey(m["text"])
         if not k or self.forgotten("memory", k):
             return None
@@ -659,10 +661,13 @@ class Graph:
             row = self.db.execute("SELECT sources, status, conf FROM nodes WHERE id=?", dup).fetchone()
             if row[1] != "active" and not sig:
                 return dup[0]
-            sources = (json.loads(row[0]) + [src])[-20:]
-            conf = 1 - (1 - (row[2] or .5)) * (1 - m["conf"] * .5)
-            self.db.execute("""UPDATE nodes SET count=count+1, updated=max(updated, ?), importance=min(1, importance+.05),
-                               sources=?, conf=? WHERE id=?""", (ts, json.dumps(sources), round(conf, 3), dup[0]))
+            if again:
+                sources = (json.loads(row[0]) + [src])[-20:]
+                conf = 1 - (1 - (row[2] or .5)) * (1 - m["conf"] * .5)
+                self.db.execute("""UPDATE nodes SET count=count+1, updated=max(updated, ?), importance=min(1, importance+.05),
+                                   sources=?, conf=? WHERE id=?""", (ts, json.dumps(sources), round(conf, 3), dup[0]))
+            if m.get("deep") and row[1] == "active":
+                self._more(dup[0], m, ts)
             return dup[0]
         # 2. a new memory
         emb = sense.vec(m["text"])
@@ -672,6 +677,54 @@ class Graph:
                                json.dumps(m["terms"]), json.dumps([src]), json.dumps([list(r) for r in rels]), sig,
                                m.get("when"), m["conf"], ctx, sense.pack(emb))).lastrowid
         self.db.execute("INSERT INTO fts(rowid, label) VALUES(?,?)", (mid, m["text"]))
+        self._assert(mid, m, rels, ts)
+        # 4. a newer value for the same slot ("my favourite movie is ...") replaces the older memory
+        for slot in m["slots"]:
+            if slot.startswith("me.") and slot[3:] in brain.EXCLUSIVE:
+                continue  # handled in _assert, fact by fact, so the rest of an older memory survives
+            for (old,) in self.db.execute("""SELECT id FROM nodes WHERE kind='memory' AND status='active' AND id!=?
+                                             AND slots LIKE ?""", (mid, '%' + json.dumps(slot) + '%')).fetchall():
+                self.retire(old, mid)
+        # 5. links to the most similar memories: the same words, or the same subject in other words
+        cands = [i for i in self.candidates(m["terms"]) if i in self.vec and i != mid]
+        for s, other in sorted(((self.sim(m["terms"], self.vec[i]), i) for i in cands), reverse=True)[:3]:
+            if s >= .2:
+                self.edge(min(mid, other), max(mid, other), "similar", round(s, 3))
+        for n, (c, other) in enumerate(self.near(emb, 3, skip=mid)):
+            if c >= (.28 if n == 0 else .36):  # the closest in meaning; more only when clearly the same subject
+                self.edge(min(mid, other), max(mid, other), "similar", round(c, 3))
+        self.index(mid, m["terms"], emb)
+        # 6. a phrase said in two memories becomes a concept ("thumbnail generator")
+        for t in m["terms"]:
+            if t.startswith("#") and len(self.post[t]) >= 2:
+                p = t[1:]
+                if p not in self.ekeys and not self.forgotten("entity", p) and len(p.split()) >= 2:
+                    cid = self.entity(p, p, "concept", ts)
+                    for other in self.post[t]:
+                        self.edge(other, cid, "mentions")
+                elif p in self.ekeys:
+                    self.edge(mid, self.ekeys[p], "mentions")
+        return mid
+
+    def _more(self, mid, m, ts):
+        """Facts a stored memory didn't have yet (the model read what the rules missed): asserted on it now."""
+        row = self.db.execute("SELECT rels, type FROM nodes WHERE id=?", (mid,)).fetchone()
+        have = {tuple(r) for r in json.loads(row[0])}
+        new = sorted({tuple(r) for r in m["relations"]} - have)
+        if not new and not m["retracts"]:
+            return
+        ends = {x for a, _, b in new for x in (a, b)}
+        self._assert(mid, dict(m, entities=[e for e in m["entities"] if e[0] in ends], switched=[], renames=[]), new, ts)
+        rels = sorted(have | set(new))
+        typ = row[1] if row[1] in PERSONAL or not any(a == "me" for a, _, _ in new) else m["type"] if m["type"] in PERSONAL else "fact"
+        sig = json.dumps(sorted(r for r in rels if r[1] != "related")) if typ in PERSONAL and any(r[0] == "me" for r in rels) else None
+        self.db.execute("UPDATE nodes SET rels=?, type=?, sig=?, conf=max(coalesce(conf, 0), ?) WHERE id=?",
+                        (json.dumps([list(r) for r in rels]), typ, sig, m["conf"], mid))
+
+    def _assert(self, mid, m, rels, ts):
+        """A memory's facts into the graph: its things, its relations (one value at a time where that's the rule), what it
+        takes back, what it settles, and names that turn out to be one thing."""
+        personal = m["type"] in PERSONAL
         ent = {}
         for ek, label, etype in m["entities"]:
             if ek and not self.forgotten("entity", ek):
@@ -723,33 +776,6 @@ class Graph:
                 if new not in self.ekeys:
                     self.entity(new, label, self.db.execute("SELECT type FROM nodes WHERE id=?", (self.ekeys[old],)).fetchone()[0], ts)
                 self.merge(old, new)
-        # 4. a newer value for the same slot ("my favourite movie is ...") replaces the older memory
-        for slot in m["slots"]:
-            if slot.startswith("me.") and slot[3:] in brain.EXCLUSIVE:
-                continue  # handled above, fact by fact, so the rest of an older memory survives
-            for (old,) in self.db.execute("""SELECT id FROM nodes WHERE kind='memory' AND status='active' AND id!=?
-                                             AND slots LIKE ?""", (mid, '%' + json.dumps(slot) + '%')).fetchall():
-                self.retire(old, mid)
-        # 5. links to the most similar memories: the same words, or the same subject in other words
-        cands = [i for i in self.candidates(m["terms"]) if i in self.vec and i != mid]
-        for s, other in sorted(((self.sim(m["terms"], self.vec[i]), i) for i in cands), reverse=True)[:3]:
-            if s >= .2:
-                self.edge(min(mid, other), max(mid, other), "similar", round(s, 3))
-        for n, (c, other) in enumerate(self.near(emb, 3, skip=mid)):
-            if c >= (.28 if n == 0 else .36):  # the closest in meaning; more only when clearly the same subject
-                self.edge(min(mid, other), max(mid, other), "similar", round(c, 3))
-        self.index(mid, m["terms"], emb)
-        # 6. a phrase said in two memories becomes a concept ("thumbnail generator")
-        for t in m["terms"]:
-            if t.startswith("#") and len(self.post[t]) >= 2:
-                p = t[1:]
-                if p not in self.ekeys and not self.forgotten("entity", p) and len(p.split()) >= 2:
-                    cid = self.entity(p, p, "concept", ts)
-                    for other in self.post[t]:
-                        self.edge(other, cid, "mentions")
-                elif p in self.ekeys:
-                    self.edge(mid, self.ekeys[p], "mentions")
-        return mid
 
     def canon(self, k):
         """The key a name stands for now: a renamed thing's new name; "my wife" once exactly one wife has a name."""
@@ -793,6 +819,49 @@ class Graph:
             JOIN nodes e ON e.id = x.dst AND e.type = 'person' WHERE m.kind='memory' AND m.ctx = ? AND m.created BETWEEN ? AND ?
             ORDER BY m.created DESC, x.rowid DESC LIMIT 1""", (ctx, ts - 6 * 3600, ts)).fetchone() if ctx else None
         return row and row[0]
+
+    @staticmethod
+    def with_deep(mems, deep):
+        """The model's facts (checked by deep.check) join the memory the rules made from the words that hold them."""
+        kinds = {"likes": "preference", "dislikes": "preference", "avoids": "preference", "learning": "goal", "working on": "goal",
+                 "wants": "goal"}
+        for f in deep or []:
+            m = next((x for x in mems if f["what"].lower() in x["text"].lower()), mems[0] if mems else None)
+            if m is None:
+                return
+            who, e = "me" if f["who"] == "me" else brain.key(f["who"]), brain._typed(f["what"], f["rel"], brain.LEARNED_KIND.get(f["rel"]))
+            if f["op"] == "-":
+                m["retracts"].append((who, f["rel"], e[0]))
+            else:
+                m["entities"].append((e[0], e[1], "person") if f["rel"] in brain.KIN else e)
+                if who != "me":
+                    m["entities"].append((who, f["who"], "person"))
+                m["relations"].append((who, f["rel"], e[0]))
+                if who == "me" and f["rel"] in brain.EXCLUSIVE:
+                    m["slots"].append("me." + f["rel"])
+                if who == "me" and m["type"] not in PERSONAL:
+                    m["type"] = kinds.get(f["rel"], "fact")
+                if "terms" in m:
+                    m["terms"]["@" + e[0]] = m["terms"].get("@" + e[0], 0) + 2
+            m["conf"], m["deep"] = max(m["conf"], .8), True
+
+    def unread(self):
+        """The newest message the model hasn't read, and how many are left: ((capture id, text, url, site) | None, count)."""
+        q = "FROM captures WHERE extra IS NULL OR json_extract(extra, '$.deep') IS NULL"
+        return self.db.execute(f"SELECT id, text, url, site {q} ORDER BY ts DESC LIMIT 1").fetchone(), \
+            self.db.execute(f"SELECT count(*) {q}").fetchone()[0]
+
+    def deep_read(self, cid, facts, version):
+        """What the model read in a capture: kept with it (a rebuild replays it) and given to the memories it made."""
+        r = self.db.execute("SELECT text, site, chat, url, ts, extra FROM captures WHERE id=?", (cid,)).fetchone()
+        if not r:
+            return
+        x = json.loads(r[5]) if r[5] else {}
+        x["deep"] = {"v": version, "facts": facts}
+        self.db.execute("UPDATE captures SET extra=? WHERE id=?", (json.dumps(x), cid))
+        if facts:
+            self.ingest(r[0], r[1], r[2], r[3], r[4], x.get("entities"), x.get("relations"), store=False, again=False, deep=facts,
+                        meta={k: v for k, v in x.items() if k not in ("entities", "relations", "deep")})
 
     def edge_live(self, triple):
         a, rel, b = triple
@@ -1615,7 +1684,8 @@ class Graph:
         for text, site, chat, url, ts, extra in rows:
             x = json.loads(extra) if extra else {}
             self.ingest(text, site, chat, url, ts, x.get("entities"), x.get("relations"), store=False, recluster=False,
-                        meta={k: v for k, v in x.items() if k not in ("entities", "relations")})
+                        meta={k: v for k, v in x.items() if k not in ("entities", "relations", "deep")},
+                        deep=(x.get("deep") or {}).get("facts"))
         live.relink_all(self, reread=True)
         self.meta("logic", LOGIC_VERSION)
         self.dirty = True
@@ -2119,7 +2189,7 @@ def setup_status(g, base):
                        "claude_code": {"last": cc[0], "chats": cc[1]}, "apps": apps},
             "phone": {"ok": bool(phone or dev["phone"]["recent"]), "last": last(phone, dev["phone"]["last"]), "url": base},
             "connector": {"ok": dev["connector"]["recent"], "configured": dev["connector"]["tokens"] > 0, "last": dev["connector"]["last"]},
-            "ai": ai.status()}
+            "ai": ai.status(), "brain": deep.status()}
 
 
 def save_ai_key(provider, key):
@@ -3289,6 +3359,7 @@ if __name__ == "__main__":
         brain.selfcheck()
         sense.selfcheck()
         learn.selfcheck()
+        deep.selfcheck()
         handoff.selfcheck()
         selfcheck()
         authcheck()
@@ -3318,6 +3389,7 @@ if __name__ == "__main__":
     NAMING = True  # only the running server asks the AI for topic names (never tests or the benchmark)
     if os.environ.get("MINDBATON_UPDATE_CHECK", "1") != "0":
         update_watch()
+    deep.start(lambda: list(GRAPHS.values()), LOCK)  # the model reads in the background, if this computer can run it
     code = setup_code()
     if code:
         print(f"Setup code: {code} — open {link(code)}", flush=True)
