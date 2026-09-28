@@ -15,6 +15,12 @@ left from its real speed, facts found (each checked by the rules), read this ses
 and memory — over the last two minutes. Downloading shows MB, measured speed and time left. Idle, it goes back to one
 line of status. Graphs here are data, not decoration.
 
+## The live card (sidebar)
+Under the wordmark, one card instead of a "Live" dot: an honest state — **Live** (a radiating ring only while memories
+arrive, the last 10 minutes; still otherwise), **Quiet** (amber, nothing for 2 days), **Reconnecting…** (a spinner) —
+then the AI that sent the last memory and when, and 14 thin bars of memories per day with today in green. It opens Setup.
+Never a green "Live" that isn't true.
+
 ## Baton in the product
 The sidebar shows Baton beside the real wordmark lettering (both inlined at runtime from `assets/brand/`, so there is one
 source and `currentColor` follows the theme). Baton **reacts**: it hops forward when a memory arrives and dims when the

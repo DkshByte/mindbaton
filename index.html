@@ -109,7 +109,23 @@ img.lg { object-fit: contain; }
 .wordmark { display: flex; align-items: center; color: var(--fg); }
 .wordmark svg { height: 21px; width: auto; display: block; }
 .brand b { font-weight: 600; font-size: 15px; letter-spacing: -.01em; }
-.brand .live { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--fg-3); }
+/* the live card: an honest state, who sent the last memory and when, and 14 days of activity. It only moves while
+   memories are actually arriving; quiet after two days; a spinner while reconnecting. */
+.pulse { margin: 0 8px 8px; padding: 9px 11px 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--glass); display: grid; gap: 9px;
+  text-align: left; transition: background .15s, border-color .15s; }
+.pulse:hover { background: var(--glass-hi); border-color: var(--line-2); }
+.pl-top { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--fg-2); min-width: 0; }
+.pl-top b { color: var(--fg); font-weight: 600; }
+.pl-src { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; color: var(--fg-3); white-space: nowrap; overflow: hidden; min-width: 0; font-size: 12px; }
+.pl-dot { position: relative; width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--ok); }
+.pl-dot.quiet { background: #ffc53d; }
+.pl-dot.hot::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; border: 1.5px solid var(--ok); animation: ripple 1.8s ease-out infinite; }
+@keyframes ripple { from { transform: scale(.4); opacity: .9; } to { transform: scale(1.3); opacity: 0; } }
+.pl-dot.off { width: 10px; height: 10px; background: none; border: 1.6px solid var(--danger); border-top-color: transparent; animation: plspin .9s linear infinite; }
+@keyframes plspin { to { transform: rotate(360deg); } }
+.pl-bars { display: flex; align-items: flex-end; gap: 2px; height: 20px; }
+.pl-bars i { flex: 1; min-height: 2px; border-radius: 1.5px; background: var(--fg-3); opacity: .38; transition: height .6s var(--ease); }
+.pl-bars i.today { background: var(--ok); opacity: .95; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--fg-3)); flex: none; }
 .dot.on { background: var(--ok); }
 .dot.off { background: var(--danger); }
@@ -861,7 +877,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
 .toast-act:hover { background: rgba(255, 255, 255, .16); }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .fresh { animation: rise .4s var(--ease) both; }
-@media (prefers-reduced-motion: reduce) { .bl-state i, .brand-baton svg.hop, .fstack.deal > .feat, .fresh, .skel, .sk, .listen i, .sc.pop .tick, .aurora i { animation: none; } * { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .pl-dot.hot::after, .pl-dot.off, .bl-state i, .brand-baton svg.hop, .fstack.deal > .feat, .fresh, .skel, .sk, .listen i, .sc.pop .tick, .aurora i { animation: none; } * { transition: none !important; } }
 
 @media (max-width: 1100px) { .grid, .ygrid { grid-template-columns: 1fr; } .tgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .t-body { grid-template-columns: 1fr; } .wrap { padding: 28px 24px 56px; } }
 @media (max-width: 820px) {
@@ -869,7 +885,8 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
   .app { grid-template-columns: minmax(0, 1fr); height: auto; }
   .side { border-right: 0; border-bottom: 1px solid var(--line); -webkit-backdrop-filter: none; backdrop-filter: none; }  /* a filter here would pin the fixed tab bar to the top */
   .app > .side { z-index: 15; }  /* its tab bar floats over the page */
-  .side-scroll, .side-foot { display: none; }
+  .side-scroll, .side-foot, .pl-bars { display: none; }
+  .pulse { margin: 0 12px 10px; }
   /* phone: the views become a bottom tab bar, in reach of a thumb; every page leaves room for it */
   body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
   .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px;
@@ -947,8 +964,8 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
     <div class="brand">
       <span class="brand-baton" id="brand-baton" aria-hidden="true"></span>
       <span class="wordmark" id="wordmark"><b>Mindbaton</b></span>
-      <span class="live" id="live"><span class="dot"></span><span>—</span></span>
     </div>
+    <button class="pulse" id="pulse" type="button" data-view="setup"></button>
     <nav class="nav" aria-label="Views">
       <button data-view="overview" aria-current="page"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/></svg>You<kbd>1</kbd></button>
       <button data-view="topics"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>Topics<kbd>2</kbd></button>
@@ -1219,12 +1236,24 @@ function renderSide() {
     || `<li class="side-h" style="padding-top:0">No AI captured yet.</li>`;
   $("#n-sources").textContent = ais.length || "";
 }
+function renderPulse() {  // the live card
+  const mems = G.nodes.filter(n => n.kind === "memory"), last = mems.reduce((a, n) => (n.updated || 0) > (a?.updated || 0) ? n : a, null);
+  const since = last ? Date.now() / 1000 - last.updated : Infinity, ai = last?.srcs?.[0]?.ai || last?.ais?.[0];
+  const state = !online ? "off" : !last ? "quiet" : since < 600 ? "hot" : since > 2 * 86400 ? "quiet" : "on";
+  const d0 = new Date(); d0.setHours(0, 0, 0, 0);
+  const days = Array.from({ length: 14 }, (_, i) => mems.filter(m => { const t = m.updated * 1000, s = d0 - (13 - i) * 864e5; return t >= s && t < s + 864e5; }).length);
+  const top = Math.max(1, ...days), label = { off: "Reconnecting…", hot: "Live", on: "Live", quiet: "Quiet" }[state];
+  const src = !online ? "retrying" : ai ? `${aiLogo(ai)}${esc(ai)} · ${ago(last.updated)}` : "nothing captured yet";
+  const p = $("#pulse");
+  p.setAttribute("aria-label", `${label}. ${!online ? "Can't reach the server." : ai ? `Last memory from ${ai}, ${ago(last.updated)}.` : ""} Open Setup.`);
+  p.innerHTML = `<span class="pl-top"><span class="pl-dot ${state}"></span><b>${label}</b><span class="pl-src">${src}</span></span>
+    <span class="pl-bars" title="Memories per day, last 14 days">${days.map((n, i) => `<i${i === 13 ? ' class="today"' : ""} style="height:${n ? Math.max(18, n / top * 100) : 10}%"></i>`).join("")}</span>`;
+}
 function renderFoot() {
   const s = G.stats, last = Math.max(0, ...G.nodes.filter(n => n.kind === "memory").map(n => n.updated || 0));
-  $("#live").innerHTML = `<span class="dot ${online ? "on" : "off"}"></span><span>${online ? "Live" : "Offline"}</span>`;
+  renderPulse();
   $(".brand")?.classList.toggle("off", !online);
   $("#side-foot").innerHTML = `
-    <div class="row-s"><span>Last capture</span><b>${last ? ago(last) : "—"}</b></div>
     <div class="row-s"><span>${plural(s.memories ?? 0, "memory").replace("memorys", "memories")} · ${plural(s.entities ?? 0, "thing")}</span><b>${s.captures ?? 0} captured</b></div>
     <div class="row-s"><button class="btn-quiet" id="rebuild" title="Re-read every capture with the current understanding">${ICON.refresh}Re-read all</button></div>`;
 }
