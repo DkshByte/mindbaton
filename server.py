@@ -1163,6 +1163,7 @@ class Graph:
         if tid == into:
             raise ValueError("pick another topic")
         a, b, name = self._toks(tid), self._toks(into), self.topics[into]["name"]
+        self.meta("topic_undo", json.dumps([self.meta("topic_merges") or "[]", self.meta("topic_renames") or "{}"]))  # one step back
         merges = json.loads(self.meta("topic_merges") or "[]")
         grp = set(a) | set(b)
         grp |= {t for g in merges if grp & set(g) for t in g}  # ponytail: merges only grow; a "split" would drop a group here
@@ -1172,6 +1173,18 @@ class Graph:
         self.meta("topic_renames", json.dumps(dict(list(got.items())[-5000:])))
         self.dirty = True
         return {"ok": True, "name": name}
+
+    def undo_merge(self):
+        """Puts the topics back the way they were before the last merge."""
+        saved = self.meta("topic_undo")
+        if not saved:
+            raise ValueError("nothing to undo")
+        merges, renames = json.loads(saved)
+        self.meta("topic_merges", merges)
+        self.meta("topic_renames", renames)
+        self.db.execute("DELETE FROM meta WHERE k='topic_undo'")
+        self.dirty = True
+        return {"ok": True}
 
     def pagerank(self, by_ent, iters=30, d=.85):
         """How central each thing is: PageRank over relations and shared mentions (sizes things in the map)."""
@@ -2852,7 +2865,8 @@ class Handler(SimpleHTTPRequestHandler):
 
         routes = {"/capture": capture, "/remember": remember, "/rebuild": self.g.rebuild, "/session": session,
                   "/topic/rename": lambda: self.g.rename_topic(b.get("id"), b.get("name")),
-                  "/topic/merge": lambda: self.g.merge_topics(b.get("id"), b.get("into"))}
+                  "/topic/merge": lambda: self.g.merge_topics(b.get("id"), b.get("into")),
+                  "/topic/undo": self.g.undo_merge}
         if p == "/import":  # takes the lock per fact itself
             return self.api(lambda: import_memory(self.g, b), lock=False)
         if p in ("/brain/reread", "/brain/pause"):  # the model runs on this computer for everyone: admins only
@@ -2956,6 +2970,13 @@ def selfcheck():
     assert len(one()) == 1 and one()[0]["size"] >= ta["size"] + tb["size"], g.graph()["topics"]
     g.rebuild()
     assert len(one()) == 1 and one()[0]["size"] >= ta["size"] + tb["size"], "a merge and a name survive a rebuild"
+    g.undo_merge()
+    assert len(one()) == 1 and one()[0]["size"] < ta["size"] + tb["size"], "undo splits the merge and keeps the earlier rename"
+    try:
+        g.undo_merge()
+        raise AssertionError("undid twice")
+    except ValueError:
+        pass
     for bad in (0, 10 ** 9, "x", None):
         try:
             g.rename_topic(bad, "x")

@@ -63,7 +63,7 @@ img.lg { object-fit: contain; }
 .brand b { font-weight: 600; font-size: 15px; letter-spacing: -.01em; }
 .brand .live { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--fg-3); }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--fg-3)); flex: none; }
-.dot.on { background: var(--ok); box-shadow: 0 0 0 3px rgba(61, 214, 140, .15); }
+.dot.on { background: var(--ok); }
 .dot.off { background: var(--danger); }
 .nav { padding: 4px 8px; display: grid; gap: 1px; }
 .nav button { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--r-sm); color: var(--fg-2); font-weight: 500;
@@ -239,7 +239,7 @@ code { font: 12px var(--mono); color: var(--fg); background: var(--panel-3); bor
 :is(.sc, .feat-top) .st { flex: none; display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--fg-3); white-space: nowrap; }
 :is(.sc, .feat-top) .st i { width: 7px; height: 7px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--fg-3); }
 :is(.sc, .feat-top) .st.ok { color: var(--ok); }
-:is(.sc, .feat-top) .st.ok i { background: var(--ok); box-shadow: 0 0 0 3px rgba(61, 214, 140, .15); }
+:is(.sc, .feat-top) .st.ok i { background: var(--ok); box-shadow: none; }
 .deck-p { grid-column: 1 / -1; order: 99; background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--r); padding: 16px 18px 20px; }
 .deck-b { display: grid; gap: 14px; }
 .deck-h { display: flex; align-items: flex-start; gap: 12px; }
@@ -257,7 +257,7 @@ code { font: 12px var(--mono); color: var(--fg); background: var(--panel-3); bor
 .tick svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 .tick svg.i { stroke-width: 1.7; }
 .feat { position: relative; overflow: hidden; isolation: isolate; margin-top: 16px; padding: 22px 24px 20px; border-radius: 12px; border: 1px solid var(--line-2); display: grid; gap: 14px;
-  background: radial-gradient(120% 160% at 0% 0%, rgba(255, 255, 255, .07), transparent 55%), var(--panel); }
+  background: var(--panel); }
 .feat-top { display: flex; align-items: center; gap: 14px; }
 .feat-top .tx { flex: 1; min-width: 0; }
 .feat-ic { width: 44px; height: 44px; flex: none; border-radius: 11px; background: var(--panel-3); border: 1px solid var(--line-2); display: grid; place-items: center; color: var(--fg); }
@@ -335,6 +335,10 @@ dialog.help dt kbd { font: 11.5px var(--mono); border: 1px solid var(--line-2); 
 dialog.help dd { margin: 0; color: var(--fg-2); }
 
 /* topics */
+@property --a1 { syntax: "<color>"; inherits: true; initial-value: #6cb8ff; }
+@property --a2 { syntax: "<color>"; inherits: true; initial-value: #a99bff; }
+@property --a3 { syntax: "<color>"; inherits: true; initial-value: #f78fb3; }
+@property --a4 { syntax: "<color>"; inherits: true; initial-value: #f5c451; }
 /* the aurora: your busiest topics' colours glow from the top edge behind the whole app (sidebar and top bar are frosted
    glass over it), drift, and brighten when something new arrives. Full on You, a faint wash elsewhere, off on the map. */
 .app { position: relative; isolation: isolate; }
@@ -342,7 +346,7 @@ dialog.help dd { margin: 0; color: var(--fg-2); }
 .aurora { position: absolute; left: 0; right: 0; top: 0; height: 640px; overflow: hidden; pointer-events: none; z-index: 0; opacity: .2;
   -webkit-mask: linear-gradient(#000 0%, rgba(0, 0, 0, .72) 22%, rgba(0, 0, 0, .34) 52%, rgba(0, 0, 0, .1) 78%, transparent 100%);
   mask: linear-gradient(#000 0%, rgba(0, 0, 0, .72) 22%, rgba(0, 0, 0, .34) 52%, rgba(0, 0, 0, .1) 78%, transparent 100%);
-  transition: opacity 1.4s var(--ease); }
+  transition: opacity 1.4s var(--ease), --a1 .9s, --a2 .9s, --a3 .9s, --a4 .9s; }
 .aurora.pulse { opacity: .45; transition-duration: .5s; }
 .app[data-view="overview"] .aurora { opacity: .55; }
 .app[data-view="overview"] .aurora.pulse { opacity: .9; }
@@ -359,6 +363,60 @@ dialog.help dd { margin: 0; color: var(--fg-2); }
 @keyframes aur2 { to { transform: translate(-16%, 70px) scale(.9); } }
 @keyframes aur3 { to { transform: translate(18%, 30px) scale(1.2); } }
 @keyframes aur4 { to { transform: translate(-24%, 60px) scale(1.05); } }
+/* first paint: shapes of what's coming, not a blank page */
+.sk { border-radius: 8px; background: linear-gradient(90deg, var(--panel), var(--panel-2), var(--panel)) 0 0 / 200% 100%; animation: skel 1.4s linear infinite; }
+.sk-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 28px; }
+/* the palette: jump anywhere, run anything (Ctrl/⌘ K) */
+.jump { display: flex; align-items: center; gap: 9px; margin: 0 8px 6px; padding: 7px 10px; border-radius: var(--r-sm); color: var(--fg-3); font-size: 13px;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, .02); transition: background .15s, color .15s, border-color .15s; }
+.jump:hover { color: var(--fg); background: var(--panel-2); border-color: var(--line-2); }
+.jump kbd { margin-left: auto; font: 10.5px var(--mono); color: var(--fg-3); border: 1px solid var(--line-2); border-radius: 4px; padding: 0 5px; }
+dialog.palette { margin: 11vh auto auto; width: min(640px, calc(100vw - 24px)); padding: 0; border-radius: 14px; border: 1px solid var(--line-2); color: var(--fg);
+  background: rgba(17, 17, 19, .9); -webkit-backdrop-filter: blur(28px) saturate(150%); backdrop-filter: blur(28px) saturate(150%);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .06); overflow: hidden; }
+dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
+.pal-in { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.pal-in svg.i { color: var(--fg-3); }
+.pal-in input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--fg); font: 400 16px var(--sans); }
+.pal-in input::placeholder { color: var(--fg-3); }
+.pal-in kbd, .pal-foot kbd { font: 10.5px var(--mono); color: var(--fg-3); border: 1px solid var(--line-2); border-radius: 4px; padding: 1px 5px; }
+.pal-list { max-height: min(56vh, 460px); overflow-y: auto; padding: 6px; }
+.pal-h { padding: 10px 10px 4px; font-size: 11.5px; font-weight: 500; color: var(--fg-3); }
+.pal-i { width: 100%; display: flex; align-items: center; gap: 11px; padding: 8px 10px; border-radius: 9px; font-size: 13.5px; text-align: left; color: var(--fg-2); }
+.pal-i > span.t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); }
+.pal-i .hint { font-size: 12px; color: var(--fg-3); white-space: nowrap; }
+.pal-i[aria-selected="true"] { background: var(--panel-3); }
+.pal-i[aria-selected="true"] .hint { color: var(--fg-2); }
+.pal-i > svg.i { width: 16px; height: 16px; margin: 0 3px; color: var(--fg-2); }
+.pal-i .kic, .pal-i .tm { flex: none; }
+.pal-i mark { background: none; color: var(--fg); font-weight: 600; text-decoration: underline; text-decoration-color: var(--line-3); text-underline-offset: 3px; }
+.pal-none { padding: 26px; text-align: center; color: var(--fg-3); font-size: 13px; }
+.pal-foot { display: flex; gap: 16px; padding: 9px 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--fg-3); }
+.pal-foot span { display: inline-flex; gap: 4px; align-items: center; }
+/* You: this week, what changed, what to ask */
+.week { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0 0; font-size: 14.5px; color: var(--fg); max-width: 70ch; text-wrap: pretty; }
+.week svg.i { flex: none; margin-top: 3px; color: var(--fg-2); }
+.chg { width: 100%; display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 11px 10px; border-radius: var(--r-sm); text-align: left; }
+.chg:hover { background: var(--panel-2); }
+.chg + .chg { box-shadow: 0 -1px 0 var(--line); }
+.chg .was { display: block; color: var(--fg-3); text-decoration: line-through; text-decoration-color: rgba(255, 99, 105, .55); font-size: 13px; }
+.chg .now { display: block; color: var(--fg); margin-top: 3px; }
+.chg .when { font: 12px var(--mono); color: var(--fg-3); padding-top: 1px; }
+.chg .kic { margin-top: 2px; }
+.asks { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px; }
+.chip.ask { height: auto; min-height: 34px; padding: 7px 14px 7px 11px; font-size: 13.5px; text-align: left; line-height: 1.35; }
+.chip.ask svg.i { width: 14px; height: 14px; color: var(--fg-3); }
+.chip.ask:hover svg.i { color: var(--fg); }
+/* the side panel: what you can do, first */
+.p-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.tl { position: relative; display: grid; gap: 2px; margin: 4px 0 0; padding-left: 22px; }
+.tl::before { content: ""; position: absolute; left: 7px; top: 12px; bottom: 12px; width: 1.5px; background: var(--line-2); }
+.tl button { position: relative; display: grid; gap: 2px; padding: 7px 8px; margin-left: -8px; border-radius: var(--r-sm); text-align: left; font-size: 13px; }
+.tl button:hover { background: var(--panel-2); }
+.tl button::before { content: ""; position: absolute; left: -19px; top: 12px; width: 9px; height: 9px; border-radius: 3px; background: var(--panel-3); box-shadow: 0 0 0 3px var(--panel); border: 1.5px solid var(--fg-3); }
+.tl button.cur::before { background: var(--ok); border-color: var(--ok); }
+.tl button.old span { color: var(--fg-3); text-decoration: line-through; text-decoration-color: rgba(255, 99, 105, .55); }
+.tl small { font: 11.5px var(--mono); color: var(--fg-3); }
 /* marks instead of dots: a kind of fact gets its icon, a topic its initial, both in a tile tinted with their colour */
 .kic { width: 26px; height: 26px; flex: none; border-radius: 8px; display: grid; place-items: center; color: color-mix(in srgb, var(--c) 88%, #fff);
   background: color-mix(in srgb, var(--c) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 28%, transparent); }
@@ -374,17 +432,15 @@ dialog.help dd { margin: 0; color: var(--fg-2); }
 .hero { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
 .hero > div:first-child { flex: 1; min-width: 280px; }
 .hero-act { display: flex; gap: 8px; flex-wrap: wrap; }
-.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin-top: 24px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-.kpi { background: var(--panel); padding: 14px 16px 13px; display: grid; gap: 1px; align-content: start; text-align: left; transition: background .15s; }
-.kpi:hover { background: var(--panel-2); }
-.kpi b { font: 500 26px/1.2 var(--mono); letter-spacing: -.03em; }
-.kpi span { font-size: 13px; color: var(--fg-2); }
-.kpi small { font-size: 12px; color: var(--fg-3); }
-.kpi small.up { color: var(--ok); }
-.kpi small.hot { color: var(--danger); }
+.stats { display: flex; flex-wrap: wrap; margin-top: 22px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.stat { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; padding: 12px 20px 12px 0; margin-right: 20px; font-size: 13.5px; color: var(--fg-2); }
+.stat b { font: 600 15px var(--mono); color: var(--fg); font-variant-numeric: tabular-nums; }
+.stat small { font-size: 12.5px; color: var(--fg-3); }
+.stat small.up { color: var(--ok); } .stat small.hot { color: var(--danger); }
+.stat:hover { color: var(--fg); } .stat:hover b { text-decoration: underline; text-decoration-color: var(--line-3); text-underline-offset: 4px; }
 .kinds { columns: 3 290px; column-gap: 12px; margin-top: 14px; }
 .kcard { break-inside: avoid; margin-bottom: 12px; padding: 14px 14px 15px; border-radius: 12px; border: 1px solid var(--line); display: grid; gap: 11px;
-  background: radial-gradient(130% 90% at 0% 0%, color-mix(in srgb, var(--c) 10%, transparent), transparent 60%), var(--panel); }
+  background: var(--panel); }
 .kcard h3 { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; }
 .kcard h3 .n { margin-left: auto; font: 12px var(--mono); color: var(--fg-3); }
 .ygrid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(300px, 1fr); gap: 20px; align-items: start; }
@@ -392,7 +448,7 @@ dialog.help dd { margin: 0; color: var(--fg-2); }
 .picks { display: grid; gap: 10px; }
 .picks.wide { grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); }
 .pick { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 12px 12px 12px; display: grid; gap: 10px; min-width: 0; }
-.pick.hot { border-color: rgba(255, 99, 105, .35); background: linear-gradient(180deg, rgba(255, 99, 105, .06), transparent 60%), var(--panel); }
+.pick.hot { border-color: rgba(255, 99, 105, .4); }
 .pick-main { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; text-align: left; padding: 2px 4px; border-radius: var(--r-sm); }
 .pick-main:hover b { text-decoration: underline; text-decoration-color: var(--line-3); text-underline-offset: 3px; }
 .pick-main b { font-weight: 500; font-size: 13.5px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -414,7 +470,7 @@ dialog.help dd { margin: 0; color: var(--fg-2); }
 /* topics: a grid of cards, then one topic at a time */
 .tgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
 .tcard { position: relative; display: grid; gap: 10px; align-content: start; padding: 16px 16px 14px; border-radius: 12px; border: 1px solid var(--line);
-  background: radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--c) 11%, transparent), transparent 60%), var(--panel); overflow: hidden;
+  background: var(--panel); overflow: hidden;
   transition: border-color .15s, transform .15s var(--ease), background-color .15s; }
 .tcard:hover { border-color: color-mix(in srgb, var(--c) 45%, var(--line-2)); transform: translateY(-2px); }
 .tcard:active { transform: none; }
@@ -458,12 +514,16 @@ dialog.help dd { margin: 0; color: var(--fg-2); }
 
 /* look up */
 .answer { display: flex; gap: 14px; align-items: flex-start; padding: 18px 20px; border-radius: var(--r);
-  background: linear-gradient(135deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, .02)); border: 1px solid var(--accent-line); margin: 22px 0 8px; }
+  background: var(--panel-2); border: 1px solid var(--accent-line); margin: 22px 0 8px; }
 .answer svg.i { color: var(--accent-strong); width: 18px; height: 18px; margin-top: 4px; }
 .answer p { margin: 0; font-size: 19px; font-weight: 500; letter-spacing: -.01em; }
 .answer small { display: block; margin-top: 4px; color: var(--fg-2); font-size: 12.5px; }
 .answer small button { color: var(--accent-strong); font: 12px var(--mono); }
-.empty { padding: 48px 0; text-align: center; color: var(--fg-2); }
+.empty { padding: 48px 16px; text-align: center; color: var(--fg-2); }
+.e-art { display: flex; justify-content: center; margin-bottom: 18px; }
+.e-art .kic { width: 44px; height: 44px; border-radius: 13px; background: color-mix(in srgb, var(--c) 16%, var(--panel)); }
+.e-art .kic svg.i { width: 21px; height: 21px; }
+.e-act { margin-top: 18px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .empty h3 { margin: 0 0 6px; color: var(--fg); font-size: 16px; font-weight: 600; }
 .empty p { margin: 0 auto; max-width: 440px; }
 
@@ -521,7 +581,9 @@ dialog.help dd { margin: 0; color: var(--fg-2); }
 .dg-legend div { display: flex; align-items: center; gap: 8px; }
 .dg-legend .lg-note { color: var(--fg-3); font-size: 11.5px; margin-top: 4px; }
 .lg-bubble { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--t2); background: color-mix(in srgb, var(--t2) 20%, transparent); flex: none; }
-.lg-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--t3); margin: 0 2px; flex: none; }
+.lg-dot { width: 10px; height: 10px; border-radius: 3px; background: color-mix(in srgb, var(--t3) 30%, transparent); box-shadow: inset 0 0 0 1.2px var(--t3); margin: 0 1px; flex: none; }
+.dg-legend .kic.sm { width: 20px; height: 20px; border-radius: 6px; }
+.dg-legend .kic.sm svg.i { width: 12px; height: 12px; }
 .lg-spark { width: 4px; height: 4px; border-radius: 50%; background: var(--fg); margin: 0 4px; flex: none; }
 .lg-line { width: 12px; height: 0; border-top: 1.5px solid var(--fg-3); flex: none; }
 .dg-tip { position: absolute; z-index: 3; max-width: 320px; pointer-events: none; background: rgba(23, 23, 26, .96); backdrop-filter: blur(10px);
@@ -540,8 +602,8 @@ dialog.help dd { margin: 0; color: var(--fg-2); }
 @property --glow { syntax: "<color>"; inherits: true; initial-value: #f4f4f5; }
 .gate { position: fixed; inset: 0; overflow-y: auto; display: grid; grid-template-rows: 1fr auto; background: var(--bg); z-index: 20;
   --glow: var(--accent); transition: --glow .6s var(--ease); }
-.gate::before { content: ""; position: fixed; left: 50%; top: -260px; width: min(1000px, 160vw); height: 560px; transform: translateX(-50%); pointer-events: none;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--glow) 12%, transparent), transparent); }
+.gate .aurora { opacity: .6; height: 720px; }
+.gate-in, .gate-foot { z-index: 1; }
 .gate-in { position: relative; align-self: center; justify-self: center; width: min(400px, 100%); padding: 56px 16px 32px; display: grid; justify-items: center; text-align: center; }
 .gate-in.wide { width: min(760px, 100%); }
 .gate-mark { width: 44px; height: 44px; border-radius: 11px; box-shadow: 0 0 0 1px var(--line-2), 0 10px 30px rgba(0, 0, 0, .5); margin-bottom: 24px; }
@@ -693,11 +755,19 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
   animation: skel 1.4s linear infinite; }
 @keyframes skel { to { background-position: -200% 0; } }
 
-.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--fg); color: #0b0b0d; padding: 8px 14px;
-  border-radius: 9px; font-size: 13px; font-weight: 500; box-shadow: 0 10px 30px rgba(0, 0, 0, .4); z-index: 9; }
+.toast { position: fixed; left: 0; right: 0; bottom: 24px; margin: 0 auto; width: max-content; max-width: calc(100vw - 32px); z-index: 30;
+  display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 12px; border-radius: 12px; font-size: 13.5px; font-weight: 500; color: var(--fg);
+  background: rgba(23, 23, 26, .9); border: 1px solid var(--line-2); box-shadow: 0 16px 40px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .06);
+  -webkit-backdrop-filter: blur(20px) saturate(150%); backdrop-filter: blur(20px) saturate(150%); }
+.toast:not(:has(.toast-act)) { padding-right: 14px; }
+.toast > svg.i { width: 16px; height: 16px; flex: none; }
+.toast > svg.i.ok { color: var(--ok); } .toast > svg.i.bad { color: var(--danger); }
+.toast .lg, .toast .tm { flex: none; }
+.toast-act { padding: 5px 11px; border-radius: 8px; font-size: 13px; font-weight: 600; background: var(--glass-hi); border: 1px solid var(--line-2); }
+.toast-act:hover { background: rgba(255, 255, 255, .16); }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .fresh { animation: rise .4s var(--ease) both; }
-@media (prefers-reduced-motion: reduce) { .fresh, .skel, .listen i, .sc.pop .tick, .aurora i { animation: none; } * { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .fresh, .skel, .sk, .listen i, .sc.pop .tick, .aurora i { animation: none; } * { transition: none !important; } }
 
 @media (max-width: 1100px) { .grid, .ygrid { grid-template-columns: 1fr; } .tgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .t-body { grid-template-columns: 1fr; } .wrap { padding: 28px 24px 56px; } }
 @media (max-width: 820px) {
@@ -751,9 +821,9 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
   .feat-top > .stack { display: none; }
   .brain-stats div { padding: 10px; }
   .brain-stats b { font-size: 17px; }
-  .tgrid, .imp-pair { grid-template-columns: 1fr; }
-  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .kpi b { font-size: 22px; }
+  .tgrid, .imp-pair, .sk-grid { grid-template-columns: 1fr; }
+  .jump { display: none; }
+  .stat { padding: 10px 0; margin-right: 18px; }
   .hero-act .btn { flex: 1; justify-content: center; }
   .cbar .inp { width: 100%; margin-left: 0; }
   .crow .btn span { display: none; }
@@ -782,6 +852,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
       <b>Mindbaton</b>
       <span class="live" id="live"><span class="dot"></span><span>—</span></span>
     </div>
+    <button class="jump" id="jump" type="button"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>Jump to…<kbd id="jump-k">Ctrl K</kbd></button>
     <nav class="nav" aria-label="Views">
       <button data-view="overview" aria-current="page"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/></svg>You<kbd>1</kbd></button>
       <button data-view="topics"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>Topics<kbd>2</kbd></button>
@@ -841,13 +912,20 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
   </div>
 </div>
 <main class="gate" id="gate" hidden>
+  <div class="aurora" id="gate-aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
   <div class="gate-in" id="gate-in"></div>
   <p class="gate-foot"><span><svg class="i" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg> Private — your memory stays on the computer Mindbaton runs on.</span></p>
 </main>
 <dialog class="sheet" id="sheet" aria-labelledby="sheet-title"></dialog>
 <div class="toast" id="toast" role="status" hidden></div>
+<dialog class="palette" id="palette" aria-label="Jump to">
+  <div class="pal-in"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+    <input id="pal-q" type="text" autocomplete="off" spellcheck="false" placeholder="Jump to a topic, chat or memory — or do something" role="combobox" aria-expanded="true" aria-controls="pal-list" aria-autocomplete="list"><kbd>Esc</kbd></div>
+  <div class="pal-list" id="pal-list" role="listbox" aria-label="Results"></div>
+  <div class="pal-foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span></div>
+</dialog>
 <dialog class="help" id="help" aria-label="Keyboard shortcuts"><h3>Shortcuts</h3><dl>
-  <dt><kbd>/</kbd></dt><dd>Search or ask your memory</dd><dt><kbd>Enter</kbd></dt><dd>Ask the AI to answer from your memory</dd>
+  <dt><kbd>Ctrl</kbd> <kbd>K</kbd></dt><dd>Jump to anything, or run an action</dd><dt><kbd>/</kbd></dt><dd>Search or ask your memory</dd><dt><kbd>Enter</kbd></dt><dd>Ask the AI to answer from your memory</dd>
   <dt><kbd>1</kbd>–<kbd>5</kbd></dt><dd>You · Topics · Chats · Map · Setup</dd><dt><kbd>Esc</kbd></dt><dd>Close details or clear the search</dd>
   <dt><kbd>?</kbd></dt><dd>This help</dd></dl><form method="dialog" style="margin-top:16px;text-align:right"><button class="btn sm">Close</button></form></dialog>
 
@@ -913,8 +991,10 @@ async function load(force) {
   let g;
   try { g = await api("/graph"); } catch (e) { if (e.status === 401) return; online = false; $("#offline").hidden = false; return renderFoot(); }
   online = true; $("#offline").hidden = true;
+  if (gone.size) { g.nodes = g.nodes.filter(n => !gone.has(n.id)); g.edges = g.edges.filter(e => !gone.has(e.src) && !gone.has(e.dst)); }
   const chatSig = g.nodes.filter(n => n.kind === "session").reduce((a, n) => a + (n.turns || 0) + "." + (n.updated || 0) + ",", "");
-  const sig = [g.stats.captures, g.stats.memories, g.stats.entities, g.edges.length, chatSig].join("/");
+  const sig = [g.stats.captures, g.stats.memories, g.stats.entities, g.edges.length, chatSig, [...gone.keys()]].join("/");
+  const before = lastSig && { topics: new Set(G.topics.map(t => t.id)), ais: new Set(Object.keys(G.stats.ais || {})), caps: G.stats.captures || 0 };
   if (!force && sig === lastSig) return renderFoot();
   const first = !lastSig; lastSig = sig;
   G = g; byId = new Map(g.nodes.map(n => [n.id, n]));
@@ -927,6 +1007,7 @@ async function load(force) {
   const fresh = new Set(g.nodes.filter(n => n.kind === "memory" && !seen.has(n.id)).map(n => n.id));
   g.nodes.forEach(n => seen.add(n.id));
   renderSide(); renderFoot(); renderOverview(first ? new Set() : fresh); renderTopics(first ? new Set() : fresh); renderChats();
+  if (before && (g.stats.captures || 0) > before.caps) celebrate(before);
   diagram.sync();
   if (selected != null && !byId.has(selected)) select(null); else renderPanel();
 }
@@ -1071,6 +1152,89 @@ function greeting() {
   return h < 5 ? "Up late" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }
 const WEEK = () => Date.now() / 1000 - 7 * 86400;
+const kpiSeen = new Map();
+function countUp(root) {  // numbers roll up the first time you see them, and from the old value when they change
+  root?.querySelectorAll(".stat b").forEach(b => {
+    const to = +b.textContent, key = root.id + ":" + b.nextElementSibling?.textContent, from = kpiSeen.get(key) ?? 0;
+    kpiSeen.set(key, to);
+    if (RM.matches || from === to || !Number.isFinite(to)) return;
+    const t0 = performance.now(), dur = from ? 500 : 900;
+    const step = now => { const p = Math.min(1, (now - t0) / dur); b.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(step); };
+    b.textContent = from; requestAnimationFrame(step);
+  });
+}
+const emptyState = (keys, title, text, act = "") => `<div class="empty"><span class="e-art" aria-hidden="true">${kic(keys[0], css("--fg-2"))}</span><h3>${title}</h3><p>${text}</p>${act ? `<div class="e-act">${act}</div>` : ""}</div>`;
+const EXT_URL = "https://chromewebstore.google.com/detail/mindbaton/nfadphcjimkchbapapbcphnbpajmfmih";
+function celebrate(before) {  // a first: a new topic formed, or an AI that never sent anything before
+  const t = G.topics.find(x => x.id && !before.topics.has(x.id));
+  const ai = Object.keys(G.stats.ais || {}).find(a => !before.ais.has(a));
+  if (t) toast(`New topic: ${t.name}`, { icon: tmark(t.id, 20), action: { label: "Open", fn: () => { openTopic = t.id; show("topics"); renderTopics(); } } });
+  else if (ai) toast(`First memory from ${ai}`, { icon: aiLogo(ai, "") });
+}
+function changes() {  // newer facts that replaced older ones, newest first
+  return G.edges.filter(e => e.rel === "replaces").map(e => ({ now: byId.get(e.src), was: byId.get(e.dst) }))
+    .filter(c => c.now?.kind === "memory" && c.was).sort((a, b) => b.now.updated - a.now.updated);
+}
+function weekLine(mems) {  // the rules' one-line "this week", from what was said and what changed
+  const wk = WEEK(), fresh = mems.filter(m => m.updated > wk);
+  if (!fresh.length) return "";
+  const by = {};
+  fresh.forEach(m => { if (m.cluster != null && m.cluster !== 0) by[m.cluster] = (by[m.cluster] || 0) + 1; });
+  const top = Object.entries(by).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => `<b>${esc(topicName(+k))}</b>`);
+  const moved = changes().filter(c => c.now.updated > wk).length;
+  return `This week: ${top.length ? "mostly " + top.join(" and ") : "a bit of everything"} — ${plural(fresh.length, "new memory").replace("memorys", "memories")}${
+    moved ? `, ${plural(moved, "thing")} changed` : ""}.`;
+}
+function asks(buckets) {  // questions your own memory can answer
+  const has = k => [...buckets.keys()].some(g => g.key === k), person = [...buckets].find(([g]) => g.key === "people")?.[1][0]?.o;
+  const t = topicData().filter(x => x.k !== 0 && x.k !== "loose").sort((a, b) => b.last - a.last)[0];
+  return [has("place") && "Where do I live?", has("project") && "What am I building?", t && `Where am I with ${t.name}?`, has("tool") && "Which tools do I use?",
+    person && `Who is ${person.label.replace(/^your /, "")}?`, has("like") && "What do I like?", has("want") && "What do I want to do next?", has("learn") && "What am I learning?"]
+    .filter(Boolean).slice(0, 6);
+}
+// ---- the palette ----
+let palItems = [], palAt = 0;
+function palSource() {
+  const go = (v, label, key) => ({ g: "Go to", icon: kic(key, css("--fg-2"), "sm"), label, hint: "page", run: () => show(v) });
+  const latest = chats()[0], acts = [
+    { g: "Do", icon: ICON.copy, label: "Copy briefing", hint: "for any AI chat", run: () => $("#copy-brief").click() },
+    { g: "Do", icon: ICON.spark, label: "Ask your memory…", hint: "/", run: () => { $("#q").focus(); $("#q").select(); } },
+    ...(latest ? HANDOFF_TO.filter(([, n]) => n !== chatAI(latest)).slice(0, 3).map(([host, n]) => ({ g: "Do", icon: aiLogo(n, ""), label: `Continue “${clip(latest.label, 30)}” in ${n}`,
+      hint: "hand-off", run: () => { const b = document.createElement("button"); b.innerHTML = "<span></span>"; handoff(latest.sid, host, b); } })) : []),
+    { g: "Do", icon: IC_IMPORT, label: "Bring your old memory", hint: "import", run: () => { show("setup"); setTimeout(() => $("#import-feat")?.scrollIntoView({ block: "start" }), 400); } },
+    { g: "Do", icon: ICON.refresh, label: "Re-read all captures", hint: "rebuild", run: () => $("#rebuild")?.click() },
+    go("overview", "You", "who"), go("topics", "Topics", "project"), go("chats", "Chats", "chat"), go("map", "Map", "other"), go("setup", "Setup", "tool")];
+  const topics = topicData().sort((a, b) => b.last - a.last).map(x => ({ g: "Topics", icon: tmark(x.k, 20), label: x.name, hint: plural(x.list.length, "entry").replace("entrys", "entries"),
+    run: () => { openTopic = x.k; topicMore.clear(); renaming = false; show("topics"); renderTopics(); } }));
+  const cs = chats().map(c => ({ g: "Chats", icon: aiLogo(chatAI(c), ""), label: c.label, hint: `${chatAI(c)} · ${ago(c.updated)}`, run: () => select(c.id) }));
+  const mems = memories().sort((a, b) => b.updated - a.updated).map(m => ({ g: "Memories", icon: kic(PERSONAL.has(m.type) ? "said" : m.type === "question" ? "asked" : m.type === "task" ? "tasks" : "notes", css("--fg-2"), "sm"),
+    label: m.label, hint: KIND[m.type] || "Note", run: () => select(m.id) }));
+  return { acts, topics, cs, mems };
+}
+function palRender() {
+  const q = $("#pal-q").value.trim().toLowerCase(), words = q.split(/\s+/).filter(Boolean), src = palSource();
+  const score = it => { const l = it.label.toLowerCase(); if (!words.every(w => l.includes(w))) return -1;
+    return (l.startsWith(q) ? 30 : 0) + words.reduce((n, w) => n + (new RegExp("(^|[\\s“(])" + w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).test(l) ? 10 : 1), 0) - l.length / 200; };
+  const pick = (list, n) => q ? list.map(it => [it, score(it)]).filter(([, v]) => v >= 0).sort((a, b) => b[1] - a[1]).slice(0, n).map(([it]) => it) : list.slice(0, n);
+  palItems = q ? [...pick(src.acts, 5), ...pick(src.topics, 5), ...pick(src.cs, 5), ...(q.length >= 2 ? pick(src.mems, 6) : [])]
+    : [...src.acts.slice(0, 5), ...src.topics.slice(0, 4), ...src.cs.slice(0, 4)];
+  palAt = Math.min(palAt, Math.max(0, palItems.length - 1));
+  const hl = t => { let h = esc(t); words.forEach(w => { h = h.replace(new RegExp("(" + esc(w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "i"), "<mark>$1</mark>"); }); return h; };
+  let last = "";
+  $("#pal-list").innerHTML = palItems.map((it, i) => (it.g !== last ? `<div class="pal-h">${(last = it.g)}</div>` : "") +
+    `<button type="button" class="pal-i" role="option" id="pal-${i}" data-pal="${i}" aria-selected="${i === palAt}">${it.icon}<span class="t">${hl(it.label)}</span><span class="hint">${esc(it.hint || "")}</span></button>`).join("")
+    || `<div class="pal-none">Nothing matches “${esc(q)}”. Press Enter to ask your memory instead.</div>`;
+  $("#pal-q").setAttribute("aria-activedescendant", palItems.length ? "pal-" + palAt : "");
+}
+function palMove(i) { palAt = (i + palItems.length) % palItems.length; document.querySelectorAll(".pal-i").forEach((b, k) => b.setAttribute("aria-selected", k === palAt)); $("#pal-" + palAt)?.scrollIntoView({ block: "nearest" }); $("#pal-q").setAttribute("aria-activedescendant", "pal-" + palAt); }
+function palRun(i) { const it = palItems[i], q = $("#pal-q").value.trim(); $("#palette").close(); if (it) it.run(); else if (q) { $("#q").value = q; recall(q, true); } }
+function openPalette() {
+  if (!ACCT || $("#palette").open) return;
+  document.querySelectorAll("dialog[open]").forEach(d => d.close());
+  $("#pal-q").value = ""; palAt = 0; palRender(); $("#palette").showModal(); $("#pal-q").focus();
+  anim($("#palette"), { opacity: [0, 1], scale: [.98, 1], y: [-6, 0] }, { duration: .18 });
+}
+
 const svg = d => `<svg class="i" viewBox="0 0 24 24">${d}</svg>`;
 const KIND_IC = {
   who: svg('<circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/>'),
@@ -1087,6 +1251,8 @@ const KIND_IC = {
   said: svg('<path d="M20 15a2 2 0 0 1-2 2H8.5L4 20.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9Z"/>'),
   notes: svg('<path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10A1.5 1.5 0 0 1 6 19V5a1.5 1.5 0 0 1 1-1.5Z"/><path d="M14 3.5V8h4M9 12.5h6M9 16h4"/>'),
   asked: svg('<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.1-2.4 3.6M12 16.8v.2"/>'),
+  change: svg('<path d="M4 8.5h14l-3.5-3.5M20 15.5H6l3.5 3.5"/>'),
+  chat: svg('<path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8.5a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17H5a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 5 5.5Z"/><path d="M8 10h8M8 13h5"/>'),
   tasks: svg('<rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="m8.5 12.2 2.4 2.4 4.8-5"/>'),
 };
 const kic = (key, c, cls = "") => `<span class="kic ${cls}" style="--c:${c}" aria-hidden="true">${KIND_IC[key] || KIND_IC.other}</span>`;
@@ -1104,8 +1270,8 @@ function tintAurora(fresh) {  // the colours of the topics you touched most rece
   if (!fresh?.size) return;
   a.classList.add("pulse"); clearTimeout(auroraTimer); auroraTimer = setTimeout(() => a.classList.remove("pulse"), 1600);
 }
-const kpis = list => `<div class="kpis">${list.map(([n, label, sub, act, cls]) =>
-  `<button class="kpi" ${act}><b>${n}</b><span>${label}</span><small class="${cls || ""}">${sub || "&nbsp;"}</small></button>`).join("")}</div>`;
+const kpis = list => `<div class="stats">${list.map(([n, label, sub, act, cls]) =>
+  `<button class="stat" ${act}><b>${n}</b> ${label}${sub ? `<small class="${cls || ""}">${sub}</small>` : ""}</button>`).join("")}</div>`;
 function pickCard(s, n = 3) {  // a chat you can pick up: open it, or hand it to another AI in one click
   const others = HANDOFF_TO.filter(([, name]) => name !== chatAI(s)).slice(0, n);
   return `<div class="pick${s.limit || (s.pct || 0) >= 70 ? " hot" : ""}"><button class="pick-main" data-id="${s.id}">${aiLogo(chatAI(s), "")}<span><b>${esc(s.label)}</b>
@@ -1121,8 +1287,9 @@ function renderOverview(fresh) {
   const ais = Object.entries(G.stats.ais || {}).sort((a, b) => b[1] - a[1]).map(([a]) => a);
   const last = Math.max(0, ...mems.map(n => n.updated || 0));
   if (!mems.length) {
-    el.innerHTML = `<div class="wrap"><h1 class="hello">${greeting()}${ACCT ? ", " + esc(ACCT.display_name) : ""}.</h1><div class="empty"><h3>Nothing remembered yet</h3>
-      <p>Install the browser extension and chat with ChatGPT, Claude, Gemini or any AI. What you say about yourself shows up here within seconds.</p></div>${connectCard()}</div>`;
+    el.innerHTML = `<div class="wrap"><h1 class="hello">${greeting()}${ACCT ? ", " + esc(ACCT.display_name) : ""}.</h1>${emptyState(["chat", "said", "people"], "Nothing remembered yet",
+      "Install the browser extension and chat with ChatGPT, Claude, Gemini or any AI. What you say about yourself shows up here within seconds.",
+      `<button class="btn primary" data-view="setup">Set up Mindbaton</button><a class="btn" href="${EXT_URL}" target="_blank" rel="noopener">Get the extension ↗</a>`)}</div>`;
     return;
   }
   // profile cards: things you're related to, grouped by kind, most-mentioned first
@@ -1149,9 +1316,11 @@ function renderOverview(fresh) {
   const counts = { all: mine.length }; mine.forEach(m => counts[m.type] = (counts[m.type] || 0) + 1);
   const shown = kindFilter === "all" ? mine : mine.filter(m => m.type === kindFilter);
   const cs = chats(), wk = WEEK(), newMems = mems.filter(m => m.updated > wk).length, newChats = cs.filter(c => c.updated > wk).length;
+  const wl = weekLine(mems), ch = changes().slice(0, 5), ask = asks(buckets);
   el.innerHTML = `<div class="wrap">
     <div class="hero"><div><h1 class="hello">${greeting()}${who || ACCT ? ", " + esc(who || ACCT.display_name) : ""}.</h1>
-      <p class="hello-sub"><span class="stack">${ais.slice(0, 6).map(a => aiLogo(a, "")).join("")}</span><span>What ${plural(ais.length, "AI")} know about you</span><span class="sep-dot"></span><span>last capture ${ago(last)}</span></p></div>
+      <p class="hello-sub"><span class="stack">${ais.slice(0, 6).map(a => aiLogo(a, "")).join("")}</span><span>What ${plural(ais.length, "AI")} know about you</span><span class="sep-dot"></span><span>last capture ${ago(last)}</span></p>
+      ${wl ? `<p class="week">${ICON.spark}<span>${wl}</span></p>` : ""}</div>
       <div class="hero-act"><button class="btn" data-y="ask">${ICON.spark}Ask your memory</button><button class="btn" data-view="map">${ICON.globe}Explore the map</button></div></div>
     ${kpis([[mems.length, "memories", newMems ? `+${newMems} this week` : "none new this week", 'data-view="topics"', newMems ? "up" : ""],
       [G.stats.entities || 0, "things", "people, places, tools…", 'data-view="map"'],
@@ -1159,7 +1328,12 @@ function renderOverview(fresh) {
       [ais.length, "AIs", "connect more in Setup", 'data-view="setup"']])}
     <div class="section-h"><h2>What they know about you</h2><p>click anything to see where it came from</p></div>
     ${kinds.length ? `<div class="kinds">${kinds.join("")}</div>` : `<div class="card"><div class="empty"><p>Say things like “I use Neovim” or “I live in Pune” in any AI chat and they collect here.</p></div></div>`}
-    <div class="ygrid" style="margin-top:28px">
+    ${ch.length || ask.length ? `<div class="ygrid" style="margin-top:28px">
+      ${ch.length ? `<section class="card" aria-labelledby="h-chg"><div class="card-h">${kic("change", css("--t2"), "sm")}<h2 id="h-chg">What changed lately</h2><span class="spacer"></span><p>the old stays in history</p></div>
+        <div class="card-b">${ch.map(c => `<button class="chg" data-id="${c.now.id}">${kic("change", css("--t2"), "sm")}<span><span class="was">${esc(c.was.label)}</span><span class="now">${esc(c.now.label)}</span></span><span class="when">${day(c.now.updated)}</span></button>`).join("")}</div></section>` : "<div></div>"}
+      ${ask.length ? `<section class="card" aria-labelledby="h-ask"><div class="card-h">${kic("asked", css("--t5"), "sm")}<h2 id="h-ask">Try asking</h2><span class="spacer"></span><p>answered from your memory</p></div>
+        <div class="asks">${ask.map(q => `<button class="chip ask" data-ask="${esc(q)}">${ICON.spark}${esc(q)}</button>`).join("")}</div></section>` : ""}</div>` : ""}
+    <div class="ygrid" style="margin-top:20px">
       <section class="card" aria-labelledby="h-recent"><div class="card-h"><h2 id="h-recent">Recently</h2><span class="spacer"></span><button class="btn sm" data-view="topics">All topics</button></div>
         <div class="card-b rows">${recent.map(m => entryRow(m, { fresh: fresh.has(m.id) })).join("")}</div></section>
       <section aria-labelledby="h-pick"><div class="section-h" style="margin:0 0 10px"><h2 id="h-pick">Pick up where you left off</h2></div>
@@ -1173,8 +1347,13 @@ function renderOverview(fresh) {
     <div class="strip">${ICON.plug}<span><b>Connect more AIs</b> — the extension for ChatGPT, Claude and Gemini on the web, one command for Claude Code, Codex and Cursor.</span>
       <button class="btn sm" data-view="setup">Open Setup</button></div>
   </div>`;
+  if (view === "overview") countUp($("#ov"));
 }
-$("#overview").addEventListener("click", ev => { if (ev.target.closest('[data-y="ask"]')) { $("#q").focus(); $("#q").select(); } });
+$("#overview").addEventListener("click", ev => {
+  if (ev.target.closest('[data-y="ask"]')) { $("#q").focus(); $("#q").select(); }
+  const a = ev.target.closest("[data-ask]");
+  if (a) { $("#q").value = a.dataset.ask; recall(a.dataset.ask, true); }
+});
 function connectCard() {
   const base = location.origin;
   return `<section class="card" style="flex:1;min-height:0" aria-labelledby="h-connect"><div class="card-h">${ICON.plug}<h2 id="h-connect">Connect an AI</h2></div><div class="card-b connect">
@@ -1213,7 +1392,7 @@ function markSide() {
 }
 function renderTopics(fresh = new Set()) {
   const el = $("#topics"), all = topicData();
-  if (!all.length) { el.innerHTML = `<div class="wrap"><h1 class="hello">Topics</h1><div class="empty"><h3>No topics yet</h3><p>Chat with any AI and what you talk about is sorted into topics here — the same subject in different apps becomes one.</p></div></div>`; return; }
+  if (!all.length) { el.innerHTML = `<div class="wrap"><h1 class="hello">Topics</h1>${emptyState(["project", "said", "chat"], "No topics yet", "Chat with any AI and what you talk about is sorted into topics here — the same subject in different apps becomes one.", `<button class="btn" data-view="setup">Connect an AI</button>`)}</div>`; return; }
   const cur = openTopic != null && all.find(x => String(x.k) === String(openTopic));
   if (!cur) openTopic = null;
   markSide();
@@ -1226,7 +1405,7 @@ function renderTopics(fresh = new Set()) {
       <div class="segs" role="group" aria-label="Sort"><button data-tp="sort:recent" aria-pressed="${topicSort === "recent"}">Recent</button><button data-tp="sort:size" aria-pressed="${topicSort === "size"}">Biggest</button></div></div>
     <div class="tgrid">${order.map(x => `<button class="tcard" data-tp="open:${x.k}" style="--c:${x.color}">
       <span class="tc-h">${tmark(x.k, 30)}<b>${esc(x.name)}</b><span class="n">${x.list.length}</span></span>
-      <span class="tc-sum">${esc(x.summary)}</span>${spark(x.list)}
+      <span class="tc-sum">${esc(x.summary)}</span>
       <span class="tc-foot"><span class="stack">${x.ais.slice(0, 4).map(a => aiLogo(a, "")).join("")}</span><span>${x.tc.length ? plural(x.tc.length, "chat") : plural(x.ais.length, "AI")}</span><span class="when">${ago(x.last)}</span></span></button>`).join("")}</div></div>`;
 }
 function renderTopic(el, x, all, fresh) {
@@ -1263,7 +1442,10 @@ function renderTopic(el, x, all, fresh) {
     inp.onkeydown = e => { if (e.key === "Escape") { e.stopPropagation(); renaming = false; renderTopics(); } };
     f.onsubmit = async e => {
       e.preventDefault(); busy(f.querySelector("button.primary"), "Saving…");
-      try { const r = await send("/topic/rename", { id: x.k, name: inp.value }); renaming = false; await load(true); toast(r.name ? `Renamed to “${r.name}”` : "Back to the automatic name"); renderTopics(); }
+      const was = x.t?.by === "you" ? x.name : "";
+      try { const r = await send("/topic/rename", { id: x.k, name: inp.value }); renaming = false; await load(true); renderTopics();
+        toast(r.name ? `Renamed to “${r.name}”` : "Back to the automatic name", { action: { label: "Undo", fn: async () => {
+          try { await send("/topic/rename", { id: x.k, name: was }); await load(true); renderTopics(); toast("Name put back"); } catch (e2) { toast("Couldn't undo: " + e2.message); } } } }); }
       catch (err) { busy(f.querySelector("button.primary")); toast(err.message); }
     };
   }
@@ -1282,7 +1464,9 @@ function mergeSheet(x, all) {
   d.querySelectorAll("[data-into]").forEach(b => b.onclick = async () => {
     b.disabled = true;
     try { const r = await send("/topic/merge", { id: x.k, into: +b.dataset.into }); d.close(); await load(true);
-      openTopic = G.topics.find(t => t.name === r.name)?.id ?? null; renderTopics(); toast(`Merged into “${r.name}”`); }
+      openTopic = G.topics.find(t => t.name === r.name)?.id ?? null; renderTopics();
+      toast(`Merged into “${r.name}”`, { action: { label: "Undo", fn: async () => {
+        try { await send("/topic/undo"); await load(true); openTopic = x.k; renderTopics(); toast("Merge undone"); } catch (e) { toast("Couldn't undo: " + e.message); } } } }); }
     catch (e) { b.disabled = false; toast(e.message); }
   });
   d.showModal();
@@ -1347,15 +1531,16 @@ function renderChats() {
       <div class="segs" role="group" aria-label="Sort">${[["recent", "Recent"], ["long", "Longest"], ["full", "Fullest"]].map(([k, t]) =>
         `<button data-cs="sort:${k}" aria-pressed="${chatSort === k}">${t}</button>`).join("")}</div></div>
     <div class="card">${list.length ? `<div class="card-b" id="chat-list">${chatListHTML(list)}</div>`
-      : `<div class="empty"><h3>${all.length ? `No ${esc(aiFilter)} chats tracked yet` : "No conversations yet"}</h3><p>${all.length
-        ? `Its ${plural(said.length, "memory").replace("memorys", "memories")} are below.`
-        : `Turn on Live mode in the extension to keep whole chats from ChatGPT, Claude, Gemini and more. Claude Code sessions on this machine appear on their own.`}</p></div>`}</div>
+      : all.length ? emptyState(["chat", "asked", "said"], `No ${esc(aiFilter)} chats tracked yet`, `Its ${plural(said.length, "memory").replace("memorys", "memories")} are below.`)
+        : emptyState(["chat", "tasks", "said"], "No conversations yet", "Turn on Live mode in the extension to keep whole chats from ChatGPT, Claude, Gemini and more. Claude Code sessions on this machine appear on their own.",
+          `<button class="btn" data-view="setup">Open Setup</button>`)}</div>
     ${said.length ? `<div class="section-h"><h2>Said to ${esc(aiFilter)}</h2><p>${plural(said.length, "memory").replace("memorys", "memories")}</p></div>
       <div class="card"><div class="card-b rows">${said.map(m => entryRow(m, { topic: true })).join("")}</div></div>` : ""}
   </div>`;
   const f = $("#chat-find");
   f.oninput = () => { chatFind = f.value; const box = $("#chat-list"); if (box) box.innerHTML = chatListHTML(list); };
   if (typing) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); }  // a live refresh never steals the box
+  if (view === "chats") countUp(el);
 }
 $("#chats").addEventListener("click", ev => {
   const b = ev.target.closest("[data-cs]");
@@ -1525,7 +1710,7 @@ async function renderSetup() {
     ${brainStep(st)}
     <section class="feat" id="import-feat" aria-labelledby="imp-h">
       <div class="feat-top"><span class="feat-ic">${IC_IMPORT}</span>
-        <div class="tx"><p class="feat-k">Start with what they already know</p><h2 id="imp-h">Bring your old memory</h2></div>
+        <div class="tx"><h2 id="imp-h">Bring your old memory</h2></div>
         <span class="stack">${["ChatGPT", "Claude", "Gemini", "Perplexity", "DeepSeek", "Grok"].map(a => aiLogo(a, "")).join("")}</span></div>
       <p class="feat-lead">ChatGPT, Claude, Gemini and the rest have been learning about you for months. Ask each one what it remembers,
         paste its answer here and tick the facts to keep — Mindbaton starts out knowing you. Nothing is saved until you say so.</p>
@@ -1605,7 +1790,7 @@ function brainStep(st) {  // Mindbaton's own model: what it's doing, and (admins
   const word = b.dl ? "Downloading" : b.state === "reading" ? "Reading" : b.paused || (b.state || "").startsWith("paused") ? "Paused" : on ? "On" : "Off";
   return `<section class="feat" id="brain-step" aria-labelledby="brain-h">
     <div class="feat-top"><span class="feat-ic">${IC_BRAIN}</span>
-      <div class="tx"><p class="feat-k">Mindbaton's own model</p><h2 id="brain-h">Reads what the rules can't</h2></div>
+      <div class="tx"><h2 id="brain-h">Mindbaton's own model</h2></div>
       <span class="st${on ? " ok" : ""}"><i></i><span>${word}</span></span></div>
     <p class="feat-lead">A small AI model that runs on this computer. It reads the everyday way people type — “switched jobs, I'm at Stripe now”,
       “not a coffee person tbh” — and the rules check every fact before it's saved. It learned only from made-up examples, never from anyone's
@@ -1731,7 +1916,7 @@ async function recall(q, deep) {
   $("#recall").innerHTML = `<div class="wrap"><h1 class="hello" style="font-size:24px">“${esc(q)}”</h1>${ans}<div id="ai-answer"></div>
     <p class="hello-sub">${r.memories.length ? `${plural(r.memories.length, "memory").replace("memorys", "memories")}, best match first` : "Nothing remembered about that yet."}</p>
     <div class="card" style="margin-top:14px">${r.memories.length ? `<div class="card-b rows">${r.memories.map((m, i) => entryRow({ ...(byId.get(m.id) || {}), ...m, label: m.text, cluster: byId.get(m.id)?.cluster }, { rank: i + 1, topic: true, fresh: true })).join("")}</div>`
-      : `<div class="empty"><h3>No match</h3><p>Try other words — search understands synonyms, typos and questions like “which editor do I use”.</p></div>`}</div>
+      : emptyState(["asked", "said", "learn"], "No match", "Try other words — search understands synonyms, typos and questions like “which editor do I use”.", `<button class="btn sm" data-view="topics">Browse topics</button>`)}</div>
     ${(() => { const cs = (r.conversations || []).map(c => ({ c, s: G.nodes.find(n => n.kind === "session" && n.key === "session:" + c.key) })).filter(x => x.s);
       return cs.length ? `<div class="section-h"><h2>Conversations</h2><p>${plural(cs.length, "chat")} mention this</p></div><div class="card"><div class="card-b rows">${
         cs.map(({ c, s }) => chatRow(s, { snippet: `${c.role === "assistant" ? (s.model || chatAI(s)) : "You"}: ${c.snippet}` })).join("")}</div></div>` : ""; })()}
@@ -1774,9 +1959,13 @@ function renderPanel() {
     $("#panel-kind").textContent = `${KIND[n.type] || "Note"} · #${n.id}`;
     const things = edges.filter(e => e.src === n.id && e.rel === "mentions").map(e => byId.get(e.dst)).filter(Boolean);
     const see = edges.filter(e => e.rel === "similar").sort((a, b) => b.weight - a.weight).map(e => e.src === n.id ? e.dst : e.src);
-    const replaces = edges.filter(e => e.rel === "replaces" && e.src === n.id).map(e => e.dst);
-    const replacedBy = edges.filter(e => e.rel === "replaces" && e.dst === n.id).map(e => e.src);
+    const chain = [n.id];  // older versions before it, newer ones after
+    for (let c = n.id, e; (e = (G.out.get(c) || []).find(x => x.rel === "replaces")) && !chain.includes(e.dst); c = e.dst) chain.unshift(e.dst);
+    for (let c = n.id, e; (e = (G.in.get(c) || []).find(x => x.rel === "replaces")) && !chain.includes(e.src); c = e.src) chain.push(e.src);
+    const sess = (n.srcs || []).find(x => x.session && byId.has(x.session))?.session;
     el.innerHTML = `<p class="p-title${n.status === "superseded" ? " old" : ""}">${esc(n.label)}</p>
+      <div class="p-acts"><button class="btn sm" data-copy="${esc(n.label)}">${ICON.copy}Copy</button>${sess ? `<button class="btn sm" data-id="${sess}">${ICON.chat}Open the chat</button>` : ""}
+        <button class="btn sm" data-p-ask="${esc(n.label)}">${ICON.spark}Find related</button></div>
       <dl class="props">
         <dt>Said in</dt><dd class="srcs">${(n.srcs?.length ? n.srcs : (n.ais?.length ? n.ais : ["agent"]).map(a => ({ ai: a }))).map(s => {
           const inner = `${aiLogo(s.ai)}<span>${s.note ? "Memory note · " : ""}${esc(s.chat || s.ai)}</span>${s.chat && !s.note ? `<span style="color:var(--fg-3)">${esc(s.ai)}</span>` : ""}${
@@ -1789,10 +1978,10 @@ function renderPanel() {
         <dt>Confidence</dt><dd>${n.conf >= .85 ? "Stated plainly" : n.conf >= .55 ? "Implied" : "Mentioned in passing"}</dd>
         ${n.status === "superseded" ? `<dt>Status</dt><dd style="color:var(--danger)">Replaced by something newer</dd>` : ""}
       </dl>
+      ${chain.length > 1 ? `<div class="p-sec">How it changed</div><div class="tl">${chain.map((id, i) => { const m = byId.get(id), cur = i === chain.length - 1;
+        return m ? `<button data-id="${id}" class="${cur ? "cur" : "old"}"><span>${esc(m.label)}</span><small>${day(m.updated)}${id === n.id ? " · this one" : cur ? " · now" : ""}</small></button>` : ""; }).join("")}</div>` : ""}
       ${things.length ? `<div class="p-sec">Things</div><div class="chips">${things.map(t => `<button class="chip" data-id="${t.id}">${badge(t, "var(--fg-3)", "sm")}${esc(t.label)}</button>`).join("")}</div>` : ""}
       ${see.length ? `<div class="p-sec">Related memories</div><div class="p-list">${see.map(i => item(i, "#" + i)).join("")}</div>` : ""}
-      ${replaces.length ? `<div class="p-sec">Replaces</div><div class="p-list">${replaces.map(i => item(i, "#" + i, "old")).join("")}</div>` : ""}
-      ${replacedBy.length ? `<div class="p-sec">Replaced by</div><div class="p-list">${replacedBy.map(i => item(i, "#" + i)).join("")}</div>` : ""}
       ${forgetBlock(n)}`;
   } else if (n.kind === "session") {
     const ai = chatAI(n), mems = chatMems(n).sort((a, b) => b.updated - a.updated);
@@ -1848,6 +2037,7 @@ function renderPanel() {
     const rels = edges.filter(e => !["mentions", "about", "context", "similar", "replaces", "updates"].includes(e.rel) && byId.get(e.src)?.kind === "entity");
     el.innerHTML = `<div class="p-entity">${badge(n, css(groupFor(rels.find(e => byId.get(e.src)?.type === "self")?.rel, n).c))}<div><h2>${esc(n.type === "self" ? "You" : n.label)}</h2>
       <p>${plural(said.length, "memory").replace("memorys", "memories")} · first seen ${ago(n.created ?? n.updated)}${n.cluster != null ? ` · ${esc(topicName(n.cluster))}` : ""}</p></div></div>
+      <div class="p-acts"><button class="btn sm" data-p-map="${n.id}">${ICON.globe}Show on the map</button><button class="btn sm" data-p-ask="${esc(n.type === "self" ? "about me" : n.label)}">${ICON.spark}Ask about ${n.type === "self" ? "me" : "it"}</button></div>
       ${rels.length ? `<div class="p-sec">How it connects</div><div class="p-list">${rels.map(e => { const out = e.src === n.id, other = out ? e.dst : e.src;
         if (!out && byId.get(other)?.type === "self") return `<button data-id="${other}"><span class="k">You</span><span>${esc((YOU_PHRASE[e.rel] || "You " + e.rel).replace(/^You('re)? ?/, "").replace(/^Your /, "your ") || e.rel)}</span></button>`;
         return item(other, out ? e.rel : e.rel + " ·"); }).join("")}</div>` : ""}
@@ -1881,17 +2071,24 @@ async function chatSummary(n, tries = 0) {  // the AI summary if it's made; if n
 }
 const forgetBlock = n => `<div class="danger-zone"><button class="btn danger sm" data-forget="${n.id}">Forget</button><small>${n.kind === "memory"
   ? "Deletes this memory for good — it won't come back, even when everything is re-read." : "Removes this thing everywhere. Memories that mention it stay."}</small></div>`;
+const gone = new Map();  // forgotten on screen, waiting out the undo window: id -> timer
 async function forget(id, btn) {
   if (!btn.classList.contains("armed")) {
     btn.classList.add("armed"); btn.textContent = "Forget for good?";
     btn.insertAdjacentHTML("afterend", `<button class="btn sm" data-cancel>Keep</button>`);
     return;
   }
-  btn.disabled = true;
-  try { await api("/node/" + id, { method: "DELETE" }); } catch (e) { btn.disabled = false; return toast("Couldn't forget: " + e.message); }
-  toast("Forgotten"); select(null); await load(true);
-  if (view === "recall") recall(lastQ);
+  const really = async () => {  // after the undo window (or when the tab closes)
+    gone.delete(id);
+    try { await api("/node/" + id, { method: "DELETE" }); } catch (e) { toast("Couldn't forget: " + e.message); }
+    await load(true);
+    if (view === "recall") recall(lastQ);
+  };
+  gone.set(id, setTimeout(really, 5200));
+  select(null); await load(true);
+  toast("Forgotten", { action: { label: "Undo", fn: () => { clearTimeout(gone.get(id)); gone.delete(id); load(true); toast("Kept — nothing was forgotten"); } } });
 }
+addEventListener("pagehide", () => { for (const [id, t] of gone) { clearTimeout(t); fetch("/node/" + id, { method: "DELETE", keepalive: true }); } });
 
 // ---------- views ----------
 const TITLES = { overview: "You", topics: "Topics", chats: "Chats", map: "Map", recall: "Search", setup: "Setup", settings: "Settings" };
@@ -1904,8 +2101,10 @@ function show(v) {
   if (v === "map") diagram.start();
   if (v === "setup") renderSetup();
   markSide();
+  if (v === "overview") countUp($("#ov"));
+  if (v === "chats") countUp($("#chats"));
   if (location.hash.slice(1) !== v && v !== "recall" && v !== "settings") history.replaceState(null, "", "#" + v);
-  if (v !== "settings") anim($("#" + v), { opacity: [0, 1] }, { duration: .2 });
+  if (v !== "settings") anim($("#" + v), { opacity: [0, 1], y: [8, 0] }, { duration: .26 });
 }
 function route(h) {  // #devices, #pair/ABCD-EFGH … → a view; false when the hash names none
   if (/^pair\/[\w-]{4,20}$/.test(h)) { openSettings("devices", h.slice(5)); return true; }
@@ -1922,6 +2121,19 @@ const STRUCTURAL = new Set(["mentions", "about", "context", "similar", "replaces
 const YOU_PHRASE = { uses: "You use it", has: "You have it", likes: "You like it", dislikes: "You dislike it", "working on": "You're building it",
   built: "You built it", learning: "You're learning it", "lives in": "You live here", "works at": "You work here", from: "You're from here",
   named: "Your name", age: "Your age", is: "What you are", plays: "You play it", does: "You do it", wants: "You want it" };
+const ICON_IMG = new Map();  // the kind icons, drawn on the canvas in their colour
+function iconCanvas(key, color) {
+  const k = key + color;
+  if (ICON_IMG.has(k)) return ICON_IMG.get(k);
+  ICON_IMG.set(k, null);
+  const img = new Image();
+  img.onload = () => { ICON_IMG.set(k, img); diagram.draw(); };
+  img.src = "data:image/svg+xml," + encodeURIComponent((KIND_IC[key] || KIND_IC.other).replace('<svg class="i"',
+    `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"`));
+  return null;
+}
+const GROUP_IC = k => KIND_IC[k] && !["chat"].includes(k) ? k : { "tg:Tools & tech": "tool", "tg:People": "people", "tg:Places": "place", "tg:Organisations": "place",
+  "tg:Projects": "project", "tg:Names": "who", "tg:Ideas": "learn", "tg:Roles": "who", "tg:Things": "own", chats: "chat", said: "said", entries: "said" }[k];
 const LOGO_IMG = new Map();  // brand logos drawn on the canvas: one-colour marks tinted with the brand colour
 function logoCanvas(k) {
   if (!k || !LOGO[k]) return null;
@@ -2253,6 +2465,12 @@ const diagram = (() => {
       g.stroke();
     }
     g.setLineDash([]); g.lineDashOffset = 0;
+    if (hover && hover.a > .3 && !hover.dying) {  // a soft light in the colour of what you point at
+      const [hx, hy] = toScreen(hover.x, hover.y), R = (hover.kind === "bubble" ? hover.r * K * 1.7 : 150) * (hover.kind === "bubble" ? 1 : Math.max(.7, Math.min(1.3, K)));
+      const hg = g.createRadialGradient(hx, hy, 0, hx, hy, R), hc = /^#/.test(hover.color || "") ? hover.color : ink;
+      hg.addColorStop(0, rgba(hc, .2)); hg.addColorStop(1, rgba(hc, 0));
+      g.globalAlpha = 1; g.fillStyle = hg; g.fillRect(hx - R, hy - R, 2 * R, 2 * R);
+    }
     const order = { bubble: 0, spark: 1, group: 2, sat: 3, item: 4, mem: 4, dot: 5, center: 6 };
     const list = [...nodes.values()].filter(n => n.a > .02).sort((a, b) => order[a.kind] - order[b.kind]);
     const labels = [];
@@ -2271,11 +2489,14 @@ const diagram = (() => {
         g.fillStyle = rgba(ink, .75); g.beginPath(); g.arc(x, y, 1.7 * Math.max(.8, K), 0, 7); g.fill();
       } else if (n.kind === "group") {
         g.font = `500 ${sz(12.5)}px Geist, sans-serif`;
-        const text = n.label + "  " + n.count, w = g.measureText(text).width + 24, h = sz(26);
+        const ik = GROUP_IC(n.gkey), is = sz(14), pad = ik ? is + 6 : 0;
+        const text = n.label + "  " + n.count, w = g.measureText(text).width + 24 + pad, h = sz(26);
         g.fillStyle = rgba(deep, 1); g.beginPath(); g.roundRect(x - w / 2, y - h / 2, w, h, h / 2); g.fill();
         g.fillStyle = rgba(n.color, hot || spotlight === n.gkey ? .24 : .11); g.strokeStyle = rgba(n.color, hot || spotlight === n.gkey ? .95 : .45); g.lineWidth = 1.2;
         g.beginPath(); g.roundRect(x - w / 2, y - h / 2, w, h, h / 2); g.fill(); g.stroke();
-        g.fillStyle = n.color; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(text, x, y + 1); g.textBaseline = "alphabetic";
+        const ic = ik && iconCanvas(ik, n.color);
+        if (ic) g.drawImage(ic, x - w / 2 + 11, y - is / 2, is, is);
+        g.fillStyle = n.color; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(text, x + pad / 2, y + 1); g.textBaseline = "alphabetic";
         n.box = [x - w / 2, y - h / 2, w, h];
       } else if (n.kind === "center") {
         const r = sz(34) * n.rr;
@@ -2293,10 +2514,16 @@ const diagram = (() => {
         labels.push({ text: n.label, x, y: y + r + sz(24), align: "center", font: `600 ${sz(19)}px Geist, sans-serif`, color: ink, prio: 1000, upper: false, node: n, a });
         labels.push({ text: n.sub, x, y: y + r + sz(42), align: "center", font: `${sz(12.5)}px Geist, sans-serif`, color: css("--fg-2"), prio: 999, node: n, a });
       } else if (n.kind === "mem") {
-        const r = sz(5.5) * n.rr;
-        g.fillStyle = ink; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
-        const ai = n.ais?.[0];
-        g.strokeStyle = ai ? css("--ai-" + (AI_VAR[ai] || "agent")) : rgba(ink, .5); g.lineWidth = 2; g.beginPath(); g.arc(x, y, r + 3, 0, 7); g.stroke();
+        const r = sz(5.5) * n.rr, ai = n.ais?.[0], alc = ai ? logoCanvas(logoKey(ai)) : null;
+        if (alc) {  // a memory shows the AI it was said to
+          const R = r + 4;
+          g.fillStyle = css("--panel-2"); g.beginPath(); g.arc(x, y, R, 0, 7); g.fill();
+          g.strokeStyle = rgba(ink, hot ? .6 : .22); g.lineWidth = 1.2; g.stroke();
+          g.drawImage(alc, x - R * .6, y - R * .6, R * 1.2, R * 1.2);
+        } else {
+          g.fillStyle = ink; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+          g.strokeStyle = ai ? css("--ai-" + (AI_VAR[ai] || "agent")) : rgba(ink, .5); g.lineWidth = 2; g.beginPath(); g.arc(x, y, r + 3, 0, 7); g.stroke();
+        }
         const side = Math.cos(n.angle ?? 0) >= -.2 ? "left" : "right", words = n.label.split(/\s+/).slice(0, 5).join(" ");
         labels.push({ text: "“" + words + (n.label.split(/\s+/).length > 5 ? "…”" : "”"), x: x + (side === "left" ? 1 : -1) * (r + 9), y: y + 4, align: side,
           font: `${sz(12)}px Geist, sans-serif`, color: css("--fg-2"), prio: 10, node: n, a });
@@ -2309,9 +2536,15 @@ const diagram = (() => {
           g.fillStyle = css("--panel-2"); g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
           g.strokeStyle = n.color; g.lineWidth = 1.6; g.stroke();
           g.drawImage(lc, x - r * .68, y - r * .68, r * 1.36, r * 1.36);
-        } else {
-          g.fillStyle = n.kind === "sat" ? rgba(n.color, .7) : n.color; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+        } else if (n.kind === "sat") {
+          g.fillStyle = rgba(n.color, .7); g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
           g.strokeStyle = paper; g.lineWidth = 2; g.stroke();
+        } else {  // a thing with no logo: its initial on a tile of its colour, like everywhere else in the app
+          const s2 = r * 1.9, ch = ((n.label || "").replace(/^your\s+/i, "").match(/[\p{L}\p{N}]/u) || ["·"])[0].toUpperCase();
+          g.fillStyle = deep; g.beginPath(); g.roundRect(x - s2 / 2, y - s2 / 2, s2, s2, s2 * .3); g.fill();
+          g.fillStyle = rgba(n.color, hot ? .36 : .22); g.strokeStyle = rgba(n.color, hot ? 1 : .7); g.lineWidth = 1.3;
+          g.beginPath(); g.roundRect(x - s2 / 2, y - s2 / 2, s2, s2, s2 * .3); g.fill(); g.stroke();
+          if (r >= 7) { g.fillStyle = n.color; g.font = `600 ${r * 1.05}px Geist, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(ch, x, y + .5); g.textBaseline = "alphabetic"; }
         }
         const outward = n.kind === "dot" ? 0 : n.angle ?? 0, cx = Math.cos(outward), side = n.kind === "dot" ? "center" : cx >= -.2 ? "left" : "right";
         const lx = n.kind === "dot" ? x : x + (side === "left" ? 1 : -1) * (r + 7), ly = n.kind === "dot" ? y + r + sz(15) : y + Math.sin(outward) * 6 + 4;
@@ -2355,7 +2588,7 @@ const diagram = (() => {
   }
   function renderChrome() {
     const v = cur();
-    const sub = { you: "Everything the AIs know about you, sorted by kind. Click any dot to explore it.",
+    const sub = { you: "Everything the AIs know about you, sorted by kind. Click anything to explore it.",
       topics: "What you talk about. Bigger bubble = more entries; lines join topics that share things.",
       entity: "Everything connected to this — what it is, how you relate to it, and what you've said about it.",
       topic: "The things this topic is about, and its entries." }[v.type];
@@ -2371,7 +2604,7 @@ const diagram = (() => {
       const seen = new Map();
       for (const n of nodes.values()) if (n.kind === "group" && !n.dying) seen.set(n.gkey, n);
       legend.innerHTML = `<div class="lg-h lt">Colours</div>` + [...seen.values()].map(n => `<button data-dg-spot="${esc(n.gkey)}" aria-pressed="${spotlight === n.gkey}">
-        <i style="background:${n.color}"></i>${esc(n.label)}<span class="num">${n.count}</span></button>`).join("")
+        ${GROUP_IC(n.gkey) ? kic(GROUP_IC(n.gkey), n.color, "sm") : `<i style="background:${n.color}"></i>`}${esc(n.label)}<span class="num">${n.count}</span></button>`).join("")
         + `<div class="lg-note">Click a colour to focus it</div>`;
     }
     $("#dg-back").hidden = stack.length < 2;
@@ -2612,6 +2845,11 @@ const GATE = {
   offline: () => `${MARK}<h1>Can't reach Mindbaton</h1><p class="gate-sub">The server may be restarting. This page tries again on its own.</p>
     <button class="btn block" style="margin-top:26px" data-gate="retry">Try again now</button>`,
 };
+function tintGate(screen, p) {  // everyone's colours on the sign-in screen; the one you picked, once you've picked
+  const c = screen === "password" && p?.color, a = $("#gate-aurora");
+  const cols = c ? [c, `color-mix(in srgb, ${c} 65%, #ffffff)`, c, `color-mix(in srgb, ${c} 55%, #6cb8ff)`] : [...PROFILES.map(x => x.color), "#6cb8ff", "#a99bff", "#f78fb3", "#f5c451"];
+  cols.slice(0, 4).forEach((x, i) => a.style.setProperty("--a" + (i + 1), x));
+}
 async function gate(screen, arg, flip) {
   if (screen === "retry") return boot();
   clearInterval(lockTimer); closeMenu();
@@ -2623,7 +2861,7 @@ async function gate(screen, arg, flip) {
   box.className = "gate-in" + (screen === "tiles" ? " wide" : "");
   box.innerHTML = GATE[screen](arg);
   box.style.opacity = ""; box.style.transform = "";
-  g.style.setProperty("--glow", screen === "password" && arg?.color || css("--accent"));
+  tintGate(screen, arg);
   wireGate(screen, arg);
   const hero = from && box.querySelector(`[data-flip="${CSS.escape(flip)}"]`);
   if (hero) {  // the picked face travels: tile → password step (and back)
@@ -2690,6 +2928,9 @@ async function startApp(acct) {
   const g = $("#gate");
   if (!g.hidden) { await settle(anim(g, { opacity: 0, scale: .985 }, { duration: .2 })); g.hidden = true; }
   $(".app").hidden = false;
+  const sk = `<div class="wrap" aria-busy="true"><div class="sk" style="width:min(340px,80%);height:34px"></div><div class="sk" style="width:min(420px,90%);height:14px;margin-top:16px"></div>
+    <div class="sk" style="height:96px;margin-top:26px;border-radius:12px"></div><div class="sk-grid">${'<div class="sk" style="height:150px;border-radius:12px"></div>'.repeat(6)}</div></div>`;
+  $("#ov").innerHTML = $("#topics").innerHTML = $("#chats").innerHTML = sk;
   anim($(".app"), { opacity: [0, 1] }, { duration: .35 });
   await logoReady; await load(true);
   checkUpdate();
@@ -3099,7 +3340,38 @@ async function rebuild(btn) {
   finally { btn.disabled = false; }
 }
 let toastTimer;
-function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 2600); }
+let toastAct = null;
+function toast(msg, o = {}) {  // o.icon: html; o.action: {label, fn} — a toast with an action (Undo) stays 5 s
+  const t = $("#toast"), bad = /fail|couldn|can't|blocked|error|wrong/i.test(msg);
+  t.innerHTML = `${o.icon || (bad ? IC.alert.replace('class="i"', 'class="i bad"') : TICK_I.replace('class="i"', 'class="i ok"'))}<span>${esc(msg)}</span>${
+    o.action ? `<button type="button" class="toast-act">${esc(o.action.label)}</button>` : ""}`;
+  toastAct = o.action?.fn || null;
+  if (t.hidden) { t.hidden = false; anim(t, { opacity: [0, 1], y: [12, 0], scale: [.97, 1] }, { type: "spring", stiffness: 520, damping: 34 }); }
+  clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, o.ms || (o.action ? 5000 : 2600));
+}
+async function hideToast() {
+  const t = $("#toast"); toastAct = null;
+  await settle(anim(t, { opacity: 0, y: 8 }, { duration: .16 }));
+  t.hidden = true; t.style.opacity = ""; t.style.transform = "";
+}
+$("#toast").addEventListener("click", ev => { if (ev.target.closest(".toast-act") && toastAct) { const f = toastAct; clearTimeout(toastTimer); hideToast(); f(); } });
+
+$("#jump").onclick = openPalette;
+$("#jump-k").textContent = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘ K" : "Ctrl K";
+addEventListener("keydown", e => { if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === "k" && ACCT) { e.preventDefault(); $("#palette").open ? $("#palette").close() : openPalette(); } });
+$("#pal-q").addEventListener("input", () => { palAt = 0; palRender(); });
+$("#pal-q").addEventListener("keydown", e => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); if (palItems.length) palMove(palAt + (e.key === "ArrowDown" ? 1 : -1)); }
+  else if (e.key === "Enter") { e.preventDefault(); palRun(palAt); }
+});
+$("#pal-list").addEventListener("click", e => { const b = e.target.closest("[data-pal]"); if (b) palRun(+b.dataset.pal); });
+$("#pal-list").addEventListener("mousemove", e => { const b = e.target.closest("[data-pal]"); if (b && +b.dataset.pal !== palAt) { palAt = +b.dataset.pal; document.querySelectorAll(".pal-i").forEach((x, k) => x.setAttribute("aria-selected", k === palAt)); } });
+$("#palette").addEventListener("click", e => { if (e.target === e.currentTarget) e.currentTarget.close(); });
+$("#panel").addEventListener("click", ev => {
+  const a = ev.target.closest("[data-p-ask]"), m = ev.target.closest("[data-p-map]");
+  if (a) { $("#q").value = a.dataset.pAsk; recall(a.dataset.pAsk, true); }
+  if (m) { show("map"); diagram.focus(+m.dataset.pMap); }
+});
 
 boot();
 addEventListener("hashchange", () => { if (ACCT) route(location.hash.slice(1)); });

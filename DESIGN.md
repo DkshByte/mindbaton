@@ -82,8 +82,7 @@ with no logo gets a small dot in its kind's colour; people get a round lettered 
 - **Number tiles** (`kpis`): four clickable cells in one hairline-divided panel — a mono 26px number, a label, and a
   one-line note (green when something's new, red when chats are near their limit). Each goes somewhere: You → Topics,
   Map, Chats, Setup; Chats → sort by recent, longest, fullest.
-- **You:** "What they know about you" is a masonry of kind cards (`columns: 3 290px`), each with its kind colour's
-  corner wash, dot, count and chips — never a clipped scroll box. Below: Recently beside "Pick up where you left off"
+- **You:** "What they know about you" is a masonry of kind cards (`columns: 3 290px`), each with its kind icon, count and chips on flat `--panel` — never a clipped scroll box. Below: Recently beside "Pick up where you left off"
   (the 3 latest chats as `pick` cards with their meter and hand-off buttons), then In your own words, then a dashed
   "Connect more AIs" strip to Setup.
 - **Chats:** "Running out of room" (chats at ≥70% or at their limit) as red-tinted pick cards first — that's the moment
@@ -93,8 +92,7 @@ with no logo gets a small dot in its kind's colour; people get a round lettered 
 
 ### Topics (reworked 2026-09-28)
 - **Grid first:** one card per topic, 3 across (2 under 1100px, 1 on the phone), sorted Recent or Biggest. A card: topic dot
-  with a soft ring · name (2 lines) · count · its lead line · a 12-week activity spark in the topic colour · AI logos, chats,
-  last active. The card's corner carries a faint wash of its topic colour; hover lifts it and tints the border.
+  with a soft ring · name (2 lines) · count · its lead line · AI logos, chats, last active. Flat `--panel`; hover lifts it and tints the border.
 - **A topic's page:** All topics (back) · dot + 30px name · Rename / Merge… (not for About you or Loose ends) · a status
   line · the AI summary when one exists (never a rule line dressed up as one) · an action bar: continue the latest chat
   in another AI, and Copy topic briefing (primary) · entries split into What you've said / Notes & decisions / Open
@@ -144,3 +142,9 @@ links, pulsing search hits, breathing centre — all off under reduced motion.
 Content column max 1120px, 40px side padding. You: kind cards in up to 3 columns, then Recently 1.45fr / pick-up 1fr,
 stacking under 1100px. Under 820px (the phone) the sidebar becomes a top nav strip, topics and sources hide, the page
 scrolls and the detail panel takes the full width.
+
+## Not allowed (found in a vibe-coding review, 2026-09-28)
+Colour washes or gradients inside cards and panels (surfaces are flat `--panel`; colour lives only in icons, marks and
+logos), eyebrow labels above headings, hero-metric number tiles (numbers are one quiet line of links), sparklines
+standing in for content, zero-offset glow halos, tilted stacks of tiles as illustration. The aurora behind the app is
+the one decorative gradient, and it never sits inside a box.
