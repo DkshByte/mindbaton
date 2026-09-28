@@ -8,6 +8,13 @@ HTML comment at the top of `<body>` in `index.html` (seed b8503b2b).
 the interface stays neutral around it. Mark, wordmark, app icons and favicons live in `assets/brand/`. Every icon is generated from `assets/brand/mark.svg` by one script (`make-icons.mjs`); UIs reference those
 files and never inline a copy of the mark's paths.
 
+## The model, live (Setup)
+While Mindbaton's own model downloads, starts or reads, its panel becomes a live monitor (refreshes every 3 s): a
+pulsing state ("Reading your messages"), the model's name, engine and computer; a progress bar; checked / total, time
+left from its real speed, facts found (each checked by the rules), read this session; and two live graphs — processor
+and memory — over the last two minutes. Downloading shows MB, measured speed and time left. Idle, it goes back to one
+line of status. Graphs here are data, not decoration.
+
 ## Baton in the product
 The sidebar shows Baton beside the real wordmark lettering (both inlined at runtime from `assets/brand/`, so there is one
 source and `currentColor` follows the theme). Baton **reacts**: it hops forward when a memory arrives and dims when the

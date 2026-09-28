@@ -101,13 +101,13 @@ img.lg { object-fit: contain; }
 .app { display: grid; grid-template-columns: 248px minmax(0, 1fr); height: 100vh; }
 .side { background: rgba(20, 20, 19, .35); -webkit-backdrop-filter: blur(28px) saturate(150%); backdrop-filter: blur(28px) saturate(150%); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 16px 16px 12px; }
-.brand-baton { width: 26px; height: 26px; flex: none; display: grid; place-items: center; color: var(--fg); transition: opacity .4s; }
-.brand-baton svg { width: 26px; height: 26px; transform-origin: 50% 85%; }
+.brand-baton { width: 30px; height: 30px; flex: none; display: grid; place-items: center; color: var(--fg); transition: opacity .4s; }
+.brand-baton svg { width: 30px; height: 30px; transform-origin: 50% 85%; }
 .brand-baton svg.hop { animation: hop .75s cubic-bezier(.3, 1.4, .5, 1); }
 @keyframes hop { 0% { transform: none; } 30% { transform: translate(3px, -5px) rotate(9deg); } 62% { transform: translate(-1px, 0) rotate(-4deg); } 100% { transform: none; } }
 .brand.off .brand-baton { opacity: .4; }
 .wordmark { display: flex; align-items: center; color: var(--fg); }
-.wordmark svg { height: 17px; width: auto; display: block; }
+.wordmark svg { height: 21px; width: auto; display: block; }
 .brand b { font-weight: 600; font-size: 15px; letter-spacing: -.01em; }
 .brand .live { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--fg-3); }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--fg-3)); flex: none; }
@@ -337,6 +337,26 @@ code { font: 12px var(--mono); color: var(--fg); background: var(--panel-3); bor
 .brain-stats b { font: 500 22px/1.25 var(--mono); letter-spacing: -.02em; }
 .brain-stats span { color: var(--fg-3); font-size: 12.5px; }
 .brain-now { margin: 0; font-size: 13.5px; }
+/* the model, live: what it is, what it's doing, how far, how long, what it costs */
+.bl { display: grid; gap: 12px; padding: 14px; border-radius: var(--r); border: 1px solid var(--line-2); background: var(--bg); }
+.bl-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--fg-2); }
+.bl-state { display: inline-flex; align-items: center; gap: 8px; color: var(--fg); font-weight: 600; }
+.bl-state i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); animation: blpulse 1.6s ease-in-out infinite; }
+@keyframes blpulse { 50% { opacity: .35; } }
+.bl-model b { color: var(--fg); font-weight: 500; font-family: var(--mono); font-size: 12.5px; }
+.bl-bar { height: 6px; border-radius: 3px; background: var(--panel-3); overflow: hidden; }
+.bl-bar i { display: block; height: 100%; border-radius: 3px; background: var(--ok); transition: width .8s var(--ease); }
+.bl-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; border-radius: var(--r-sm); overflow: hidden; background: var(--line); border: 1px solid var(--line); }
+.bl-cell { display: grid; gap: 2px; align-content: start; padding: 10px 12px; background: var(--panel); min-width: 0; }
+.bl-cell small { font-size: 12px; color: var(--fg-3); }
+.bl-cell b { font: 600 18px/1.3 var(--mono); color: var(--fg); font-variant-numeric: tabular-nums; }
+.bl-cell b em { font-style: normal; color: var(--fg-3); font-weight: 500; font-size: 14px; }
+.bl-cell span { font-size: 12px; color: var(--fg-3); }
+.bl-row.graphs { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.bl-graph { width: 100%; height: 38px; margin-top: 6px; display: block; overflow: visible; }
+.bl-line { fill: none; stroke: var(--fg-2); stroke-width: 1.6; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.bl-fill { fill: var(--accent-soft); }
+.bl-dot { fill: var(--fg); }
 .feat .progress { margin: -6px 0 2px; max-width: none; }
 .deck-b ol, .feat ol { margin: 0; padding-left: 20px; color: var(--fg-2); font-size: 13.5px; display: grid; gap: 6px; }
 .deck-b ol b, .feat ol b { color: var(--fg); font-weight: 500; }
@@ -841,7 +861,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
 .toast-act:hover { background: rgba(255, 255, 255, .16); }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .fresh { animation: rise .4s var(--ease) both; }
-@media (prefers-reduced-motion: reduce) { .brand-baton svg.hop, .fstack.deal > .feat, .fresh, .skel, .sk, .listen i, .sc.pop .tick, .aurora i { animation: none; } * { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .bl-state i, .brand-baton svg.hop, .fstack.deal > .feat, .fresh, .skel, .sk, .listen i, .sc.pop .tick, .aurora i { animation: none; } * { transition: none !important; } }
 
 @media (max-width: 1100px) { .grid, .ygrid { grid-template-columns: 1fr; } .tgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .t-body { grid-template-columns: 1fr; } .wrap { padding: 28px 24px 56px; } }
 @media (max-width: 820px) {
@@ -1856,14 +1876,14 @@ const mb = n => n >= 1e9 ? (n / 1e9).toFixed(2) + " GB" : Math.max(0, Math.round
 const bar = (done, total) => `<div class="progress" aria-hidden="true"><b style="width:${total ? Math.min(100, Math.round(done / total * 100)) : 0}%"></b></div>`;
 function brainPoll(b) {  // while it downloads or reads, only this step refreshes (the rest of Setup, forms included, stays put)
   clearTimeout(brainTimer);
-  if (!(b.dl || b.state === "reading" || b.state === "starting" || b.forced && b.left)) return;
+  if (!(b.dl || b.state === "reading" || b.state === "starting" || b.forced && b.left || b.usage)) return;
   brainTimer = setTimeout(async () => {
     if (view !== "setup" || !$("#brain-step")) return;
     let st;
     try { st = await api("/status"); } catch { return brainPoll(b); }
     const el = $("#brain-step");
     if (el && view === "setup") { el.outerHTML = brainStep(st); stackApply(); }
-  }, 4000);
+  }, 3000);
 }
 function brainStep(st) {  // Mindbaton's own model: what it's doing, and (admins) re-reading everything with it
   const b = st.brain || {}, busy = b.forced && b.left;
@@ -1889,6 +1909,7 @@ function brainStep(st) {  // Mindbaton's own model: what it's doing, and (admins
     + (b.remote ? `<p class="set-note">It runs on another computer (MINDBATON_BRAIN_URL), so it uses nothing here.</p>`
       : b.usage ? `<p class="set-note">Using now: memory <b>${mb(b.usage.memory)}</b>${b.usage.cpu != null ? ` · processor <b>${b.usage.cpu}%</b>` : ""} · on disk <b>${mb(b.disk)}</b></p>`
       : b.disk ? `<p class="set-note">On disk: <b>${mb(b.disk)}</b> (the model and its engine). The engine is off right now, so it uses no memory or processor.</p>` : "");
+  const live = brainLive(b);
   brainPoll(b);
   const on = b.enabled && !b.paused && b.state !== "waiting";
   const word = b.dl ? "Downloading" : b.state === "reading" ? "Reading" : b.paused || (b.state || "").startsWith("paused") ? "Paused" : on ? "On" : "Off";
@@ -1901,7 +1922,40 @@ function brainStep(st) {  // Mindbaton's own model: what it's doing, and (admins
       messages, and what you say never leaves this computer.</p>
     <div class="brain-stats"><div><b>28/30</b><span>facts caught in sentences it never saw</span></div>
       <div><b>0</b><span>made-up facts in that test</span></div><div><b>1.3 GB</b><span>offline, at low priority</span></div></div>
-    <p class="brain-now">${sub}</p>${info}${body}</section>`;
+    ${live || `<p class="brain-now">${sub}</p>${info}`}${body}</section>`;
+}
+const BH = { cpu: [], mem: [], dl: null, speed: 0 };  // the last ~2 minutes of samples, for the live graphs
+function graph(vals, max, label) {  // a small live line: the newest sample on the right
+  const w = 160, h = 38, pts = vals.slice(-40), n = Math.max(pts.length, 8), step = w / (n - 1), top = Math.max(max, 1e-9);  // fills the width from the first samples
+  const xy = pts.map((v, i) => [(w - (pts.length - 1 - i) * step).toFixed(1), (h - 3 - (v / top) * (h - 8)).toFixed(1)]);
+  const line = xy.map(p => p.join(",")).join(" ");
+  return `<svg class="bl-graph" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="${label}">${xy.length > 1
+    ? `<polygon points="${xy[0][0]},${h} ${line} ${w},${h}" class="bl-fill"/><polyline points="${line}" class="bl-line"/>` : ""}</svg>`;
+}
+function brainLive(b) {  // while the model works: what it is, what it's doing, how far, how long, what it costs — live
+  const busy = b.dl || b.state === "reading" || b.state === "starting" || b.usage;
+  if (!busy) { BH.cpu = []; BH.mem = []; BH.dl = null; return ""; }
+  if (b.usage) { BH.cpu.push(b.usage.cpu ?? 0); BH.mem.push(b.usage.memory || 0); BH.cpu = BH.cpu.slice(-40); BH.mem = BH.mem.slice(-40); }
+  const now = Date.now() / 1000;
+  if (b.dl) { if (BH.dl && b.dl.done > BH.dl.done) { const v = (b.dl.done - BH.dl.done) / (now - BH.dl.t); BH.speed = BH.speed ? .7 * BH.speed + .3 * v : v; } BH.dl = { done: b.dl.done, t: now }; }
+  const name = String(b.model || "mindbaton-brain-2b").split("/").pop(), engine = b.remote ? "a model server on another computer" : `llama.cpp ${esc(String(b.engine || "").replace(/^b/, "b"))}`.trim();
+  const word = b.dl ? `Downloading the ${esc(b.dl.what)}` : b.state === "starting" ? "Starting the engine" : b.state === "reading" ? "Reading your messages" : "Ready";
+  const pct = b.messages ? Math.min(100, Math.round((b.checked || 0) / b.messages * 100)) : 0;
+  const left = b.dl ? (BH.speed && b.dl.total ? (b.dl.total - b.dl.done) / BH.speed : null) : b.left ? b.left * (b.sec || 4) : null;
+  const cell = (k, v, sub, extra = "") => `<div class="bl-cell"><small>${k}</small><b>${v}</b>${sub ? `<span>${sub}</span>` : ""}${extra}</div>`;
+  return `<div class="bl" aria-live="polite">
+    <div class="bl-head"><span class="bl-state"><i></i>${word}</span><span class="bl-model"><b>${esc(name)}</b> · ${engine}${b.remote ? "" : ` · this computer (${b.memory_gb} GB)`}</span></div>
+    ${b.dl ? `<div class="bl-bar"><i style="width:${b.dl.total ? Math.round(b.dl.done / b.dl.total * 100) : 3}%"></i></div>
+      <div class="bl-row">${cell("Downloaded", mb(b.dl.done), b.dl.total ? `of ${mb(b.dl.total)} · ${Math.round(b.dl.done / b.dl.total * 100)}%` : "")}
+        ${cell("Speed", BH.speed ? mb(BH.speed) + "/s" : "…", "measured live")}${cell("Time left", left != null ? eta(left) : "working it out…", "until it can start reading")}</div>`
+    : `<div class="bl-bar"><i style="width:${Math.max(pct, 2)}%"></i></div>
+      <div class="bl-row">${cell("Checked", `${b.checked || 0}<em>/${b.messages || 0}</em>`, `${pct}% of your messages`)}
+        ${cell("Time left", left != null ? eta(left) : b.state === "reading" ? "almost done" : "—", b.sec ? `${b.sec}s per message` : "")}
+        ${cell("Facts found", b.found || 0, "each one checked by the rules")}
+        ${cell("Read this session", b.read || 0, b.forced ? "re-reading everything" : "new messages only")}</div>`}
+    ${b.usage ? `<div class="bl-row graphs">${cell("Processor", `${b.usage.cpu ?? 0}%`, "low priority — your apps come first", graph(BH.cpu, 100, "Processor use, last two minutes"))}
+      ${cell("Memory", mb(b.usage.memory || 0), `on disk ${mb(b.disk || 0)}`, graph(BH.mem, Math.max(...BH.mem) * 1.15, "Memory use, last two minutes"))}</div>` : ""}
+  </div>`;
 }
 function bloom(from, box) {  // the topic colours spread from what was pressed across its panel, turning, then dissolve
   if (RM.matches || !from?.isConnected || !box) return;
