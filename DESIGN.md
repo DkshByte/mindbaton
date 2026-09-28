@@ -140,12 +140,6 @@ logo). Labels are placed most-important first and never overlap. Motion: unfurl 
 links, pulsing search hits, breathing centre — all off under reduced motion.
 
 ## Motion
-Motion says something or it doesn't ship. Three motifs, each tied to what Mindbaton does: **the baton** (a highlight
-passes across your AI logos on You, every 7 s), **the shimmer** (a turning vermilion→amber outline on anything an AI is
-writing or reading — answers, chat summaries, the model while it downloads or reads; it stops when done, as Apple
-Intelligence marks AI work), **the landing** (the AI a new memory came from drops into its place). Plus the aurora's
-pulse and the bloom. All off under reduced motion.
-
 150ms hovers, 240ms panel slide, a 0.4s rise for newly captured entries. Nothing else moves outside the map.
 
 ## Layout
