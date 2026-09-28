@@ -20,10 +20,11 @@
   --glass: rgba(255, 255, 255, .06); --glass-hi: rgba(255, 255, 255, .11); --glass-rim: rgba(255, 255, 255, .14);
   --ok: #3dd68c; --danger: #ff6369; --danger-soft: rgba(255, 99, 105, .12);
   /* colour codes: kinds of fact and topic identity (map, dots, chips) */
-  --c-who: #f5c451; --c-place: #f59e6b; --c-project: #5fd9a8; --c-tool: #6cb8ff; --c-own: #e59df5; --c-learn: #a99bff;
-  --c-like: #f78fb3; --c-dislike: #ff6b7f; --c-people: #52d6c7; --c-want: #c9e77e; --c-other: #9ca3af;
-  --t1: #f5c451; --t2: #6cb8ff; --t3: #5fd9a8; --t4: #f78fb3; --t5: #a99bff; --t6: #f59e6b; --t7: #52d6c7; --t8: #c9e77e;
-  --t9: #e59df5; --t10: #ffb899; --t11: #5ed6ec; --t12: #d8c79a;
+  /* Radix Colors, dark scale, step 11 (hand-tuned to read on dark; MIT): amber orange grass blue plum violet pink tomato teal lime gold */
+  --c-who: #ffca16; --c-place: #ffa057; --c-project: #71d083; --c-tool: #70b8ff; --c-own: #e796f3; --c-learn: #baa7ff;
+  --c-like: #ff8dcc; --c-dislike: #ff977d; --c-people: #0bd8b6; --c-want: #bde56c; --c-other: #cbb99f;
+  --t1: #ffca16; --t2: #70b8ff; --t3: #71d083; --t4: #ff8dcc; --t5: #baa7ff; --t6: #ffa057; --t7: #0bd8b6; --t8: #bde56c;
+  --t9: #e796f3; --t10: #ff977d; --t11: #4ccce6; --t12: #cbb99f;
   --ai-chatgpt: #d4d4d8; --ai-claude: #e08a60; --ai-gemini: #8ab4ff; --ai-perplexity: #22b8cd; --ai-deepseek: #6b8cff;
   --ai-grok: #e4e4e7; --ai-copilot: #6cc3f5; --ai-poe: #b087ff; --ai-mistral: #fa8a3c; --ai-agent: #a1a1aa;
   --sans: "Geist", ui-sans-serif, system-ui, sans-serif; --mono: "Geist Mono", ui-monospace, monospace;
@@ -432,13 +433,13 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
 .tl small { font: 11.5px var(--mono); color: var(--fg-3); }
 /* marks instead of dots: a kind of fact gets its icon, a topic its initial, both in a tile tinted with their colour */
 .kic { width: 26px; height: 26px; flex: none; border-radius: 8px; display: grid; place-items: center; color: color-mix(in srgb, var(--c) 88%, #fff);
-  background: color-mix(in srgb, var(--c) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 28%, transparent); }
+  background: color-mix(in srgb, var(--c) 22%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 36%, transparent); }
 .kic svg.i { width: 15px; height: 15px; }
 .kic.sm { width: 22px; height: 22px; border-radius: 7px; }
 .kic.sm svg.i { width: 13px; height: 13px; }
 .tm { --s: 16px; width: var(--s); height: var(--s); flex: none; border-radius: calc(var(--s) * .3); display: inline-grid; place-items: center;
   font: 600 calc(var(--s) * .55)/1 var(--sans); letter-spacing: 0; color: color-mix(in srgb, var(--c) 85%, #fff);
-  background: color-mix(in srgb, var(--c) 20%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 34%, transparent); }
+  background: color-mix(in srgb, var(--c) 26%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 42%, transparent); }
 .tm.two { font-size: calc(var(--s) * .44); letter-spacing: -.02em; }
 .tm svg.i { width: 64%; height: 64%; }
 /* You + Chats: number tiles, profile cards, chats to pick up */
@@ -454,7 +455,7 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
 .kinds { columns: 3 290px; column-gap: 12px; margin-top: 14px; }
 .kcard { break-inside: avoid; margin-bottom: 12px; padding: 14px 14px 15px; border-radius: 12px; border: 1px solid var(--line); display: grid; gap: 11px;
   background: var(--panel); }
-.kcard h3 { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; }
+.kcard h3 { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: color-mix(in srgb, var(--c) 80%, #fff); }
 .kcard h3 .n { margin-left: auto; font: 12px var(--mono); color: var(--fg-3); }
 .ygrid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(300px, 1fr); gap: 20px; align-items: start; }
 .ygrid .card { max-height: none; }

@@ -17,8 +17,8 @@ files and never inline a copy of the mark's paths.
 | `--fg` `--fg-2` `--fg-3` | #ededef · #a1a1aa · #71717a | text, secondary, tertiary |
 | `--accent` (+ `-strong`, `-soft`, `-line`) | #8b95ff | **only** focus rings, selection, the answer card, the brand mark |
 | `--ok` / `--danger` | #3dd68c / #ff6369 | live dot / forgetting |
-| `--c-who … --c-other` | 11 hues | kind of fact (who, where, building, uses, has, learning, likes, dislikes, people, wants) — icon tiles, map spokes and pills |
-| `--t1 … --t12` | 12 hues | a topic's identity — its mark (initials tile), its map bubble |
+| `--c-who … --c-other` | 11 hues (Radix Colors dark, step 11) | kind of fact (who, where, building, uses, has, learning, likes, dislikes, people, wants) — icon tiles, map spokes and pills |
+| `--t1 … --t12` | 12 hues (Radix Colors dark, step 11) | a topic's identity — its mark (initials tile), its map bubble |
 
 Primary buttons are inverted (near-white on black), as Vercel does; there is no second accent.
 
