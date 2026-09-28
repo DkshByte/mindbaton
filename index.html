@@ -612,8 +612,9 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
 
 /* ---- people: avatars, sign-in, first run ---- */
 .av { --c: #8b95ff; width: 28px; height: 28px; flex: none; border-radius: 50%; display: inline-grid; place-items: center; font: 600 12px/1 var(--sans);
-  background: color-mix(in srgb, var(--c) 20%, var(--panel-2)); color: color-mix(in srgb, var(--c) 72%, #fff);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 34%, transparent); transition: box-shadow .15s; user-select: none; }
+  position: relative; overflow: hidden; isolation: isolate; background: var(--c); color: #fff; transition: box-shadow .15s; user-select: none; }
+.av svg.mb { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; }
+.av > b { font-weight: 650; letter-spacing: -.02em; text-shadow: 0 1px 3px rgba(0, 0, 0, .35); }
 .av.md { width: 32px; height: 32px; font-size: 13px; }
 .av.big { width: 48px; height: 48px; font-size: 18px; }
 .av.xl { width: 76px; height: 76px; font-size: 28px; letter-spacing: -.02em; }
@@ -641,7 +642,7 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
 .tiles { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 34px; }
 .tile { width: 132px; padding: 16px 8px 13px; border-radius: 14px; display: grid; justify-items: center; gap: 11px; border: 1px solid transparent; transition: background .15s, border-color .15s; }
 .tile:hover { background: var(--panel); border-color: var(--line-2); }
-.tile:hover .av, .tile:focus-visible .av { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 75%, transparent); }
+.tile:hover .av, .tile:focus-visible .av { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px color-mix(in srgb, var(--c) 85%, #fff); }
 .tile .name { font-size: 14px; font-weight: 500; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gate-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 20px; margin-top: 30px; }
 .link { color: var(--fg-2); font-size: 13px; padding: 2px; border-radius: 4px; text-decoration: underline; text-decoration-color: var(--line-3); text-underline-offset: 3px; }
@@ -679,7 +680,7 @@ select.inp { appearance: none; padding-right: 32px; cursor: pointer;
 .acct-btn { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; }
 .acct-btn:focus-visible { border-radius: 50%; }
 .acct-btn .av { width: 30px; height: 30px; font-size: 12.5px; }
-.acct-btn:hover .av, .acct-btn[aria-expanded="true"] .av { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 75%, transparent); }
+.acct-btn:hover .av, .acct-btn[aria-expanded="true"] .av { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px color-mix(in srgb, var(--c) 85%, #fff); }
 .menu { position: absolute; right: 0; top: calc(100% + 10px); width: 264px; background: var(--panel-2); border: 1px solid var(--line-2); border-radius: var(--r);
   box-shadow: 0 18px 44px rgba(0, 0, 0, .55); padding: 6px; z-index: 12; transform-origin: top right; }
 .menu-h { display: flex; gap: 11px; align-items: center; padding: 8px 8px 10px; min-width: 0; }
@@ -2790,8 +2791,25 @@ const IC = {
 IC.mcp = ICON.plug; IC.connector = ICON.globe; IC.other = IC.key;
 const USER_RX = /^[a-z0-9._-]{2,32}$/;
 const initials = n => ([...String(n || "?").trim()].length ? String(n).trim().split(/\s+/).slice(0, 2).map(w => [...w][0]).join("") : "?").toUpperCase();
+function shade(hex, turn, light = 0) {  // the same colour turned around the wheel and lightened: harmony without a palette file
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+  let h = 0, s = 0;
+  if (mx !== mn) { const d = mx - mn; s = l > .5 ? d / (2 - mx - mn) : d / (mx + mn); h = (mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4) / 6; }
+  return `hsl(${Math.round(h * 360 + turn)} ${Math.round(Math.min(95, s * 100 + 8))}% ${Math.round(Math.max(18, Math.min(82, l * 100 + light)))}%)`;
+}
+let avN = 0;
+function marble(p) {  // a person's avatar: soft shapes in their colour and two neighbours, blended, with film grain; the same every time
+  const c = /^#[0-9a-f]{6}$/i.test(p.color || "") ? p.color : COLORS[0][0], id = "mb" + avN++;
+  let seed = [...String(p.username || p.display_name || "?")].reduce((h, ch) => (h * 31 + ch.codePointAt(0)) >>> 0, 2166136261);
+  const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const blob = (fill, rx, ry) => `<ellipse cx="${(12 + rnd() * 56).toFixed(1)}" cy="${(12 + rnd() * 56).toFixed(1)}" rx="${rx + rnd() * 10}" ry="${ry + rnd() * 8}" fill="${fill}" transform="rotate(${Math.round(rnd() * 180)} 40 40)"/>`;
+  return `<svg class="mb" viewBox="0 0 80 80" aria-hidden="true"><defs><filter id="${id}" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="8"/></filter>
+    <filter id="${id}g"><feTurbulence type="fractalNoise" baseFrequency=".95" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0"/></filter></defs>
+    <rect width="80" height="80" fill="${shade(c, 0, -16)}"/><g filter="url(#${id})">${blob(shade(c, 42, 4), 26, 18)}${blob(shade(c, -38, 10), 22, 16)}${blob(shade(c, 0, 24), 14, 10)}${blob(shade(c, 150, -4), 10, 8)}</g>
+    <rect width="80" height="80" filter="url(#${id}g)" opacity=".2" style="mix-blend-mode:overlay"/></svg>`;
+}
 const avatar = (p, cls = "", flip) => `<span class="av ${cls}" style="--c:${esc(p.color || COLORS[0][0])}"${flip ? ` data-flip="${esc(flip)}"` : ""} aria-hidden="true">${
-  esc(initials(p.display_name || p.username))}</span>`;
+  marble(p)}<b>${esc(initials(p.display_name || p.username))}</b></span>`;
 const suggestUser = n => (String(n || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().trim().split(/\s+/)[0] || "")
   .replace(/[^a-z0-9._-]/g, "").slice(0, 32);
 const sentence = m => { m = String(m || "Something went wrong"); return m[0].toUpperCase() + m.slice(1) + (/[.!?]$/.test(m) ? "" : "."); };
