@@ -6,6 +6,7 @@
 <title>Mindbaton</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#111110">
+<script>try { const t = localStorage.getItem("mb-theme"); if (t === "oled" || t === "dim") document.documentElement.setAttribute("data-theme", t); } catch {}</script>
 <link rel="apple-touch-icon" href="/assets/app-192.png">
 <meta name="color-scheme" content="dark">
 <link rel="icon" href="/assets/brand/app-icon.svg">
@@ -33,6 +34,17 @@
   --sans: "Geist", ui-sans-serif, system-ui, sans-serif; --mono: "Geist Mono", ui-monospace, monospace;
   --r: 10px; --r-sm: 7px; --ease: cubic-bezier(.2, .8, .2, 1);
 }
+/* themes. Dim: the same warm greys, a few steps lighter. OLED: true black behind everything; cards stay a step above it
+   and edges a touch brighter, so nothing disappears */
+:root[data-theme="dim"] { --bg: #1a1a18; --side: #1d1d1b; --panel: #222221; --panel-2: #2a2a28; --panel-3: #31312e;
+  --line: rgba(255, 253, 243, .08); --line-2: rgba(255, 253, 243, .12); --line-3: rgba(255, 253, 243, .2); }
+:root[data-theme="dim"] .side { background: rgba(29, 29, 27, .6); }
+:root[data-theme="dim"] .top { background: rgba(26, 26, 24, .4); }
+:root[data-theme="oled"] { --bg: #000; --side: #000; --panel: #0d0d0c; --panel-2: #161615; --panel-3: #1e1e1c;
+  --line: rgba(255, 253, 243, .09); --line-2: rgba(255, 253, 243, .13); --line-3: rgba(255, 253, 243, .21); }
+:root[data-theme="oled"] .side { background: rgba(0, 0, 0, .55); }
+:root[data-theme="oled"] .top { background: rgba(0, 0, 0, .4); }
+:root[data-theme="oled"] .nav { background-color: rgba(0, 0, 0, .9); }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 400 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased; overflow: hidden; }
@@ -688,7 +700,16 @@ select.inp { appearance: none; padding-right: 32px; cursor: pointer;
 .menu-h b { display: block; font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .menu-h small { display: block; color: var(--fg-3); font-size: 12px; }
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: 5px -6px; }
-.menu [role="menuitem"] { width: 100%; display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 6px; color: var(--fg-2); font-size: 13px; }
+.menu [role="menuitem"], .menu [role="menuitemcheckbox"] { width: 100%; display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 6px; color: var(--fg-2); font-size: 13px; }
+.menu-theme { display: flex; align-items: center; gap: 10px; padding: 5px 4px 5px 8px; font-size: 13px; color: var(--fg-2); }
+.menu-theme > span { display: flex; align-items: center; gap: 10px; }
+.menu-theme .segs { margin-left: auto; }
+.menu-theme .segs button { padding: 3px 8px; font-size: 12px; }
+.menu .sw-t { margin-left: auto; width: 28px; height: 16px; flex: none; border-radius: 99px; background: var(--panel-3); box-shadow: inset 0 0 0 1px var(--line-2); position: relative; transition: background .15s; }
+.menu .sw-t::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--fg-3); transition: transform .15s, background .15s; }
+.menu [aria-checked="true"] .sw-t { background: var(--brand); }
+.menu [aria-checked="true"] .sw-t::after { transform: translateX(12px); background: #fff; }
+.menu [role="menuitemcheckbox"]:hover, .menu [role="menuitemcheckbox"]:focus-visible,
 .menu [role="menuitem"]:hover, .menu [role="menuitem"]:focus-visible { background: var(--panel-3); color: var(--fg); outline: none; }
 .menu [role="menuitem"].armed { color: var(--danger); background: var(--danger-soft); }
 
@@ -3015,6 +3036,9 @@ function renderAcct() {
     <button role="menuitem" data-go="account">${IC.user}My account</button>
     <button role="menuitem" data-go="devices">${IC.devices}Devices</button>
     ${ACCT.role === "admin" ? `<button role="menuitem" data-go="people">${IC.people}People</button>` : ""}<hr>
+    <div class="menu-theme"><span><svg class="i" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg>Theme</span>
+      <div class="segs" role="group" aria-label="Theme">${[["", "Dark"], ["dim", "Dim"], ["oled", "OLED"]].map(([k, t]) =>
+        `<button type="button" data-theme-set="${k}" aria-pressed="${(document.documentElement.dataset.theme || "") === k}">${t}</button>`).join("")}</div></div><hr>
     <button role="menuitem" data-acct="out">${IC.out}Sign out / switch person</button>
     <button role="menuitem" data-acct="all">${ICON.globe}<span>Sign out everywhere</span></button>`;
 }
@@ -3417,6 +3441,16 @@ $("#panel").addEventListener("click", ev => {
   const a = ev.target.closest("[data-p-ask]"), m = ev.target.closest("[data-p-map]");
   if (a) { $("#q").value = a.dataset.pAsk; recall(a.dataset.pAsk, true); }
   if (m) { show("map"); diagram.focus(+m.dataset.pMap); }
+});
+
+document.addEventListener("click", e => {  // themes: Dark (default), Dim, OLED — remembered on this device
+  const b = e.target.closest("[data-theme-set]");
+  if (!b) return;
+  const t = b.dataset.themeSet;
+  if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  b.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  document.querySelector('meta[name="theme-color"]').content = { "": "#111110", dim: "#1a1a18", oled: "#000000" }[t];
+  try { localStorage.setItem("mb-theme", t); } catch {}
 });
 
 boot();
