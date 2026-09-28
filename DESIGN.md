@@ -16,9 +16,9 @@ and memory — over the last two minutes. Downloading shows MB, measured speed a
 line of status. Graphs here are data, not decoration.
 
 ## The live card (sidebar)
-Under the wordmark, one card instead of a "Live" dot: an honest state — **Live** (a radiating ring only while memories
+A pill beside the wordmark (state dot + word) opens a card under it — one card instead of a "Live" dot: an honest state — **Live** (a radiating ring only while memories
 arrive, the last 10 minutes; still otherwise), **Quiet** (amber, nothing for 2 days), **Reconnecting…** (a spinner) —
-then the AI that sent the last memory and when, and 14 thin bars of memories per day with today in green. It opens Setup.
+then the AI that sent the last memory and when, and 14 thin bars of memories per day with today in green, and an Open Setup button.
 Never a green "Live" that isn't true.
 
 ## Baton in the product
