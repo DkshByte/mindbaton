@@ -163,6 +163,7 @@ Same engine as before, restyled: charcoal field with a soft glow of the centre's
 pills; things carry their real logo inside a ring of their kind's colour; the centre shows your initial (or the thing's
 logo). Labels are placed most-important first and never overlap. Motion: unfurl from the clicked point, flowing hovered
 links, pulsing search hits, breathing centre — all off under reduced motion.
+On a phone the legend is one scrolling strip along the bottom (Fit above it), so the map keeps the full width.
 
 ## Motion
 150ms hovers, 240ms panel slide, a 0.4s rise for newly captured entries. Nothing else moves outside the map.

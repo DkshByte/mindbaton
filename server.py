@@ -3043,6 +3043,10 @@ Projects include a garden planner app\nThat's everything I have stored.""")
         {"role": "user", "text": "ok it works now, what about 4k tone mapping?"}], limit="This conversation reached its maximum length")
     assert m["turns"] == 3 and m["ai"] == "Claude" and m["limit"] and m["pct"] == 0.0, m
     assert any("Jellyfin" in c["chat"] + c["snippet"] for c in live.search(g, "quick sync")), "conversations are searchable"
+    long = "one primary action per card " * 9 + "and no hover-only affordances in the Jellyfin settings " * 9
+    s1 = live.snip(long, long.find("Jellyfin"))
+    assert s1.startswith("…") and s1[1:].split()[0] in long.split() and s1.endswith("…") and len(s1) <= 242, s1
+    assert live.snip("short Jellyfin note", 6) == "short Jellyfin note", "a short turn is shown whole"
     h = live.make_handoff(g, None, 800, to="chatgpt")
     assert h["text"].startswith("[mindbaton handoff]") and "Quick Sync" in h["text"] and h["open"] == "https://chatgpt.com/", h
     assert live.take_pending(g, "chatgpt.com")["text"] == h["text"] and live.take_pending(g, "chatgpt.com") == {}, "pending is used once"

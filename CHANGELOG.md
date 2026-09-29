@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **UI fixes from an audit.** The sidebar wordmark no longer has a stray mark over its "i"; the nav reads You · Topics
+  · Chats · Map · Setup, matching keys 1–5; the Topics count includes Loose ends like the Topics page does; panels say
+  what a related memory is and when, not its row number; a failed model download says so in words (the raw error on
+  hover); search snippets start and end on whole words. On a phone: a new page opens at its top, the map's legend is a
+  strip along the bottom so the map uses the full width, the search hint is never cut mid-word, and header lines no
+  longer start with a stray dot. "Bring your old memory" in the command palette brings that card to the front.
 - **Understands meaning, not just words.** A built-in table of word meanings (Model2Vec potion-base-8M, 7.7 MB, plain
   Python, offline) finds "I love cricket" for "what do I do for fun?" and links memories about one subject in other
   words. Questions asked in other words: 15/23 → 23/23 on the benchmark; 11/11 for a new person it was never tuned on.

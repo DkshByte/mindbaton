@@ -107,7 +107,7 @@ img.lg { object-fit: contain; }
 @keyframes hop { 0% { transform: none; } 30% { transform: translate(3px, -5px) rotate(9deg); } 62% { transform: translate(-1px, 0) rotate(-4deg); } 100% { transform: none; } }
 .brand.off .brand-baton { opacity: .4; }
 .wordmark { display: flex; align-items: center; color: var(--fg); }
-.wordmark svg { height: 21px; width: auto; display: block; }
+.wordmark > svg { height: 21px; width: auto; display: block; }
 .brand b { font-weight: 600; font-size: 15px; letter-spacing: -.01em; }
 /* the live card: an honest state, who sent the last memory and when, and 14 days of activity. It only moves while
    memories are actually arriving; quiet after two days; a spinner while reconnecting. */
@@ -729,7 +729,7 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
 .tile:hover .av, .tile:focus-visible .av { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px color-mix(in srgb, var(--c) 85%, #fff); }
 .tile .name { font-size: 14px; font-weight: 500; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gate-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 20px; margin-top: 30px; }
-.link { color: var(--fg-2); font-size: 13px; padding: 2px; border-radius: 4px; text-decoration: underline; text-decoration-color: var(--line-3); text-underline-offset: 3px; }
+.link { color: var(--fg-2); font-size: 13px; padding: 0; border-radius: 4px; text-decoration: underline; text-decoration-color: var(--line-3); text-underline-offset: 3px; }
 .link:hover { color: var(--fg); text-decoration-color: var(--fg-3); }
 .gform { width: 100%; display: grid; gap: 14px; margin-top: 28px; text-align: left; }
 .gate-card { width: 100%; text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; margin-top: 12px; display: grid; gap: 8px; }
@@ -791,6 +791,7 @@ select.inp { appearance: none; padding-right: 32px; cursor: pointer;
 .set .card { max-height: none; }
 .set-b { padding: 16px; display: grid; gap: 16px; }
 .set-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-width: 0; }
+.set-row > .inp + .btn { height: 38px; }
 .grow { flex: 1; min-width: 180px; }
 .set-note { margin: 0; color: var(--fg-3); font-size: 12.5px; text-wrap: pretty; }
 .set-note b { color: var(--fg-2); font-weight: 500; }
@@ -907,8 +908,15 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
   .panel { position: fixed; inset: 0; width: 100%; z-index: 16; border-left: 0; padding-bottom: env(safe-area-inset-bottom); }
   dialog.sheet { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; border: 0; }
   .toast { bottom: calc(76px + env(safe-area-inset-bottom)); max-width: calc(100vw - 32px); }
-  .dg-legend { right: 12px; bottom: 12px; max-width: 170px; font-size: 12px; padding: 8px 10px; }
-  .dg-tools { left: 12px; bottom: 12px; }
+  /* the legend is a strip along the bottom, so the map keeps the whole width */
+  .dg-legend { left: 12px; right: 12px; bottom: 12px; max-width: none; display: flex; gap: 4px 14px; overflow-x: auto; white-space: nowrap;
+    font-size: 12px; padding: 6px 12px; scrollbar-width: none; }
+  .dg-legend > div, .dg-legend button { flex: none; margin: 0; }
+  .dg-legend .lg-h, .dg-legend .lg-note { display: none; }
+  .dg-tools { left: 12px; bottom: 60px; }
+  .search kbd { display: none; }  /* no keyboard shortcut to hint at on a phone */
+  .hello-sub { gap: 4px 12px; }
+  .hello-sub .sep-dot { display: none; }  /* a wrapped line would start with a stray dot */
   .dg-head { left: 16px; right: 16px; top: 12px; }
   .top { padding: 0 16px; }
   .top h1 { display: none; }
@@ -974,8 +982,8 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
       <button data-view="overview" aria-current="page"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/></svg>You<kbd>1</kbd></button>
       <button data-view="topics"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>Topics<kbd>2</kbd></button>
       <button data-view="chats"><svg class="i" viewBox="0 0 24 24"><path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8.5a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17H5a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 5 5.5Z"/><path d="M8 10h8M8 13h5"/></svg>Chats<kbd>3</kbd></button>
-      <button data-view="setup"><svg class="i" viewBox="0 0 24 24"><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3M6 6l2.1 2.1M15.9 15.9 18 18M6 18l2.1-2.1M15.9 8.1 18 6"/><circle cx="12" cy="12" r="3"/></svg>Setup<kbd>5</kbd></button>
       <button data-view="map"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.6"/><circle cx="5" cy="6" r="1.8"/><circle cx="19" cy="6" r="1.8"/><circle cx="6" cy="19" r="1.8"/><circle cx="18" cy="18" r="1.8"/><path d="M10 10.4 6.4 7.2M14 10.4l3.6-3.2M10.2 13.9 7.3 17.6M14 13.8l2.8 2.8"/></svg>Map<kbd>4</kbd></button>
+      <button data-view="setup"><svg class="i" viewBox="0 0 24 24"><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3M6 6l2.1 2.1M15.9 15.9 18 18M6 18l2.1-2.1M15.9 8.1 18 6"/><circle cx="12" cy="12" r="3"/></svg>Setup<kbd>5</kbd></button>
     </nav>
     <div class="side-scroll">
       <div class="side-h"><span>Topics</span><span class="num" id="n-topics"></span></div>
@@ -1234,7 +1242,7 @@ function renderSide() {
   $("#side-topics").innerHTML = topics.map(t => `<li><button data-topic="${t.id}">${tmark(t.id, 18)}<span class="name">${esc(t.name)}</span><span class="n">${t.size}</span></button></li>`).join("")
     + (loose ? `<li><button data-topic="loose">${tmark("loose", 18)}<span class="name">Loose ends</span><span class="n">${loose}</span></button></li>` : "")
     || `<li class="side-h" style="padding-top:0">Topics appear as you chat.</li>`;
-  $("#n-topics").textContent = G.topics.length || "";
+  $("#n-topics").textContent = G.topics.length + (loose ? 1 : 0) || "";
   const ais = Object.entries(G.stats.ais || {}).sort((a, b) => b[1] - a[1]);
   $("#side-sources").innerHTML = ais.map(([a, n]) => `<li><button data-source="${esc(a)}">${aiLogo(a, "")}<span class="name">${esc(a)}</span><span class="n">${n}</span></button></li>`).join("")
     || `<li class="side-h" style="padding-top:0">No AI captured yet.</li>`;
@@ -1265,7 +1273,7 @@ function renderFoot() {
   renderPulse();
   $(".brand")?.classList.toggle("off", !online);
   $("#side-foot").innerHTML = `
-    <div class="row-s"><span>${plural(s.memories ?? 0, "memory").replace("memorys", "memories")} · ${plural(s.entities ?? 0, "thing")}</span><b>${s.captures ?? 0} captured</b></div>
+    <div class="row-s"><span>${plural(s.memories ?? 0, "memory").replace("memorys", "memories")} · ${plural(s.entities ?? 0, "thing")}</span><span><b>${s.captures ?? 0}</b> captured</span></div>
     <div class="row-s"><button class="btn-quiet" id="rebuild" title="Re-read every capture with the current understanding">${ICON.refresh}Re-read all</button></div>`;
 }
 
@@ -1352,7 +1360,7 @@ function palSource() {
     { g: "Do", icon: ICON.spark, label: "Ask your memory…", hint: "/", run: () => { $("#q").focus(); $("#q").select(); } },
     ...(latest ? HANDOFF_TO.filter(([, n]) => n !== chatAI(latest)).slice(0, 3).map(([host, n]) => ({ g: "Do", icon: aiLogo(n, ""), label: `Continue “${clip(latest.label, 30)}” in ${n}`,
       hint: "hand-off", run: () => { const b = document.createElement("button"); b.innerHTML = "<span></span>"; handoff(latest.sid, host, b); } })) : []),
-    { g: "Do", icon: IC_IMPORT, label: "Bring your old memory", hint: "import", run: () => { show("setup"); setTimeout(() => $("#import-feat")?.scrollIntoView({ block: "start" }), 400); } },
+    { g: "Do", icon: IC_IMPORT, label: "Bring your old memory", hint: "import", run: () => { featFront = "import"; show("setup"); setTimeout(() => $("#fstack")?.scrollIntoView({ block: "start" }), 400); } },
     { g: "Do", icon: ICON.refresh, label: "Re-read all captures", hint: "rebuild", run: () => $("#rebuild")?.click() },
     go("overview", "You", "who"), go("topics", "Topics", "project"), go("chats", "Chats", "chat"), go("map", "Map", "other"), go("setup", "Setup", "tool")];
   const topics = topicData().sort((a, b) => b.last - a.last).map(x => ({ g: "Topics", icon: tmark(x.k, 20), label: x.name, hint: plural(x.list.length, "entry").replace("entrys", "entries"),
@@ -1928,7 +1936,8 @@ function brainPoll(b) {  // while it downloads or reads, only this step refreshe
 function brainStep(st) {  // Mindbaton's own model: what it's doing, and (admins) re-reading everything with it
   const b = st.brain || {}, busy = b.forced && b.left;
   const sub = b.progress ? esc(b.progress)
-    : b.state === "waiting" && b.error ? "Will try again in a few minutes: " + esc(b.error)
+    : b.state === "waiting" && b.error ? `<span title="${esc(b.error)}">${/URLError|HTTPError|Tunnel|Connection|timed out|getaddrinfo|SSL/i.test(b.error)
+      ? "Couldn't reach the download server" : "Something went wrong starting it"} — it tries again in a few minutes.</span>`
     : b.paused ? "Paused. Resume it below."
     : b.state === "reading" ? `Reading · ${b.left} left · about ${eta(b.left * (b.sec || 4))}${b.forced ? " · then one quick rebuild" : ""}`
     : (b.state || "").startsWith("paused") ? "Waiting for the charger — it doesn't read on battery."
@@ -2110,7 +2119,7 @@ async function recall(q, deep) {
   try { r = await api("/recall?k=12&q=" + encodeURIComponent(q)); } catch (e) { return toast("Search failed: " + e.message); }
   lastQ = q;
   recallIds = new Set(r.nodes.map(n => n.id));
-  const ans = r.answer ? `<div class="answer">${ICON.spark}<div><p>${esc(r.answer.text)}</p>${r.answer.sources?.length ? `<small>from ${r.answer.sources.map(i => `<button data-id="${i}">#${i}</button>`).join(" ")}</small>` : ""}</div></div>` : "";
+  const ans = r.answer ? `<div class="answer">${ICON.spark}<div><p>${esc(r.answer.text)}</p>${r.answer.sources?.length ? `<small>from ${r.answer.sources.map(i => `<button data-id="${i}" title="${esc(byId.get(i)?.label || "Open memory #" + i)}">#${i}</button>`).join(" ")}</small>` : ""}</div></div>` : "";
   $("#recall").innerHTML = `<div class="wrap"><h1 class="hello" style="font-size:24px">“${esc(q)}”</h1>${ans}<div id="ai-answer"></div>
     <p class="hello-sub">${r.memories.length ? `${plural(r.memories.length, "memory").replace("memorys", "memories")}, best match first` : "Nothing remembered about that yet."}</p>
     <div class="card" style="margin-top:14px">${r.memories.length ? `<div class="card-b rows">${r.memories.map((m, i) => entryRow({ ...(byId.get(m.id) || {}), ...m, label: m.text, cluster: byId.get(m.id)?.cluster }, { rank: i + 1, topic: true, fresh: true })).join("")}</div>`
@@ -2179,7 +2188,7 @@ function renderPanel() {
       ${chain.length > 1 ? `<div class="p-sec">How it changed</div><div class="tl">${chain.map((id, i) => { const m = byId.get(id), cur = i === chain.length - 1;
         return m ? `<button data-id="${id}" class="${cur ? "cur" : "old"}"><span>${esc(m.label)}</span><small>${day(m.updated)}${id === n.id ? " · this one" : cur ? " · now" : ""}</small></button>` : ""; }).join("")}</div>` : ""}
       ${things.length ? `<div class="p-sec">Things</div><div class="chips">${things.map(t => `<button class="chip" data-id="${t.id}">${badge(t, "var(--fg-3)", "sm")}${esc(t.label)}</button>`).join("")}</div>` : ""}
-      ${see.length ? `<div class="p-sec">Related memories</div><div class="p-list">${see.map(i => item(i, "#" + i)).join("")}</div>` : ""}
+      ${see.length ? `<div class="p-sec">Related memories</div><div class="p-list">${see.map(i => item(i, KIND[byId.get(i)?.type] || "Note")).join("")}</div>` : ""}
       ${forgetBlock(n)}`;
   } else if (n.kind === "session") {
     const ai = chatAI(n), mems = chatMems(n).sort((a, b) => b.updated - a.updated);
@@ -2249,7 +2258,7 @@ function renderPanel() {
             s.model ? ` <span class="model">${esc(s.model)}</span>` : ""}</span></button>`).join("")}</div>`;
       })()}
       <div class="p-sec">Mentioned in</div><div class="p-list">${said.slice(0, 40).map(i => { const m = byId.get(i);
-        return m ? `<button data-id="${i}"><span class="k">${aiLogo(m.srcs?.[0]?.ai || m.ais?.[0] || "agent")} #${i}</span><span>${esc(m.label)}</span></button>` : ""; }).join("")
+        return m ? `<button data-id="${i}"><span class="k">${aiLogo(m.srcs?.[0]?.ai || m.ais?.[0] || "agent")} ${day(m.updated)}</span><span>${esc(m.label)}</span></button>` : ""; }).join("")
         || `<p style="color:var(--fg-3);margin:4px 8px">No active memories.</p>`}</div>
       ${n.type === "self" ? "" : forgetBlock(n)}`;
   }
@@ -2291,6 +2300,7 @@ addEventListener("pagehide", () => { for (const [id, t] of gone) { clearTimeout(
 // ---------- views ----------
 const TITLES = { overview: "You", topics: "Topics", chats: "Chats", map: "Map", recall: "Search", setup: "Setup", settings: "Settings" };
 function show(v) {
+  if (v !== view && innerWidth <= 820) scrollTo(0, 0);  // phone: one page scroll, shared by every view
   view = v;
   $(".app").dataset.view = v;
   document.querySelectorAll(".view").forEach(p => p.hidden = p.id !== v);
@@ -2307,7 +2317,7 @@ function show(v) {
 function route(h) {  // #devices, #pair/ABCD-EFGH … → a view; false when the hash names none
   if (/^pair\/[\w-]{4,20}$/.test(h)) { openSettings("devices", h.slice(5)); return true; }
   if (SET_TABS.includes(h)) { openSettings(h); return true; }
-  if (TITLES[h] && h !== "recall" && h !== "settings") { show(h); return true; }
+  if (TITLES[h] && h !== "recall" && h !== "settings") { show(h); scrollTo(0, 0); return true; }  // a typed #view jumps to its section
   return false;
 }
 
@@ -2576,8 +2586,8 @@ const diagram = (() => {
       const r = (s.r || 12) + (s.kind === "mem" ? 180 : s.kind === "item" || s.kind === "sat" || s.kind === "dot" ? 120 : 30);  // room for labels
       x0 = Math.min(x0, s.tx - r); x1 = Math.max(x1, s.tx + r); y0 = Math.min(y0, s.ty - r); y1 = Math.max(y1, s.ty + r);
     }
-    const lg = $("#dg-legend"), head = document.querySelector(".dg-head");
-    const aL = 24, aR = W() - (lg.offsetWidth ? lg.offsetWidth + 34 : 24), aT = head.offsetHeight + 30, aB = H() - 56;
+    const lg = $("#dg-legend"), head = document.querySelector(".dg-head"), strip = lg.offsetWidth > W() / 2;  // phone: the legend runs along the bottom
+    const aL = 24, aR = W() - (lg.offsetWidth && !strip ? lg.offsetWidth + 34 : 24), aT = head.offsetHeight + 30, aB = H() - (strip ? lg.offsetHeight + 72 : 56);
     const k = Math.min(1.5, Math.max(.2, Math.min((aR - aL) / (x1 - x0), (aB - aT) / (y1 - y0))));
     camTo = { x: (x0 + x1) / 2 - ((aL + aR) / 2 - W() / 2) / k, y: (y0 + y1) / 2 - ((aT + aB) / 2 - H() / 2) / k, k };
     if (reduce.matches || !built) { cam = { ...camTo }; camTo = null; }
@@ -2930,6 +2940,9 @@ const diagram = (() => {
 
 // ---------- accounts: sign-in, first run, the account menu, settings ----------
 const RM = matchMedia("(prefers-reduced-motion: reduce)");
+const NARROW = matchMedia("(max-width: 820px)"), Q_HINT = $("#q").placeholder;  // a phone shows the short hint, never one cut mid-word
+const qHint = () => { $("#q").placeholder = NARROW.matches ? "Ask your memory…" : Q_HINT; };
+qHint(); NARROW.addEventListener("change", qHint);
 function anim(el, kf, o) {  // motion.dev; nothing moves under reduced motion (and content never waits on it)
   if (RM.matches || !window.Motion || !el || el.length === 0) return null;
   try { return Motion.animate(el, kf, { ease: [.2, .8, .2, 1], ...o }); } catch { return null; }
