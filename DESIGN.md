@@ -172,6 +172,17 @@ Content column max 1120px, 40px side padding. You: kind cards in up to 3 columns
 stacking under 1100px. Under 820px (the phone) the sidebar becomes a top nav strip, topics and sources hide, the page
 scrolls and the detail panel takes the full width.
 
+## The website (`site/`, 2026-09-29)
+The landing page follows this system instead of its own costume (the "box and its manual" page it replaced). Same tokens,
+Geist and Geist Mono, flat `--panel` cards on hairlines, the app's `.btn`, chips, rows and segmented control, and the
+aurora in its warm colours (tomato, amber, rose, orange) as the only decoration. Left-aligned: headline, lede, the
+install command with Copy (primary), then a real screenshot of You. "How it works" is three steps, each beside one of the
+app's components filled with the demo person (Recently rows, the answer card, a pick card and its real hand-off pack);
+then the app's screens behind a segmented control, "Works with" as kind rows of chips, privacy as hairline rows,
+install as a Script / Docker switch with numbered steps, questions, footer. Screens and data come from `demo.py`, never
+invented. Privacy and terms (`legal.css`) are plain reading pages in the same palette. No eyebrows, no metric tiles, no
+feature-card grid, no gradients inside boxes.
+
 ## Not allowed (found in a vibe-coding review, 2026-09-28)
 Colour washes or gradients inside cards and panels (surfaces are flat `--panel`; colour lives only in icons, marks and
 logos), eyebrow labels above headings, hero-metric number tiles (numbers are one quiet line of links), sparklines
