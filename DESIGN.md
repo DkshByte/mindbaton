@@ -104,10 +104,11 @@ with no logo gets a small dot in its kind's colour; people get a round lettered 
   cross-fading over 1.4 s. A new memory brightens it for ~1.5 s anywhere — the app's heartbeat. Plain gradients moving
   by transform, no blur filters; still under reduced motion. It sits behind `.side` and `.main`, so re-renders never
   restart it.
-- **Frosted chrome:** the sidebar (`rgba(12,12,14,.58)`, blur 28px) and the top bar (`rgba(9,9,11,.34)`, blur 24px) are
-  glass over the aurora, so the colour carries through them instead of stopping at a black edge. The top bar sits at
-  z-index 4 (over the page and its menu, under the detail panel). On the phone the sidebar drops its filter — a filter
-  there would make it the containing block of the fixed tab bar.
+- **Seamless chrome:** the glow runs unbroken behind the sidebar and top bar. On desktop the top bar is clear (the
+  page scrolls below it, never under it) and shows its hairline only once the page is scrolled; the sidebar is a light
+  tint (`rgba(20,20,19,.22)`) with no blur or saturation, which shifted the colours at its edge. Every glow fades on an
+  eased curve that reaches zero flat, the vertical fade has eight stops, and a 5% grain sits over the aurora, so no
+  rim, band or 8-bit step shows. On the phone the top bar is frosted again, since the page scrolls under it.
 - **Number tiles** (`kpis`): four clickable cells in one hairline-divided panel — a mono 26px number, a label, and a
   one-line note (green when something's new, red when chats are near their limit). Each goes somewhere: You → Topics,
   Map, Chats, Setup; Chats → sort by recent, longest, fullest.
