@@ -6,7 +6,39 @@
 <title>Mindbaton</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#111110">
-<script>try { const t = localStorage.getItem("mb-theme"); if (t === "oled" || t === "light") document.documentElement.setAttribute("data-theme", t); } catch {}</script>
+<script>/* the theme and the gradient behind the app, set before the first paint; both remembered on this device */
+const GRADS = [  // [id, name, note, four glows] — most from uiGradients (MIT), chosen to glow on a dark page
+  ["vermilion", "Vermilion", "Mindbaton's own", "#e54d2e #ffc53d #e93d82 #f76b15"],
+  ["mesh", "Mesh", "Magenta, sky, violet, gold", "#ef008f #6ec3f4 #7038ff #ffba27"],
+  ["relay", "Relay", "Plum into apricot", "#6a3cb5 #d76d77 #ffaf7b #d76d77"],
+  ["jshine", "JShine", "Cyan, orchid, coral", "#12c2e9 #c471ed #f64f59 #c471ed"],
+  ["atlas", "Atlas", "Sand, lilac, teal", "#feac5e #c779d0 #4bc0c8 #c779d0"],
+  ["wiretap", "Wiretap", "Berry into tangerine", "#8a2387 #e94057 #f27121 #e94057"],
+  ["borealis", "Borealis", "Northern lights", "#38ef7d #11998e #0ed2f7 #8e54e9"],
+  ["lagoon", "Lagoon", "Shallow water", "#b2fefa #0ed2f7 #43c6ac #6a82fb"],
+  ["azur", "Azur Lane", "Periwinkle and mint", "#7f7fd5 #86a8e7 #91eae4 #86a8e7"],
+  ["peach", "Peach", "Soft morning", "#ff7e5f #feb47b #f7797d #fbd786"],
+  ["candy", "Cotton candy", "Pink and powder blue", "#ff8bd3 #b8b5ff #6a7bff #ffc2e8"],
+  ["neon", "Neon", "Magenta and aqua", "#fc00ff #00dbde #ef32d9 #89fffd"],
+  ["magic", "Magic", "Mint and amethyst", "#59c173 #a17fe0 #5d26c1 #a17fe0"],
+  ["golden", "Golden hour", "Violet, red, gold", "#833ab4 #fd1d1d #fcb045 #fd1d1d"],
+  ["argon", "Argon", "Electric violet", "#7303c0 #ec38bc #fdeff9 #ec38bc"],
+  ["deepsea", "Deep sea", "Blues, all the way down", "#1cb5e0 #4286f4 #0082c8 #667db6"],
+  ["graphite", "Graphite", "Barely there", "#8e9eab #eef2f3 #6b6b83 #b5b3ad"],
+];
+const GRAD_AUTO = [[0, "borealis", "Night"], [5, "peach", "Dawn"], [9, "azur", "Day"], [16, "golden", "Golden hour"], [19, "relay", "Dusk"], [21, "borealis", "Night"]];
+const gradPhase = (h = new Date().getHours()) => GRAD_AUTO.filter(p => h >= p[0]).pop();
+const gradColors = id => ((GRADS.find(g => g[0] === (id === "auto" ? gradPhase()[1] : id)) || GRADS[0])[3]).split(" ");
+function gradSet(id) {  // "auto" follows the hour; "off" hides the glow behind the app
+  const r = document.documentElement;
+  if (id === "off") r.dataset.grad = "off"; else delete r.dataset.grad;
+  gradColors(id).forEach((c, i) => r.style.setProperty("--a" + (i + 1), c));
+}
+let GRAD = "vermilion";
+try { const t = localStorage.getItem("mb-theme"); if (t === "oled" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  const g = localStorage.getItem("mb-grad"); if (g === "auto" || g === "off" || GRADS.some(x => x[0] === g)) GRAD = g; } catch {}
+gradSet(GRAD);
+</script>
 <link rel="apple-touch-icon" href="/assets/app-192.png">
 <meta name="color-scheme" content="dark">
 <link rel="icon" href="/assets/brand/app-icon.svg">
@@ -462,6 +494,64 @@ dialog.help dd { margin: 0; color: var(--fg-2); }
 @keyframes aur2 { to { transform: translate(-16%, 70px) scale(.9); } }
 @keyframes aur3 { to { transform: translate(18%, 30px) scale(1.2); } }
 @keyframes aur4 { to { transform: translate(-24%, 60px) scale(1.05); } }
+:root[data-grad="off"] .app > .aurora { display: none; }
+.aurora.reveal { z-index: 0; }  /* a new gradient spreading over the old one, from the card you pressed */
+/* Appearance: the theme and the gradient as cards that show what you get; the glow comes up while you choose */
+.app[data-view="settings"][data-set="appearance"] .aurora { opacity: .55; }
+.app[data-view="settings"][data-set="appearance"] .aurora.pulse { opacity: .85; }
+:root[data-theme="light"] .app[data-view="settings"][data-set="appearance"] .aurora { opacity: .22; }
+:root[data-theme="light"] .app[data-view="settings"][data-set="appearance"] .aurora.pulse { opacity: .34; }
+.gpick { display: grid; grid-template-columns: repeat(auto-fill, minmax(156px, 1fr)); gap: 12px; }
+.gcard, .thcard { display: grid; gap: 9px; padding: 5px 5px 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); text-align: left; min-width: 0;
+  transition: border-color .15s, transform .25s var(--ease), box-shadow .15s; }
+.gcard:hover, .thcard:hover { border-color: var(--line-3); transform: translateY(-2px); }
+.gcard[aria-pressed="true"], .thcard[aria-pressed="true"] { border-color: var(--accent-line); box-shadow: 0 0 0 1px var(--accent-line); }
+.gcard > span:last-child, .thcard > span:last-child { display: grid; padding: 0 6px; min-width: 0; }
+.gcard b, .thcard b { font-size: 13px; font-weight: 600; }
+.gcard small, .thcard small { font-size: 12px; color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gp { position: relative; display: block; height: 88px; border-radius: 8px; overflow: hidden; isolation: isolate; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); }
+.gp i { position: absolute; top: -70%; width: 72%; height: 150%; border-radius: 50%; mix-blend-mode: screen; background: radial-gradient(closest-side, var(--c), transparent);
+  opacity: .9; animation: 9s ease-in-out infinite alternate paused; transition: opacity .3s; }
+.gp i:nth-child(1) { --c: var(--g1); left: -24%; animation-name: gp1; }
+.gp i:nth-child(2) { --c: var(--g2); left: 4%; top: -80%; animation-name: gp2; animation-duration: 11s; }
+.gp i:nth-child(3) { --c: var(--g3); left: 32%; animation-name: gp3; animation-duration: 8s; }
+.gp i:nth-child(4) { --c: var(--g4); left: 56%; top: -76%; animation-name: gp4; animation-duration: 12s; }
+.gp::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; z-index: 1;
+  background: linear-gradient(90deg, transparent, var(--g1) 18%, var(--g2) 40%, var(--g3) 62%, var(--g4) 84%, transparent); }
+.gp.none::before { display: none; }
+.gp.none svg.i { position: absolute; inset: 0; margin: auto; width: 22px; height: 22px; color: var(--fg-3); }
+:is(.gcard:hover, .gcard:focus-visible, .gcard[aria-pressed="true"]) .gp i { animation-play-state: running; opacity: 1; }
+@keyframes gp1 { to { transform: translate(24%, 14px) scale(1.15); } }
+@keyframes gp2 { to { transform: translate(-18%, 20px) scale(.9); } }
+@keyframes gp3 { to { transform: translate(20%, 10px) scale(1.2); } }
+@keyframes gp4 { to { transform: translate(-22%, 18px) scale(1.05); } }
+:root[data-theme="light"] .gp i { mix-blend-mode: multiply; opacity: .5; }
+:root[data-theme="light"] :is(.gcard:hover, .gcard:focus-visible, .gcard[aria-pressed="true"]) .gp i { opacity: .62; }
+.gk { position: absolute; top: 7px; right: 7px; z-index: 2; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--fg); color: var(--bg); transform: scale(0); transition: transform .3s cubic-bezier(.3, 1.6, .5, 1); }
+.gk svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+[aria-pressed="true"] > span > .gk { transform: none; }
+.gday { position: absolute; left: 8px; right: 8px; bottom: 8px; height: 4px; border-radius: 2px; z-index: 1; opacity: .9; }  /* Auto: the day, and where you are in it */
+.gday span { position: absolute; top: -3px; width: 2px; height: 10px; margin-left: -1px; border-radius: 1px; background: var(--fg); box-shadow: 0 0 0 1.5px var(--bg); }
+.gsw { width: 16px; height: 16px; flex: none; border-radius: 5px; box-shadow: inset 0 0 0 1px var(--line-2);
+  background: linear-gradient(135deg, var(--a1), var(--a2) 35%, var(--a3) 65%, var(--a4)); }
+:root[data-grad="off"] .gsw { background: var(--panel-3); }
+.menu .menu-v { margin-left: auto; color: var(--fg-3); font-size: 12px; }
+.thpick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.thp { position: relative; display: grid; grid-template-columns: 26% 1fr; height: 96px; border-radius: 8px; overflow: hidden; isolation: isolate;
+  background: var(--tb); box-shadow: inset 0 0 0 1px var(--line); }
+.thp i { position: absolute; top: -60%; width: 70%; height: 110%; border-radius: 50%; mix-blend-mode: screen; opacity: .7; z-index: -1;
+  background: radial-gradient(closest-side, var(--c), transparent); }
+.thp i:nth-child(1) { --c: var(--a1); left: 0; }
+.thp i:nth-child(2) { --c: var(--a3); left: 40%; }
+.thp[data-t="light"] i { mix-blend-mode: multiply; opacity: .3; }
+:root[data-grad="off"] .thp i { display: none; }
+.thp-side { border-right: 1px solid color-mix(in srgb, var(--tf) 10%, transparent); padding: 12px 8px; display: grid; align-content: start; gap: 6px; }
+.thp em { display: block; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--tf) 22%, transparent); }
+.thp em:first-child { background: color-mix(in srgb, var(--tf) 45%, transparent); }
+.thp-main { padding: 14px 12px; display: grid; align-content: start; gap: 7px; }
+.thp-main em:first-child { width: 46%; height: 7px; background: var(--tf); opacity: .85; }
+.thp-main span { display: block; height: 30px; margin-top: 3px; border-radius: 5px; background: var(--tp); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tf) 12%, transparent); }
 /* first paint: shapes of what's coming, not a blank page */
 .sk { border-radius: 8px; background: linear-gradient(90deg, var(--panel), var(--panel-2), var(--panel)) 0 0 / 200% 100%; animation: skel 1.4s linear infinite; }
 .sk-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 28px; }
@@ -880,7 +970,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
 .toast-act:hover { background: rgba(255, 255, 255, .16); }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .fresh { animation: rise .4s var(--ease) both; }
-@media (prefers-reduced-motion: reduce) { .pl-dot.hot::after, .pl-dot.off, .bl-state i, .brand-baton svg.hop, .fstack.deal > .feat, .fresh, .skel, .sk, .listen i, .sc.pop .tick, .aurora i { animation: none; } * { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .pl-dot.hot::after, .pl-dot.off, .bl-state i, .brand-baton svg.hop, .fstack.deal > .feat, .fresh, .skel, .sk, .listen i, .sc.pop .tick, .aurora i, .gp i { animation: none; } * { transition: none !important; } }
 
 @media (max-width: 1100px) { .grid, .ygrid { grid-template-columns: 1fr; } .tgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .t-body { grid-template-columns: 1fr; } .wrap { padding: 28px 24px 56px; } }
 @media (max-width: 820px) {
@@ -1362,6 +1452,7 @@ function palSource() {
       hint: "hand-off", run: () => { const b = document.createElement("button"); b.innerHTML = "<span></span>"; handoff(latest.sid, host, b); } })) : []),
     { g: "Do", icon: IC_IMPORT, label: "Bring your old memory", hint: "import", run: () => { featFront = "import"; show("setup"); setTimeout(() => $("#fstack")?.scrollIntoView({ block: "start" }), 400); } },
     { g: "Do", icon: ICON.refresh, label: "Re-read all captures", hint: "rebuild", run: () => $("#rebuild")?.click() },
+    { g: "Do", icon: '<span class="gsw" aria-hidden="true"></span>', label: "Change the gradient", hint: "appearance", run: () => openSettings("appearance") },
     go("overview", "You", "who"), go("topics", "Topics", "project"), go("chats", "Chats", "chat"), go("map", "Map", "other"), go("setup", "Setup", "tool")];
   const topics = topicData().sort((a, b) => b.last - a.last).map(x => ({ g: "Topics", icon: tmark(x.k, 20), label: x.name, hint: plural(x.list.length, "entry").replace("entrys", "entries"),
     run: () => { openTopic = x.k; topicMore.clear(); renaming = false; show("topics"); renderTopics(); } }));
@@ -1422,12 +1513,11 @@ function tmark(k, size = 16) {  // a topic's mark: its initials (two once there'
   return `<span class="tm${ini.length > 1 ? " two" : ""}" style="--c:${topicColor(k)};--s:${size}px" aria-hidden="true">${k === 0 ? KIND_IC.who : esc(ini)}</span>`;
 }
 let auroraTimer;
-function tintAurora(fresh) {  // the colours of the topics you touched most recently; a new memory makes it glow up for a moment
+function glowAurora() {  // the heartbeat: the glow comes up for a moment
   const a = $("#aurora");
-  ["#e54d2e", "#ffc53d", "#e93d82", "#f76b15"].forEach((c, i) => a.style.setProperty("--a" + (i + 1), c));  // vermilion, amber, rose, orange
-  if (!fresh?.size) return;
   a.classList.add("pulse"); clearTimeout(auroraTimer); auroraTimer = setTimeout(() => a.classList.remove("pulse"), 1600);
 }
+function tintAurora(fresh) { if (fresh?.size) glowAurora(); }  // its colours are the gradient you picked (Settings → Appearance); a new memory makes it glow
 const kpis = list => `<div class="stats">${list.map(([n, label, sub, act, cls]) =>
   `<button class="stat" ${act}><b>${n}</b> ${label}${sub ? `<small class="${cls || ""}">${sub}</small>` : ""}</button>`).join("")}</div>`;
 function pickCard(s, n = 3) {  // a chat you can pick up: open it, or hand it to another AI in one click
@@ -3075,8 +3165,8 @@ const GATE = {
 };
 function tintGate(screen, p) {  // everyone's colours on the sign-in screen; the one you picked, once you've picked
   const c = screen === "password" && p?.color, a = $("#gate-aurora");
-  const cols = c ? [c, `color-mix(in srgb, ${c} 65%, #ffffff)`, c, `color-mix(in srgb, ${c} 55%, #6cb8ff)`] : ["#e54d2e", "#ffc53d", "#e93d82", "#f76b15"];
-  cols.slice(0, 4).forEach((x, i) => a.style.setProperty("--a" + (i + 1), x));
+  const cols = c ? [c, `color-mix(in srgb, ${c} 65%, #ffffff)`, c, `color-mix(in srgb, ${c} 55%, #6cb8ff)`] : [];
+  [1, 2, 3, 4].forEach(i => cols.length ? a.style.setProperty("--a" + i, cols[i - 1]) : a.style.removeProperty("--a" + i));  // no one picked yet: the gradient chosen on this device
 }
 async function gate(screen, arg, flip) {
   if (screen === "retry") return boot();
@@ -3197,7 +3287,8 @@ function renderAcct() {
     ${ACCT.role === "admin" ? `<button role="menuitem" data-go="people">${IC.people}People</button>` : ""}<hr>
     <div class="menu-theme"><span><svg class="i" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg>Theme</span>
       <div class="segs" role="group" aria-label="Theme">${[["", "Dark"], ["light", "Light"], ["oled", "OLED"]].map(([k, t]) =>
-        `<button type="button" data-theme-set="${k}" aria-pressed="${(document.documentElement.dataset.theme || "") === k}">${t}</button>`).join("")}</div></div><hr>
+        `<button type="button" data-theme-set="${k}" aria-pressed="${(document.documentElement.dataset.theme || "") === k}">${t}</button>`).join("")}</div></div>
+    <button role="menuitem" data-go="appearance"><span class="gsw" aria-hidden="true"></span>Gradient<span class="menu-v">${esc(gradName(GRAD))}</span></button><hr>
     <button role="menuitem" data-acct="out">${IC.out}Sign out / switch person</button>
     <button role="menuitem" data-acct="all">${ICON.globe}<span>Sign out everywhere</span></button>`;
 }
@@ -3233,21 +3324,22 @@ async function signOut(kind, btn) {
 }
 
 // ---- settings: my account, devices, people ----
-const SET_TABS = ["account", "devices", "people"];
+const SET_TABS = ["account", "appearance", "devices", "people"];
 let setTab = "account", pairCode = null, PEOPLE = [];
 const quietFocus = el => { if (el) { el.tabIndex = -1; el.focus({ preventScroll: true }); } };  // a heading as a focus landing spot
 function openSettings(tab, code) {
   if (tab === "people" && ACCT.role !== "admin") tab = "account";
   setTab = tab; pairCode = code ? code.toUpperCase() : null;
+  $(".app").dataset.set = tab;  // Appearance brings the glow up, so you see what you pick
   show("settings");
   const h = pairCode ? "pair/" + pairCode : tab;
   if (location.hash.slice(1) !== h) history.replaceState(null, "", "#" + h);
-  const tabs = [["account", "My account"], ["devices", "Devices"], ...(ACCT.role === "admin" ? [["people", "People"]] : [])];
+  const tabs = [["account", "My account"], ["appearance", "Appearance"], ["devices", "Devices"], ...(ACCT.role === "admin" ? [["people", "People"]] : [])];
   $("#settings").innerHTML = `<div class="wrap"><h1 class="hello">Settings</h1>
     <p class="hello-sub">${avatar(ACCT)}<span>Signed in as <b style="color:var(--fg);font-weight:500">${esc(ACCT.display_name)}</b> · @${esc(ACCT.username)}${ACCT.role === "admin" ? " · Admin" : ""}</span></p>
     <div class="segs set-tabs" role="group" aria-label="Settings">${tabs.map(([k, t]) => `<button data-go="${k}" aria-pressed="${setTab === k}">${t}</button>`).join("")}</div>
     <div class="set" id="set-body"></div></div>`;
-  ({ account: setAccount, devices: setDevices, people: setPeople })[setTab]();
+  ({ account: setAccount, appearance: setAppearance, devices: setDevices, people: setPeople })[setTab]();
 }
 function fill(html) {  // swap a settings tab's content in, with one soft rise
   const b = $("#set-body");
@@ -3258,6 +3350,61 @@ function fill(html) {  // swap a settings tab's content in, with one soft rise
 }
 const loading = () => fill(`<div class="skel" aria-label="Loading"></div>`);
 const stillOn = tab => view === "settings" && setTab === tab && $("#set-body");
+
+// ---- appearance: the theme and the gradient behind the app, remembered on this device ----
+const IC_CHECK = '<svg viewBox="0 0 24 24"><path d="m6 12.5 4 4 8-9"/></svg>';
+const THEMES = [["", "Dark", "Warm graphite", "#111110", "#191918", "#eeeeec"], ["light", "Light", "Off-white paper", "#f3f2f0", "#ffffff", "#1a1916"],
+  ["oled", "OLED", "True black", "#000000", "#0d0d0c", "#eeeeec"]];
+const gradName = id => id === "auto" ? `Auto · ${gradPhase()[2]}` : id === "off" ? "None" : (GRADS.find(g => g[0] === id) || GRADS[0])[1];
+function gradDay() {  // Auto's card: the day in its colours, and a tick at now
+  const d = new Date(), pc = h => (h / 24 * 100).toFixed(2) + "%";
+  const stops = GRAD_AUTO.map(([h, id], i) => `${gradColors(id)[1]} ${pc(h)} ${pc(GRAD_AUTO[i + 1]?.[0] ?? 24)}`).join(", ");
+  return `<span class="gday" style="background:linear-gradient(90deg, ${stops})"><span style="left:${pc(d.getHours() + d.getMinutes() / 60)}"></span></span>`;
+}
+function gradCard(id) {
+  const g = GRADS.find(x => x[0] === id), off = id === "off", auto = id === "auto";
+  const vars = off ? "" : gradColors(id).map((c, i) => `--g${i + 1}:${c}`).join(";");
+  return `<button type="button" class="gcard" data-grad-set="${id}" aria-pressed="${GRAD === id}">
+    <span class="gp${off ? " none" : ""}" style="${vars}" aria-hidden="true">${off ? '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="m6.5 17.5 11-11"/></svg>'
+      : "<i></i><i></i><i></i><i></i>"}${auto ? gradDay() : ""}<span class="gk">${IC_CHECK}</span></span>
+    <span><b>${auto ? "Auto" : off ? "None" : esc(g[1])}</b><small>${auto ? `${gradPhase()[2]} now` : off ? "Just the page, no glow" : esc(g[2])}</small></span></button>`;
+}
+function setAppearance() {
+  const th = document.documentElement.dataset.theme || "";
+  fill(`<section class="card" aria-labelledby="h-theme"><div class="card-h"><h2 id="h-theme">Theme</h2><span class="spacer"></span><p>on this device</p></div>
+    <div class="set-b"><div class="thpick" role="group" aria-label="Theme">${THEMES.map(([k, name, note, bg, pn, fg]) =>
+      `<button type="button" class="thcard" data-theme-set="${k}" aria-pressed="${th === k}"><span class="thp" data-t="${k}" style="--tb:${bg};--tp:${pn};--tf:${fg}" aria-hidden="true"><i></i><i></i>
+        <span class="thp-side"><em></em><em></em><em></em></span><span class="thp-main"><em></em><em></em><span></span></span><span class="gk">${IC_CHECK}</span></span>
+        <span><b>${name}</b><small>${note}</small></span></button>`).join("")}</div></div></section>
+    <section class="card" aria-labelledby="h-grad"><div class="card-h"><h2 id="h-grad">Gradient</h2><span class="spacer"></span><p>the glow behind the app, on this device</p></div>
+    <div class="set-b"><div class="gpick" role="group" aria-label="Gradient">${["auto", ...GRADS.map(g => g[0]), "off"].map(gradCard).join("")}</div>
+      <p class="set-note">Auto moves through the day: Dawn, Day, Golden hour, Dusk and Night. Most presets come from uiGradients.</p></div></section>`);
+}
+let gradTurn = 0;
+function gradChoose(id, card) {  // the new gradient spreads from the card you pressed, over the old one, and the glow comes up
+  if (id === GRAD) return;
+  const was = GRAD, a = $("#aurora"), turn = ++gradTurn;
+  GRAD = id; try { localStorage.setItem("mb-grad", id); } catch {}
+  document.querySelectorAll("[data-grad-set]").forEach(b => b.setAttribute("aria-pressed", b.dataset.gradSet === id));
+  renderAcct();
+  document.querySelectorAll(".aurora.reveal").forEach(c => c.remove());  // a quicker second pick takes over from the first
+  const settle = () => { a.style.transition = "none"; gradSet(id); getComputedStyle(a).getPropertyValue("--a1"); requestAnimationFrame(() => { a.style.transition = ""; }); };
+  if (RM.matches || !a.animate) return settle();
+  if (id === "off") return a.animate([{ opacity: getComputedStyle(a).opacity }, { opacity: 0 }], { duration: 450, easing: "ease-in" }).finished.then(() => turn === gradTurn && settle(), () => {});
+  const r = a.getBoundingClientRect(), f = card.getBoundingClientRect(), x = f.left + f.width / 2 - r.left, y = f.top + f.height / 2 - r.top;
+  const R = Math.hypot(Math.max(x, r.width - x), Math.max(y, r.height - y));
+  const grow = [{ clipPath: `circle(0px at ${x}px ${y}px)` }, { clipPath: `circle(${R}px at ${x}px ${y}px)` }], timing = { duration: 1100, easing: "cubic-bezier(.3, .7, .2, 1)" };
+  glowAurora();
+  if (was === "off") { settle(); return a.animate(grow, timing); }
+  const c = a.cloneNode(true);
+  c.removeAttribute("id"); c.classList.add("reveal", "pulse");
+  gradColors(id).forEach((v, i) => c.style.setProperty("--a" + (i + 1), v));
+  a.after(c);
+  [...c.children].forEach((el, k) => { const from = a.children[k]?.getAnimations()[0], to = el.getAnimations()[0]; if (from && to) to.currentTime = from.currentTime; });  // same drift, no jump when it hands over
+  c.animate(grow, timing).finished.then(() => { if (turn === gradTurn) settle(); c.remove(); }, () => c.remove());
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-grad-set]"); if (b) gradChoose(b.dataset.gradSet, b); });
+setInterval(() => { if (GRAD === "auto") gradSet("auto"); }, 60000);  // Auto drifts into the next part of the day on its own
 
 function setAccount() {
   fill(`<section class="card" aria-labelledby="h-prof"><div class="card-h"><h2 id="h-prof">Profile</h2><span class="spacer"></span><p>how you show up on the sign-in screen</p></div>

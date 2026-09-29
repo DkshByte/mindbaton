@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Pick your gradient.** Settings → Appearance (also Gradient in the account menu and the command palette) shows the
+  theme and the glow behind the app as cards with live previews: 17 presets (most from uiGradients), Auto, which
+  follows the time of day (Dawn, Day, Golden hour, Dusk, Night), and None. The new gradient spreads out from the card
+  you press. It's remembered on this device and applied before the first paint.
 - **UI fixes from an audit.** The sidebar wordmark no longer has a stray mark over its "i"; the nav reads You · Topics
   · Chats · Map · Setup, matching keys 1–5; the Topics count includes Loose ends like the Topics page does; panels say
   what a related memory is and when, not its row number; a failed model download says so in words (the raw error on
