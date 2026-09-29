@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mindbaton — launch film</title>
+<link rel="stylesheet" href="film.css">
+<script src="timeline.js"></script>
+<script src="lib.js"></script>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+// The film is a pure function of time: window.seek(t) draws the frame at t seconds.
+// Preview: ?t=12.5 shows one frame · ?play plays in real time from ?t (default 0).
+const STAGE = document.getElementById('stage');
+initGlobal(STAGE);
+</script>
+<script src="scenes-a.js"></script>
+<script src="scenes-b.js"></script>
+<script src="scenes-c.js"></script>
+<script>
+// global layers sit above every scene
+for (const id of ['vig', 'flash', 'grain']) STAGE.appendChild(document.getElementById(id));
+STAGE.insertBefore(document.getElementById('aurora'), STAGE.firstChild);
+window.seek = (t, frame = Math.round(t * 60)) => {
+  for (const s of SCENES) {
+    const on = t >= s.t0 && t < s.t1;
+    if (on !== s.on) { s.el.style.display = on ? 'block' : 'none'; s.on = on; }
+    if (on) s.render(t - s.t0, t);
+  }
+  renderGlobal(t, frame);
+};
+window.__ready = (async () => {
+  await loadLogos();
+  await Promise.all(READY.map(f => f()));
+  // logos load after the DOM was built: point every <img> placeholder at its data URL
+  document.querySelectorAll('img[data-logo]').forEach(i => { i.src = LOGO[i.dataset.logo]; });
+  await document.fonts.ready;
+  await Promise.all([...document.querySelectorAll('img')].map(i => i.decode().catch(() => {})));
+  await document.fonts.load('600 40px Geist'); await document.fonts.load('820 40px Archivo'); await document.fonts.load('400 20px "Fragment Mono"'); await document.fonts.load('500 20px "Geist Mono"');
+  return true;
+})();
+const qs = new URLSearchParams(location.search);
+window.__ready.then(() => {
+  const t0 = +(qs.get('t') || 0);
+  if (qs.has('play')) { const start = performance.now(); const loop = () => { seek(t0 + (performance.now() - start) / 1000); requestAnimationFrame(loop); }; loop(); }
+  else seek(t0);
+});
+</script>
+</body>
+</html>

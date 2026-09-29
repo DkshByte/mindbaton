@@ -1,0 +1,9 @@
+# rendered media and intermediates (re-create with work/render.mjs, work/score.mjs, work/capture-*.mjs)
+*.mp4
+*.wav
+work/real/
+work/s*/
+work/stills/
+work/*.png
+work/*.log
+work/*.pids
