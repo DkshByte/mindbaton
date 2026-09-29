@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connect your AIs · Mindbaton docs</title>
+<meta name="description" content="The easiest way is the Setup page in Mindbaton: it shows a green tick next to everything already connected and, for the rest, the exact command or config with your address and a fr">
+<meta name="theme-color" content="#111110">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://dkshbyte.github.io/mindbaton/docs/connect.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Mindbaton">
+<meta property="og:title" content="Connect your AIs · Mindbaton docs">
+<meta property="og:description" content="The easiest way is the Setup page in Mindbaton: it shows a green tick next to everything already connected and, for the rest, the exact command or config with your address and a fr">
+<meta property="og:image" content="https://dkshbyte.github.io/mindbaton/og.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="preload" href="../fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="docs.css">
+<script src="search-index.js" defer></script>
+<script src="docs.js" defer></script>
+</head>
+<!-- Made by docs_site.py from docs/connect.md. Edit that file, then run: python3 docs_site.py -->
+<body class="docs">
+<a class="skip" href="#doc">Skip to content</a>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+<header class="top">
+  <div class="top-in">
+    <button class="menu" type="button" aria-controls="side" aria-expanded="false" aria-label="Menu"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <a class="brand" href="../" aria-label="Mindbaton website"><span class="wordmark" aria-hidden="true"></span></a>
+    <a class="docs-l" href="./">Docs</a>
+    <button class="find" type="button" aria-haspopup="dialog"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Search the docs</span><kbd>/</kbd></button>
+    <div class="top-act">
+      <a class="btn ghost" href="https://github.com/DkshByte/mindbaton"><span class="lg m" style="--i:url(../icons/github.svg)" aria-hidden="true"></span><span class="gh-t">GitHub</span></a>
+      <a class="btn primary" href="../#install">Install</a>
+    </div>
+  </div>
+</header>
+<div class="shell">
+  <nav class="side" id="side" aria-label="Documentation"><p class="grp">Start</p><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="connect.html" aria-current="page">Connect your AIs</a></li></ul><p class="grp">Guides</p><ul><li><a href="remote-access.html">Remote access</a></li><li><a href="configuration.html">Configuration</a></li><li><a href="backup-and-upgrade.html">Backup and upgrade</a></li><li><a href="troubleshooting.html">Troubleshooting</a></li></ul><p class="grp">Reference</p><ul><li><a href="api.html">API reference</a></li><li><a href="security.html">Security</a></li><li><a href="changelog.html">Changelog</a></li></ul></nav>
+  <main class="doc" id="doc">
+    <article>
+<h1>Connect your AIs</h1>
+<p class="lede">The easiest way is the <strong>Setup</strong> page in Mindbaton: it shows a green tick next to everything already connected and, for the rest, the exact command or config with your address and a fresh token already filled in — just copy it.</p>
+<p>This page explains the same steps. In the examples, replace</p>
+<ul><li><code>http://192.168.1.20:3004</code> with your Mindbaton address (use your <code>https://</code> address if you set one up — see <a href="remote-access.html">remote access</a>), and</li><li><code>mb_xxxxxxxx</code> with a <strong>device token</strong>.</li></ul>
+<h2 id="device-tokens">Device tokens<a class="anchor" href="#device-tokens" aria-label="Link to this section">#</a></h2>
+<p>Everything except your own browser proves who it is with a device token — a long secret that starts with <code>mb_</code>.</p>
+<ul><li>Make one under <strong>Settings → Devices → New token</strong>: give it a name ("Cursor on work laptop") and a kind. It is shown <strong>once</strong>, so copy it straight into the app you're connecting.</li><li>Every token has its own row in Settings → Devices with when it was last used. <strong>Revoke</strong> one and that app is cut off immediately; nothing else is affected.</li><li>One token per app or device is best — then you can revoke just the one you lose.</li><li>Treat a token like a password. Anything holding a full token can read and change your memory.</li></ul>
+<h2 id="browser-extension">Browser extension<a class="anchor" href="#browser-extension" aria-label="Link to this section">#</a></h2>
+<p>Captures what you send to ChatGPT, Claude, Gemini, Perplexity, DeepSeek, Grok, Copilot, Poe, Mistral and Google AI Studio, keeps whole chats in Live mode, and brings your memory into any chat. Works in Chrome, Edge, Brave, Arc and other Chromium browsers.</p>
+<ol><li>Add it from the <strong><a href="https://chromewebstore.google.com/detail/mindbaton/nfadphcjimkchbapapbcphnbpajmfmih" rel="noopener">Chrome Web Store</a></strong> (Chrome, Edge and Brave all install from there, and it updates itself). Or by hand: download <code>http://192.168.1.20:3004/mindbaton-extension.zip</code> from your Mindbaton (also on the Setup page), unzip it, open <code>chrome://extensions</code>, switch on <strong>Developer mode</strong>, click <strong>Load unpacked</strong> and pick the folder.</li><li>The Connect page opens (or click the Mindbaton icon in the toolbar), type your Mindbaton address and press <strong>Connect</strong>.</li><li>A Mindbaton tab opens asking <em>"Connect Chrome on laptop (browser extension)?"</em> with a code like <code>ABCD-EFGH</code>. Log in if asked, check it's the request you just made, and press <strong>Approve</strong>. Done — the extension now has its own token.</li></ol>
+<p>Can't use the approve tab (for example Mindbaton is on a different network right now)? Make a token in Settings → Devices and paste it into the extension instead.</p>
+<p>Using it:</p>
+<ul><li>Chat as usual. What you type is saved; secrets like API keys are blanked out first.</li><li>Press <strong><code>Alt+M</code></strong> in a chat box to insert a short briefing of what Mindbaton knows that's relevant to what you're typing.</li><li>The toolbar popup shows how full the current chat is. When it's nearly full, <strong>hand it off</strong>: Mindbaton packs the chat up and you paste it into a new chat with any AI.</li></ul>
+<h2 id="coding-agents-and-editors">Coding agents and editors<a class="anchor" href="#coding-agents-and-editors" aria-label="Link to this section">#</a></h2>
+<p>Coding agents talk to Mindbaton over <strong>MCP</strong> (Model Context Protocol) at <code>http://192.168.1.20:3004/mcp</code>, with the token in an <code>Authorization: Bearer</code> header. They get these tools: <code>context</code>, <code>recall</code>, <code>remember</code>, <code>profile</code>, <code>handoff</code>, <code>sessions</code>, <code>save_conversation</code> and <code>forget</code>.</p>
+<h3 id="claude-code">Claude Code<a class="anchor" href="#claude-code" aria-label="Link to this section">#</a></h3>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>claude mcp add --transport http -s user mindbaton http://192.168.1.20:3004/mcp --header "Authorization: Bearer mb_xxxxxxxx"</code></pre></div>
+<p>Check it with <code>claude mcp get mindbaton</code>. Bonus: if Mindbaton runs on the same computer as Claude Code, it also reads Claude Code's own chat history (<code>~/.claude/projects</code>) by itself — turn that off with <code>MINDBATON_WATCH_CLAUDE=0</code>.</p>
+<h3 id="codex">Codex<a class="anchor" href="#codex" aria-label="Link to this section">#</a></h3>
+<p>Add to <code>~/.codex/config.toml</code>:</p>
+<div class="code"><span>TOML</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>[mcp_servers.mindbaton]
+url = "http://192.168.1.20:3004/mcp"
+http_headers = { Authorization = "Bearer mb_xxxxxxxx" }</code></pre></div>
+<h3 id="cursor">Cursor<a class="anchor" href="#cursor" aria-label="Link to this section">#</a></h3>
+<p>Add to <code>~/.cursor/mcp.json</code> (or Cursor Settings → MCP → Add):</p>
+<div class="code"><span>JSON</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>{
+  "mcpServers": {
+    "mindbaton": {
+      "url": "http://192.168.1.20:3004/mcp",
+      "headers": { "Authorization": "Bearer mb_xxxxxxxx" }
+    }
+  }
+}</code></pre></div>
+<h3 id="windsurf">Windsurf<a class="anchor" href="#windsurf" aria-label="Link to this section">#</a></h3>
+<p>Add to <code>~/.codeium/windsurf/mcp_config.json</code>:</p>
+<div class="code"><span>JSON</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>{
+  "mcpServers": {
+    "mindbaton": {
+      "serverUrl": "http://192.168.1.20:3004/mcp",
+      "headers": { "Authorization": "Bearer mb_xxxxxxxx" }
+    }
+  }
+}</code></pre></div>
+<h3 id="vs-code-github-copilot">VS Code (GitHub Copilot)<a class="anchor" href="#vs-code-github-copilot" aria-label="Link to this section">#</a></h3>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>code --add-mcp '{"name":"mindbaton","type":"http","url":"http://192.168.1.20:3004/mcp","headers":{"Authorization":"Bearer mb_xxxxxxxx"}}'</code></pre></div>
+<h3 id="gemini-cli">Gemini CLI<a class="anchor" href="#gemini-cli" aria-label="Link to this section">#</a></h3>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>gemini mcp add --transport http mindbaton http://192.168.1.20:3004/mcp --header "Authorization: Bearer mb_xxxxxxxx"</code></pre></div>
+<h3 id="antigravity">Antigravity<a class="anchor" href="#antigravity" aria-label="Link to this section">#</a></h3>
+<p>Open the <strong>…</strong> menu in the agent panel → <strong>MCP Servers</strong> → <strong>Manage MCP Servers</strong> → <strong>View raw config</strong>, and add:</p>
+<div class="code"><span>JSON</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>{
+  "mcpServers": {
+    "mindbaton": {
+      "serverUrl": "http://192.168.1.20:3004/mcp",
+      "headers": { "Authorization": "Bearer mb_xxxxxxxx" }
+    }
+  }
+}</code></pre></div>
+<h3 id="anything-else-that-speaks-mcp">Anything else that speaks MCP<a class="anchor" href="#anything-else-that-speaks-mcp" aria-label="Link to this section">#</a></h3>
+<p>Cline, Zed and other clients: use the URL <code>http://192.168.1.20:3004/mcp</code> (streamable HTTP) and the header <code>Authorization: Bearer mb_xxxxxxxx</code>. If a client can only launch a local command, use the bridge below.</p>
+<h2 id="claude-desktop">Claude Desktop<a class="anchor" href="#claude-desktop" aria-label="Link to this section">#</a></h2>
+<p>Claude Desktop starts MCP servers as local programs, so Mindbaton ships a tiny bridge, <code>mcp_stdio.py</code> (Python, nothing to install).</p>
+<ol><li>Download it from your Mindbaton: <code>http://192.168.1.20:3004/mcp_stdio.py</code> and save it somewhere permanent.</li><li><p>In Claude Desktop open <strong>Settings → Developer → Edit Config</strong> and add:</p>
+<div class="code"><span>JSON</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>{
+  "mcpServers": {
+    "mindbaton": {
+      "command": "python3",
+      "args": ["/path/to/mcp_stdio.py"],
+      "env": {
+        "MINDBATON_URL": "http://192.168.1.20:3004",
+        "MINDBATON_TOKEN": "mb_xxxxxxxx"
+      }
+    }
+  }
+}</code></pre></div>
+<p>On Windows use <code>"command": "python"</code> and a path like <code>"C:\\Users\\you\\mcp_stdio.py"</code>.</p></li><li>Restart Claude Desktop.</li></ol>
+<h2 id="claude-and-chatgpt-apps">Claude and ChatGPT apps<a class="anchor" href="#claude-and-chatgpt-apps" aria-label="Link to this section">#</a></h2>
+<p>The Claude and ChatGPT apps (on the web and on your phone) can use Mindbaton as a <strong>custom connector</strong>. Their servers call Mindbaton from the internet, so this one needs a public <strong>HTTPS</strong> address — set one up first with <a href="remote-access.html">Tailscale Funnel or Cloudflare Tunnel</a>.</p>
+<ol><li>In Settings → Devices make a token of kind <strong>connector</strong>. Connector tokens are deliberately limited: they can't forget or export anything, they're rate-limited, and every request is written to <code>access.log</code> in your data folder.</li><li><p>Your connector URL is your HTTPS address + <code>/t/</code> + the token + <code>/mcp</code>:</p>
+<div class="code"><span></span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>https://mindbaton.example.com/t/mb_xxxxxxxx/mcp</code></pre></div>
+<p>(The token sits in the address because these apps can't send headers. Keep the URL private, and revoke the token if it ever leaks.)</p></li><li><strong>Claude:</strong> Settings → Connectors → <strong>Add custom connector</strong>, paste the URL. <strong>ChatGPT:</strong> Settings → Apps &amp; Connectors → Advanced settings → turn on <strong>Developer mode</strong>, then <strong>Create</strong> a connector with the URL.</li><li>In a chat, turn the connector on and ask "what do you know about me?".</li></ol>
+<p>Custom connectors depend on your plan with those apps.</p>
+<h2 id="phone">Phone<a class="anchor" href="#phone" aria-label="Link to this section">#</a></h2>
+<p>Mindbaton is also a phone app you install from the browser. Installing needs an HTTPS address — the simplest is <a href="remote-access.html#tailscale">Tailscale</a> (<code>https://&lt;computer&gt;.&lt;tailnet&gt;.ts.net</code>).</p>
+<ul><li><strong>Android (Chrome):</strong> open your HTTPS address, log in, then menu <strong>⋮ → Add to Home screen</strong> (or <strong>Install app</strong>). Mindbaton now appears in Android's <strong>Share</strong> menu: share a link, a note or a bit of text from any app and it's saved.</li><li><strong>iPhone (Safari):</strong> open your HTTPS address, log in, then <strong>Share → Add to Home Screen</strong>. (iOS doesn't let web apps appear in the Share menu, so saving from other apps is Android-only.)</li></ul>
+<h2 id="scripts-and-everything-else">Scripts and everything else<a class="anchor" href="#scripts-and-everything-else" aria-label="Link to this section">#</a></h2>
+<p>Any program can use the same HTTP API with a token:</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code><span class="c"># a briefing of what's relevant to a question, ready for an AI to read (JSON: {"text": ...})</span>
+curl -H "Authorization: Bearer mb_xxxxxxxx" "http://192.168.1.20:3004/context?q=my+homelab"
+
+<span class="c"># save a fact</span>
+curl -H "Authorization: Bearer mb_xxxxxxxx" -H "Content-Type: application/json" \
+     -d '{"text": "I switched my home server to Debian 13"}' http://192.168.1.20:3004/remember</code></pre></div>
+<p>The MCP tools, in the JSON shape the Claude and OpenAI tool-calling APIs take, are at <code>/tools.json</code>.</p>
+    </article>
+    <nav class="pns" aria-label="Previous and next"><a class="pn prev" href="getting-started.html"><span>Previous</span>Getting started</a><a class="pn next" href="remote-access.html"><span>Next</span>Remote access</a></nav>
+    <p class="edit"><a href="https://github.com/DkshByte/mindbaton/edit/main/docs/connect.md" rel="noopener"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg>Edit this page on GitHub</a></p>
+  </main>
+  <aside class="toc" aria-label="On this page"><p class="grp">On this page</p><ul><li class="l2"><a href="#device-tokens">Device tokens</a></li><li class="l2"><a href="#browser-extension">Browser extension</a></li><li class="l2"><a href="#coding-agents-and-editors">Coding agents and editors</a></li><li class="l3"><a href="#claude-code">Claude Code</a></li><li class="l3"><a href="#codex">Codex</a></li><li class="l3"><a href="#cursor">Cursor</a></li><li class="l3"><a href="#windsurf">Windsurf</a></li><li class="l3"><a href="#vs-code-github-copilot">VS Code (GitHub Copilot)</a></li><li class="l3"><a href="#gemini-cli">Gemini CLI</a></li><li class="l3"><a href="#antigravity">Antigravity</a></li><li class="l3"><a href="#anything-else-that-speaks-mcp">Anything else that speaks MCP</a></li><li class="l2"><a href="#claude-desktop">Claude Desktop</a></li><li class="l2"><a href="#claude-and-chatgpt-apps">Claude and ChatGPT apps</a></li><li class="l2"><a href="#phone">Phone</a></li><li class="l2"><a href="#scripts-and-everything-else">Scripts and everything else</a></li></ul></aside>
+</div>
+<dialog class="sdlg" aria-label="Search the docs">
+  <form method="dialog" role="search">
+    <label class="sbox"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="vh">Search the docs</span><input type="search" placeholder="Search the docs" autocomplete="off" spellcheck="false" aria-controls="sres"><kbd>Esc</kbd></label>
+  </form>
+  <ul class="sres" id="sres" role="listbox" aria-label="Results"></ul>
+  <p class="shint">Try “setup code”, “Tailscale”, “token” or “backup”.</p>
+</dialog>
+</body>
+</html>

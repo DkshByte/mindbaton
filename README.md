@@ -73,7 +73,7 @@ No cloud, no account, no subscription. It's a small Python program and one datab
   </tr>
   <tr>
     <td><img src="site/shots/app-setup.png" alt="The Setup page: a green tick for each connected AI and the exact command for the rest"></td>
-    <td><img src="site/shots/app-login.png" alt="The first-run screen: choose the owner password"></td>
+    <td><img src="site/shots/app-login.png" alt="The sign-in screen: everyone on an install has their own private memory"></td>
   </tr>
 </table>
 

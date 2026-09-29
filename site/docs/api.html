@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API reference · Mindbaton docs</title>
+<meta name="description" content="Everything the app, the extension and your AIs do goes through one small HTTP API on your Mindbaton. You can use it from scripts too. In the examples, replace http://192.168.1.20:3">
+<meta name="theme-color" content="#111110">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://dkshbyte.github.io/mindbaton/docs/api.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Mindbaton">
+<meta property="og:title" content="API reference · Mindbaton docs">
+<meta property="og:description" content="Everything the app, the extension and your AIs do goes through one small HTTP API on your Mindbaton. You can use it from scripts too. In the examples, replace http://192.168.1.20:3">
+<meta property="og:image" content="https://dkshbyte.github.io/mindbaton/og.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="preload" href="../fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="docs.css">
+<script src="search-index.js" defer></script>
+<script src="docs.js" defer></script>
+</head>
+<!-- Made by docs_site.py from docs/api.md. Edit that file, then run: python3 docs_site.py -->
+<body class="docs">
+<a class="skip" href="#doc">Skip to content</a>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+<header class="top">
+  <div class="top-in">
+    <button class="menu" type="button" aria-controls="side" aria-expanded="false" aria-label="Menu"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <a class="brand" href="../" aria-label="Mindbaton website"><span class="wordmark" aria-hidden="true"></span></a>
+    <a class="docs-l" href="./">Docs</a>
+    <button class="find" type="button" aria-haspopup="dialog"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Search the docs</span><kbd>/</kbd></button>
+    <div class="top-act">
+      <a class="btn ghost" href="https://github.com/DkshByte/mindbaton"><span class="lg m" style="--i:url(../icons/github.svg)" aria-hidden="true"></span><span class="gh-t">GitHub</span></a>
+      <a class="btn primary" href="../#install">Install</a>
+    </div>
+  </div>
+</header>
+<div class="shell">
+  <nav class="side" id="side" aria-label="Documentation"><p class="grp">Start</p><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="connect.html">Connect your AIs</a></li></ul><p class="grp">Guides</p><ul><li><a href="remote-access.html">Remote access</a></li><li><a href="configuration.html">Configuration</a></li><li><a href="backup-and-upgrade.html">Backup and upgrade</a></li><li><a href="troubleshooting.html">Troubleshooting</a></li></ul><p class="grp">Reference</p><ul><li><a href="api.html" aria-current="page">API reference</a></li><li><a href="security.html">Security</a></li><li><a href="changelog.html">Changelog</a></li></ul></nav>
+  <main class="doc" id="doc">
+    <article>
+<h1>API reference</h1>
+<p class="lede">Everything the app, the extension and your AIs do goes through one small HTTP API on your Mindbaton. You can use it from scripts too. In the examples, replace <code>http://192.168.1.20:3004</code> with your address and <code>mb_xxxxxxxx</code> with a <a href="connect.html#device-tokens">device token</a>.</p>
+<h2 id="authentication">Authentication<a class="anchor" href="#authentication" aria-label="Link to this section">#</a></h2>
+<p>Every endpoint except the app's own files, <code>/health</code>, login and pairing needs either the owner's session cookie (the browser) or a device token in a header:</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>curl -H "Authorization: Bearer mb_xxxxxxxx" http://192.168.1.20:3004/profile</code></pre></div>
+<p>Without one you get <code>401</code>. Each token reaches only its own account's memory.</p>
+<ul><li><strong>Full tokens</strong> (apps, agents, scripts) can use everything below.</li><li><strong>Connector tokens</strong> (the Claude and ChatGPT apps over the internet) reach <code>/mcp</code> only, never get <code>forget</code>, are limited to 60 requests a minute and 600 an hour, and every request is written to <code>access.log</code>. Because those apps can't send headers, the token goes in the path: <code>https://mindbaton.example.com/t/mb_xxxxxxxx/mcp</code>.</li></ul>
+<p>Requests from a browser with the session cookie must come from Mindbaton's own page; other websites are refused. See <a href="security.html">security</a> for the full model.</p>
+<h2 id="mcp">MCP<a class="anchor" href="#mcp" aria-label="Link to this section">#</a></h2>
+<p><code>POST /mcp</code> speaks the Model Context Protocol over streamable HTTP with JSON responses. Coding agents, editors and the Claude and ChatGPT apps connect here (setup for each is in <a href="connect.html">connect your AIs</a>). <code>GET /tools.json</code> returns the same tools in the JSON shape the Claude and OpenAI tool-calling APIs take.</p>
+<div class="table"><table><thead><tr><th>Tool</th><th>Arguments</th><th>What it does</th></tr></thead><tbody><tr><td><code>context</code></td><td><code>topic</code> (optional)</td><td>A briefing about the user: who they are, what they use and work on, their preferences, and what they've said before about <code>topic</code>. Call it at the start of a conversation. Read-only.</td></tr><tr><td><code>recall</code></td><td><code>query</code>, <code>k</code> (1–20)</td><td>Searches everything the user told any AI. Returns a direct answer when one is known, plus the most relevant memories with their ids. Read-only.</td></tr><tr><td><code>remember</code></td><td><code>fact</code>, <code>model</code></td><td>Saves one lasting fact in the user's own first person ("I use Neovim"). <code>model</code> is the AI's own model name, if it knows it.</td></tr><tr><td><code>profile</code></td><td>none</td><td>Everything known about the user as a structured profile: summary, facts, preferences, goals. Read-only.</td></tr><tr><td><code>handoff</code></td><td><code>session</code>, <code>budget</code> (200–12000), <code>about</code></td><td>A continuation pack for a conversation from another AI: the goal, decisions, key code, open questions and the latest messages. No <code>session</code> = the most recent chat. <code>about: true</code> also adds what Mindbaton knows about the user. Read-only.</td></tr><tr><td><code>sessions</code></td><td><code>limit</code> (1–50)</td><td>Recent conversations across AIs: id, AI, title, messages, how full each is and whether it hit a limit. Read-only.</td></tr><tr><td><code>save_conversation</code></td><td><code>title</code>, <code>turns</code>, <code>summary</code>, <code>model</code></td><td>Saves the current conversation (turns of <code>{role, text}</code>, or a summary) so it can be continued elsewhere. Returns the id to hand off.</td></tr><tr><td><code>forget</code></td><td><code>id</code></td><td>Permanently deletes a memory by the id <code>recall</code> returned. Not available to connector tokens.</td></tr></tbody></table></div>
+<p>Mindbaton also tells every AI that connects how to use these: call <code>context</code> first, <code>recall</code> before anything personal, <code>remember</code> for lasting facts, <code>handoff</code> to continue a chat.</p>
+<h2 id="read">Read<a class="anchor" href="#read" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Request</th><th>Returns</th></tr></thead><tbody><tr><td><code>GET /recall?q=…&amp;k=8</code></td><td><code>answer</code> (when one is known), ranked <code>memories</code> (each with <code>match</code>: answer, thing, words or meaning), and related <code>conversations</code>. <code>k</code> up to 50.</td></tr><tr><td><code>GET /context?q=…&amp;budget=1800</code></td><td><code>{"text": …}</code>: a briefing an AI can read, about the user and what's relevant to <code>q</code>. <code>budget</code> in tokens, 300–8000.</td></tr><tr><td><code>GET /profile</code></td><td>Everything known about the user, sorted by kind.</td></tr><tr><td><code>GET /graph</code></td><td>All memories, things, links and topics (what the app's map draws).</td></tr><tr><td><code>GET /sessions?limit=40</code></td><td>Recent chats from every AI, with model, messages and how full each is.</td></tr><tr><td><code>GET /session?id=…</code></td><td>One chat's messages. <code>id</code> is a chat id or words from its title.</td></tr><tr><td><code>GET /handoff?session=…&amp;budget=1500&amp;about=1</code></td><td><code>{"text", "tokens", "sections", "session"}</code>: the hand-off pack for a chat. <code>about=1</code> adds what Mindbaton knows about the user.</td></tr><tr><td><code>GET /timeline?subject=me</code></td><td>How facts about a subject changed over time.</td></tr><tr><td><code>GET /export?format=json</code></td><td>Everything, as a download. <code>format</code> is <code>json</code>, <code>cypher</code> (Neo4j) or <code>graphml</code>. Not for connector tokens.</td></tr><tr><td><code>GET /tools.json</code></td><td>The MCP tools in tool-calling JSON.</td></tr><tr><td><code>GET /health</code></td><td><code>{"ok", "name", "version", "setup_needed", "authed"}</code>. No token needed.</td></tr></tbody></table></div>
+<h2 id="write">Write<a class="anchor" href="#write" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Request</th><th>Body</th><th>What it does</th></tr></thead><tbody><tr><td><code>POST /capture</code></td><td><code>{"text", "site", "chat", "url", "ts"}</code></td><td>Saves one message as you said it (what the browser extension sends). Secrets are redacted first.</td></tr><tr><td><code>POST /remember</code></td><td><code>{"text", "entities", "relations"}</code></td><td>Saves a fact; <code>entities</code> and <code>relations</code> (<code>[a, rel, b]</code>) are optional hints.</td></tr><tr><td><code>POST /session</code></td><td><code>{"turns": [{"role", "text"}], "title", "url", "site", "model", "limit"}</code></td><td>Saves or updates a whole chat, for hand-offs and context meters.</td></tr><tr><td><code>POST /import</code></td><td><code>{"source", "text", "preview"}</code></td><td>Imports another AI's memory export or an agent's memory file. <code>preview: true</code> shows what would be saved.</td></tr><tr><td><code>DELETE /node/&lt;id&gt;</code></td><td>none</td><td>Forgets a memory. It stays forgotten across rebuilds, even if the same words arrive again.</td></tr><tr><td><code>POST /rebuild</code></td><td>none</td><td>Re-derives the whole memory from the saved messages.</td></tr></tbody></table></div>
+<p>Errors come back as JSON with an <code>error</code> field and a matching status: <code>400</code> for a bad request, <code>401</code> without a login or token, <code>403</code> for something that token can't do, <code>404</code> for nothing there, <code>429</code> when a connector goes over its limit.</p>
+<h2 id="examples">Examples<a class="anchor" href="#examples" aria-label="Link to this section">#</a></h2>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code><span class="c"># a briefing of what's relevant to a question</span>
+curl -H "Authorization: Bearer mb_xxxxxxxx" "http://192.168.1.20:3004/context?q=my+homelab"
+
+<span class="c"># ask a question</span>
+curl -H "Authorization: Bearer mb_xxxxxxxx" "http://192.168.1.20:3004/recall?q=where+do+I+live"
+
+<span class="c"># save a fact</span>
+curl -H "Authorization: Bearer mb_xxxxxxxx" -H "Content-Type: application/json" \
+     -d '{"text": "I switched my home server to Debian 13"}' http://192.168.1.20:3004/remember
+
+<span class="c"># pack up your latest chat for another AI</span>
+curl -H "Authorization: Bearer mb_xxxxxxxx" "http://192.168.1.20:3004/handoff"</code></pre></div>
+    </article>
+    <nav class="pns" aria-label="Previous and next"><a class="pn prev" href="troubleshooting.html"><span>Previous</span>Troubleshooting</a><a class="pn next" href="security.html"><span>Next</span>Security</a></nav>
+    <p class="edit"><a href="https://github.com/DkshByte/mindbaton/edit/main/docs/api.md" rel="noopener"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg>Edit this page on GitHub</a></p>
+  </main>
+  <aside class="toc" aria-label="On this page"><p class="grp">On this page</p><ul><li class="l2"><a href="#authentication">Authentication</a></li><li class="l2"><a href="#mcp">MCP</a></li><li class="l2"><a href="#read">Read</a></li><li class="l2"><a href="#write">Write</a></li><li class="l2"><a href="#examples">Examples</a></li></ul></aside>
+</div>
+<dialog class="sdlg" aria-label="Search the docs">
+  <form method="dialog" role="search">
+    <label class="sbox"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="vh">Search the docs</span><input type="search" placeholder="Search the docs" autocomplete="off" spellcheck="false" aria-controls="sres"><kbd>Esc</kbd></label>
+  </form>
+  <ul class="sres" id="sres" role="listbox" aria-label="Results"></ul>
+  <p class="shint">Try “setup code”, “Tailscale”, “token” or “backup”.</p>
+</dialog>
+</body>
+</html>

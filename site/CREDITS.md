@@ -1,43 +1,41 @@
 # Credits
 
-Everything on this site is made here or used under the licence below. It uses no third-party photos, stock images or 3D
-models.
+Everything on this site is made here or used under the licence below. It uses no third-party photos, stock images,
+scripts or 3D models.
 
 | What | Where | Licence |
 |---|---|---|
-| Archivo (variable, width and weight axes), `fonts/Archivo-Variable.woff2` | Omnibus-Type, https://github.com/Omnibus-Type/Archivo, via Google Fonts | SIL OFL 1.1, `fonts/LICENSE-Archivo.txt` |
-| Fragment Mono, `fonts/FragmentMono-Regular.woff2` | Wei Huang, https://github.com/weiweihuanghuang/fragment-mono, via Google Fonts | SIL OFL 1.1, `fonts/LICENSE-FragmentMono.txt` |
-| AI product logos in `icons/` (`*-color.svg`, `openai.svg`, `grok.svg`, `cursor.svg`, `windsurf.svg`) | LobeHub icons, https://github.com/lobehub/lobe-icons | MIT |
+| Geist and Geist Mono (variable), `fonts/Geist-Variable.woff2`, `fonts/GeistMono-Variable.woff2` | Vercel, https://github.com/vercel/geist-font | SIL OFL 1.1, `fonts/LICENSE-Geist.txt` |
+| AI product logos in `icons/` (`*-color.svg`, `openai.svg`, `grok.svg`, `cursor.svg`, `windsurf.svg`, `opencode.svg`) | LobeHub icons, https://github.com/lobehub/lobe-icons | MIT |
 | `icons/github.svg`, `docker.svg`, `zedindustries.svg` | Simple Icons, https://simpleicons.org | CC0 1.0 |
 | `icons/vscode.svg` | Devicon, https://devicon.dev | MIT |
-| three.js r186 (`vendor/three.min.js`), Motion 13.4 (`vendor/motion.js`) | https://threejs.org · https://motion.dev | MIT, `vendor/LICENSE-*`. Kept in the repo; the current page loads neither. |
 
-AI names and logos are trademarks of their owners. They appear only to say which apps Mindbaton works with. The page
-shows them in one colour, as silkscreen on the panel, from the unmodified SVG files.
+AI names and logos are trademarks of their owners. They appear only to say which apps Mindbaton works with, from the
+unmodified SVG files: colour marks as they are, one-colour marks tinted with the text colour (as the app shows them).
 
 ## Made here
 
-- **The page** (`index.html`, `style.css`, `main.js`) is hand-written HTML, CSS and JavaScript with no dependencies. The
-  front panel, the sockets, the receipt and the exploded diagram are CSS and inline SVG.
-- **The hand-off packs** on the page are real output of the project's `handoff.py` on `demo.py`'s made-up person, Maya
-  Haddad. The receipt is `handoff.build()` run on her ChatGPT chat "Relocating to Lisbon" with a 700-token budget and a
-  blank last message that the page fills with what the visitor types. The pack under "One fact, followed" is
-  `live.make_handoff()` on her Claude chat "Pantry onboarding flow" (1,500-token budget). Claude's reply after the hand-off
-  is written for the page and is labelled as a demo.
+- **The page** (`index.html`, `style.css`, `site.js`) is hand-written HTML, CSS and JavaScript with no dependencies,
+  in the app's own design system (`DESIGN.md`). The rows, answer card, chat card and chips are the app's components
+  redrawn in HTML with the demo person's real data.
+- **The docs** (`docs/`) are made by the repo's `docs_site.py` from `docs/*.md`, `SECURITY.md` and `CHANGELOG.md`;
+  `docs.css` and `docs.js` are hand-written.
+- **The brand** (`brand/`, `favicon.svg`, `favicon-32.png`, `apple-touch-icon.png`) comes from the repo's
+  `assets/brand/`.
+- **The hand-off pack** under "Pass the baton" is real output of `live.make_handoff()` (with what Mindbaton knows about
+  the person, no AI summary) on `demo.py`'s made-up person, Maya Haddad: her Claude chat "Pantry onboarding flow",
+  1,500-token budget. The recent memories and the "where do I live" answer are hers too.
+- **`shots/*.png`** are screenshots of the Mindbaton app (1440×900 at 1.5×) running on `demo.py`, with the own model
+  switched off (`MINDBATON_BRAIN=off`) and no AI keys.
 - **`og.png`** is a 1200×630 screenshot of the page's first viewport, taken with headless Chromium.
-- **`shots/*.png`** are screenshots of the Mindbaton app running on `demo.py`'s invented person.
-
-Every PNG carries its origin in an `impeccable:prompt` text chunk
-(`node embed-prompt.mjs <file> --read` from the Impeccable skill).
 
 ## Regenerating
 
-- **Packs:** seed a scratch data dir with `MINDBATON_DATA=/tmp/mb-demo python3 demo.py`, then in Python (from the repo
-  root, with the same `MINDBATON_DATA`) open Maya's graph with `server.open_data(server.DATA)` and `server.graph(<her id>)`
-  and call the functions above. Paste the text into `index.html` (HTML-escaped) in the `#pack-hero` template and the
-  "Read the whole pack" block.
+- **Shots:** `MINDBATON_DATA=/tmp/mb-demo python3 demo.py --password demo-pass-123`, then start the server with
+  `MINDBATON_DATA=/tmp/mb-demo MINDBATON_AI=0 MINDBATON_BRAIN=off python3 server.py`, sign in as `maya` and screenshot
+  You, Topics, Chats, Map (`app-graph.png`), Setup scrolled to Essentials, a chat's panel after Copy hand-off
+  (`app-handoff.png`) and the signed-out screen (`app-login.png`).
+- **Pack:** on the same server, `GET /handoff?session=Pantry+onboarding+flow&about=1&ai=0`; paste its `text`
+  (HTML-escaped) into `#pack` in `index.html` and update the token count in its summary.
 - **`og.png`:** serve `site/` (`python3 -m http.server 3105 -d site`) and screenshot `http://127.0.0.1:3105/` at a
   1200×630 viewport.
-
-- **Chrome Web Store badge** (`badges/chrome-web-store.png`): Google's official "Available in the Chrome Web Store" badge,
-  from developer.chrome.com/docs/webstore/branding, used unmodified as their guidelines allow. Chrome is a trademark of Google LLC.

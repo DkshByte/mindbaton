@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security · Mindbaton docs</title>
+<meta name="description" content="Mindbaton holds what you tell your AIs — often personal. This page says what it protects, what it doesn&#x27;t, and how to report a problem.">
+<meta name="theme-color" content="#111110">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://dkshbyte.github.io/mindbaton/docs/security.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Mindbaton">
+<meta property="og:title" content="Security · Mindbaton docs">
+<meta property="og:description" content="Mindbaton holds what you tell your AIs — often personal. This page says what it protects, what it doesn&#x27;t, and how to report a problem.">
+<meta property="og:image" content="https://dkshbyte.github.io/mindbaton/og.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="preload" href="../fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="docs.css">
+<script src="search-index.js" defer></script>
+<script src="docs.js" defer></script>
+</head>
+<!-- Made by docs_site.py from SECURITY.md. Edit that file, then run: python3 docs_site.py -->
+<body class="docs">
+<a class="skip" href="#doc">Skip to content</a>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+<header class="top">
+  <div class="top-in">
+    <button class="menu" type="button" aria-controls="side" aria-expanded="false" aria-label="Menu"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <a class="brand" href="../" aria-label="Mindbaton website"><span class="wordmark" aria-hidden="true"></span></a>
+    <a class="docs-l" href="./">Docs</a>
+    <button class="find" type="button" aria-haspopup="dialog"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Search the docs</span><kbd>/</kbd></button>
+    <div class="top-act">
+      <a class="btn ghost" href="https://github.com/DkshByte/mindbaton"><span class="lg m" style="--i:url(../icons/github.svg)" aria-hidden="true"></span><span class="gh-t">GitHub</span></a>
+      <a class="btn primary" href="../#install">Install</a>
+    </div>
+  </div>
+</header>
+<div class="shell">
+  <nav class="side" id="side" aria-label="Documentation"><p class="grp">Start</p><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="connect.html">Connect your AIs</a></li></ul><p class="grp">Guides</p><ul><li><a href="remote-access.html">Remote access</a></li><li><a href="configuration.html">Configuration</a></li><li><a href="backup-and-upgrade.html">Backup and upgrade</a></li><li><a href="troubleshooting.html">Troubleshooting</a></li></ul><p class="grp">Reference</p><ul><li><a href="api.html">API reference</a></li><li><a href="security.html" aria-current="page">Security</a></li><li><a href="changelog.html">Changelog</a></li></ul></nav>
+  <main class="doc" id="doc">
+    <article>
+<h1>Security</h1>
+<p class="lede">Mindbaton holds what you tell your AIs — often personal. This page says what it protects, what it doesn't, and how to report a problem.</p>
+<h2 id="reporting-a-vulnerability">Reporting a vulnerability<a class="anchor" href="#reporting-a-vulnerability" aria-label="Link to this section">#</a></h2>
+<p>Please report privately through GitHub: <strong>Security → Report a vulnerability</strong> on <a href="https://github.com/DkshByte/mindbaton/security">https://github.com/DkshByte/mindbaton/security</a>. Don't open a public issue for a security problem.</p>
+<p>Include what you found, how to reproduce it, and the version (<code>/health</code> shows it). This is a small open-source project: you'll get a reply as soon as we can, usually within a week, and credit in the release notes if you'd like it. Fixes go to the latest version on <code>main</code>.</p>
+<h2 id="model">Model<a class="anchor" href="#model" aria-label="Link to this section">#</a></h2>
+<p><strong>One owner per install.</strong> Each person runs their own Mindbaton on their own hardware. There are no user accounts, no cloud service and no telemetry.</p>
+<p><strong>Who is the owner.</strong> Whoever set the password on first run — and anyone with a shell on the Mindbaton computer (they can run <code>python3 server.py --reset-password</code>, and they can read the data folder anyway).</p>
+<h3 id="what-mindbaton-protects">What Mindbaton protects<a class="anchor" href="#what-mindbaton-protects" aria-label="Link to this section">#</a></h3>
+<ul><li><strong>Nothing without a login.</strong> Apart from the app's own files, <code>/health</code>, login and pairing, every endpoint needs the owner's session or a device token; otherwise it answers <code>401</code>.</li><li><strong>First run can't be hijacked.</strong> Until a password is set, setting one needs a one-time setup code that is only printed on the Mindbaton computer (terminal, logs, <code>--setup-code</code>). Only a browser on that computer itself (loopback, with no proxy in between) can skip it.</li><li><strong>Passwords</strong> are stored as scrypt hashes (n=2¹⁴, r=8, p=1, random salt), at least 8 characters. Login is throttled per address (5 failures → a 60 s lockout, doubling up to 15 minutes) and overall.</li><li><strong>Sessions</strong> are random 32-byte values stored only as SHA-256 hashes, sent in an <code>HttpOnly</code>, <code>SameSite=Lax</code> cookie (<code>Secure</code> over HTTPS), expiring after 30 days without use. Changing the password signs out every other session.</li><li><strong>Device tokens</strong> (<code>mb_…</code>) are stored only as SHA-256 hashes, shown once, named, and revocable one by one in Settings → Devices. Pairing a new device needs the owner to approve it in the app.</li><li><strong>Connector tokens</strong> — the kind used by the Claude and ChatGPT apps over the internet — cannot forget or export, are rate-limited, and every request is logged to <code>access.log</code> (without the token).</li><li><strong>No cross-site access.</strong> Requests from other websites' pages are refused, so a site you visit can't read or change your memory through your browser. Pages are sent with a strict Content-Security-Policy, <code>X-Frame-Options: DENY</code>, <code>X-Content-Type-Options: nosniff</code> and <code>Referrer-Policy: no-referrer</code>.</li><li><strong>Secrets stay out of memory.</strong> API keys, passwords and similar strings in your messages are redacted before anything is stored. This is pattern-based and best-effort — don't rely on it as a vault.</li><li><strong>Files.</strong> The data folder is created readable only by your user; <code>ai_keys</code> and <code>access.log</code> are <code>0600</code>.</li></ul>
+<h3 id="what-it-doesnt-protect-against">What it doesn't protect against<a class="anchor" href="#what-it-doesnt-protect-against" aria-label="Link to this section">#</a></h3>
+<ul><li><strong>Plain HTTP on a network you don't trust.</strong> On your home network Mindbaton speaks plain <code>http://</code>; anyone who can watch that traffic could see your password or tokens. Away from home, use HTTPS (Tailscale, Cloudflare Tunnel or a reverse proxy — see <a href="remote-access.html">remote access</a>). Never forward the port on your router.</li><li><strong>Someone with access to the computer or its disk.</strong> The database is not encrypted at rest. Use full-disk encryption and keep backups private.</li><li><strong>The AIs you connect.</strong> An AI with a token can read what it recalls, and a full token can change and forget memories. Give each app its own token and revoke the ones you stop using.</li><li><strong>The optional AI provider.</strong> If you add a Gemini or Groq key, the text needed for a summary, topic name or search answer is sent to that provider.</li><li><strong>What you type into AI sites.</strong> The browser extension reads what you send on supported AI chat sites — that's its job. Install it only from your own Mindbaton.</li><li><strong>Prompt injection.</strong> Memories are text that AIs read. A web page or document you paste into a chat could contain instructions aimed at an AI; Mindbaton stores what you send, it can't tell good instructions from bad ones.</li></ul>
+<h2 id="for-contributors">For contributors<a class="anchor" href="#for-contributors" aria-label="Link to this section">#</a></h2>
+<p>Never weaken the rules above to make something easier. New endpoints are authenticated by default; anything that reads request bodies does so before taking the graph lock; nothing logs a token, password or key. Run <code>python3 server.py --check</code> — it includes the auth tests.</p>
+    </article>
+    <nav class="pns" aria-label="Previous and next"><a class="pn prev" href="api.html"><span>Previous</span>API reference</a><a class="pn next" href="changelog.html"><span>Next</span>Changelog</a></nav>
+    <p class="edit"><a href="https://github.com/DkshByte/mindbaton/edit/main/SECURITY.md" rel="noopener"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg>Edit this page on GitHub</a></p>
+  </main>
+  <aside class="toc" aria-label="On this page"><p class="grp">On this page</p><ul><li class="l2"><a href="#reporting-a-vulnerability">Reporting a vulnerability</a></li><li class="l2"><a href="#model">Model</a></li><li class="l3"><a href="#what-mindbaton-protects">What Mindbaton protects</a></li><li class="l3"><a href="#what-it-doesnt-protect-against">What it doesn't protect against</a></li><li class="l2"><a href="#for-contributors">For contributors</a></li></ul></aside>
+</div>
+<dialog class="sdlg" aria-label="Search the docs">
+  <form method="dialog" role="search">
+    <label class="sbox"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="vh">Search the docs</span><input type="search" placeholder="Search the docs" autocomplete="off" spellcheck="false" aria-controls="sres"><kbd>Esc</kbd></label>
+  </form>
+  <ul class="sres" id="sres" role="listbox" aria-label="Results"></ul>
+  <p class="shint">Try “setup code”, “Tailscale”, “token” or “backup”.</p>
+</dialog>
+</body>
+</html>

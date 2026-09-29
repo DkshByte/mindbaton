@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Remote access · Mindbaton docs</title>
+<meta name="description" content="At home, your devices reach Mindbaton at http://&lt;computer&gt;:3004 . To use it from anywhere — or to install the phone app, or to connect the Claude and ChatGPT apps — give it an HTTP">
+<meta name="theme-color" content="#111110">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://dkshbyte.github.io/mindbaton/docs/remote-access.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Mindbaton">
+<meta property="og:title" content="Remote access · Mindbaton docs">
+<meta property="og:description" content="At home, your devices reach Mindbaton at http://&lt;computer&gt;:3004 . To use it from anywhere — or to install the phone app, or to connect the Claude and ChatGPT apps — give it an HTTP">
+<meta property="og:image" content="https://dkshbyte.github.io/mindbaton/og.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="preload" href="../fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="docs.css">
+<script src="search-index.js" defer></script>
+<script src="docs.js" defer></script>
+</head>
+<!-- Made by docs_site.py from docs/remote-access.md. Edit that file, then run: python3 docs_site.py -->
+<body class="docs">
+<a class="skip" href="#doc">Skip to content</a>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+<header class="top">
+  <div class="top-in">
+    <button class="menu" type="button" aria-controls="side" aria-expanded="false" aria-label="Menu"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <a class="brand" href="../" aria-label="Mindbaton website"><span class="wordmark" aria-hidden="true"></span></a>
+    <a class="docs-l" href="./">Docs</a>
+    <button class="find" type="button" aria-haspopup="dialog"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Search the docs</span><kbd>/</kbd></button>
+    <div class="top-act">
+      <a class="btn ghost" href="https://github.com/DkshByte/mindbaton"><span class="lg m" style="--i:url(../icons/github.svg)" aria-hidden="true"></span><span class="gh-t">GitHub</span></a>
+      <a class="btn primary" href="../#install">Install</a>
+    </div>
+  </div>
+</header>
+<div class="shell">
+  <nav class="side" id="side" aria-label="Documentation"><p class="grp">Start</p><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="connect.html">Connect your AIs</a></li></ul><p class="grp">Guides</p><ul><li><a href="remote-access.html" aria-current="page">Remote access</a></li><li><a href="configuration.html">Configuration</a></li><li><a href="backup-and-upgrade.html">Backup and upgrade</a></li><li><a href="troubleshooting.html">Troubleshooting</a></li></ul><p class="grp">Reference</p><ul><li><a href="api.html">API reference</a></li><li><a href="security.html">Security</a></li><li><a href="changelog.html">Changelog</a></li></ul></nav>
+  <main class="doc" id="doc">
+    <article>
+<h1>Remote access</h1>
+<p class="lede">At home, your devices reach Mindbaton at <code>http://&lt;computer&gt;:3004</code>. To use it from anywhere — or to install the phone app, or to connect the Claude and ChatGPT apps — give it an <strong>HTTPS</strong> address.</p>
+<div class="callout warn"><p><strong>Never</strong> forward port 3004 on your router or put Mindbaton on the internet over plain <code>http://</code>. Your password and tokens would travel unencrypted. Every option below gives you HTTPS without opening any port.</p></div>
+<p>After you pick one, tell Mindbaton its address so the Setup page shows the right links. In <code>mindbaton.env</code>:</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>MINDBATON_PUBLIC_URL=https://mindbaton.example.com</code></pre></div>
+<p>then restart it (<code>systemctl --user restart mindbaton</code>, or <code>docker compose up -d</code> after editing). With Docker, put the line in a <code>mindbaton.env</code> next to <code>compose.yaml</code>.</p>
+<h2 id="tailscale">Tailscale<a class="anchor" href="#tailscale" aria-label="Link to this section">#</a></h2>
+<p><a href="https://tailscale.com" rel="noopener">Tailscale</a> connects your devices into a private network. Install it on the Mindbaton computer and on your phone and laptops, then on the Mindbaton computer:</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>tailscale serve --bg 3004</code></pre></div>
+<p>Mindbaton is now at <code>https://&lt;computer&gt;.&lt;tailnet&gt;.ts.net</code> — with a real certificate, reachable <strong>only by your own devices</strong> on Tailscale. This is the recommended setup: it's what the phone app wants, and nothing is public. Set <code>MINDBATON_PUBLIC_URL</code> to that address.</p>
+<h3 id="funnel-for-the-claude-and-chatgpt-apps">Funnel: for the Claude and ChatGPT apps<a class="anchor" href="#funnel-for-the-claude-and-chatgpt-apps" aria-label="Link to this section">#</a></h3>
+<p>Custom connectors in the Claude and ChatGPT apps are called from those companies' servers, so they need an address on the public internet. Tailscale <strong>Funnel</strong> can publish Mindbaton on a second port while the main address stays private:</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>tailscale funnel --bg --https=10000 3004</code></pre></div>
+<p>Your connector URL is then <code>https://&lt;computer&gt;.&lt;tailnet&gt;.ts.net:10000/t/&lt;connector token&gt;/mcp</code> (see <a href="connect.html#claude-and-chatgpt-apps">connect.md</a>). Everything on that public address still needs your password or a token, and connector tokens can't forget or export anything. Turn it off with <code>tailscale funnel --https=10000 off</code>.</p>
+<h2 id="cloudflare-tunnel">Cloudflare Tunnel<a class="anchor" href="#cloudflare-tunnel" aria-label="Link to this section">#</a></h2>
+<p>If you have a domain on Cloudflare, <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/" rel="noopener">Cloudflare Tunnel</a> gives Mindbaton a public HTTPS address without opening ports.</p>
+<ul><li><strong>Just trying it:</strong> <code>cloudflared tunnel --url http://localhost:3004</code> prints a temporary <code>https://&lt;random&gt;.trycloudflare.com</code> address (it changes every time).</li><li><strong>For keeps:</strong> in the Cloudflare dashboard go to Zero Trust → Networks → Tunnels, create a tunnel, run the connector command it shows on the Mindbaton computer, and add a public hostname (say <code>mindbaton.example.com</code>) pointing to <code>http://localhost:3004</code>. Set <code>MINDBATON_PUBLIC_URL=https://mindbaton.example.com</code>.</li></ul>
+<p>This address is public: anyone can reach the login page, so use a strong password. (If you put Cloudflare Access in front, the Claude and ChatGPT connectors won't get through unless you exclude <code>/t/</code> paths.)</p>
+<h2 id="your-own-reverse-proxy">Your own reverse proxy<a class="anchor" href="#your-own-reverse-proxy" aria-label="Link to this section">#</a></h2>
+<p>Already run Caddy, nginx or Traefik with HTTPS? Point it at Mindbaton and make sure it passes the original <code>Host</code> and sets <code>X-Forwarded-Proto</code> (and <code>X-Forwarded-For</code>), so Mindbaton knows the request came over HTTPS, marks your login cookie secure, and throttles the right address.</p>
+<p><strong>Caddy</strong> (does all of that by itself):</p>
+<div class="code"><span></span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>mindbaton.example.com {
+    reverse_proxy 127.0.0.1:3004
+}</code></pre></div>
+<p><strong>nginx:</strong></p>
+<div class="code"><span>NGINX</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>server {
+    listen 443 ssl;
+    server_name mindbaton.example.com;
+    # ssl_certificate … ssl_certificate_key …
+
+    location / {
+        proxy_pass http://127.0.0.1:3004;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 120s;
+    }
+}</code></pre></div>
+<p>If the proxy runs on the same computer, you can also set <code>MINDBATON_HOST=127.0.0.1</code> so Mindbaton is only reachable through the proxy.</p>
+<h2 id="how-the-first-run-setup-code-works-behind-a-proxy">How the first-run setup code works behind a proxy<a class="anchor" href="#how-the-first-run-setup-code-works-behind-a-proxy" aria-label="Link to this section">#</a></h2>
+<p>Requests through a tunnel or proxy never count as "typed on this computer", even though they arrive from <code>127.0.0.1</code> — so the setup code is always required through them. Get it with <code>python3 server.py --setup-code</code> on the Mindbaton computer.</p>
+    </article>
+    <nav class="pns" aria-label="Previous and next"><a class="pn prev" href="connect.html"><span>Previous</span>Connect your AIs</a><a class="pn next" href="configuration.html"><span>Next</span>Configuration</a></nav>
+    <p class="edit"><a href="https://github.com/DkshByte/mindbaton/edit/main/docs/remote-access.md" rel="noopener"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg>Edit this page on GitHub</a></p>
+  </main>
+  <aside class="toc" aria-label="On this page"><p class="grp">On this page</p><ul><li class="l2"><a href="#tailscale">Tailscale</a></li><li class="l3"><a href="#funnel-for-the-claude-and-chatgpt-apps">Funnel: for the Claude and ChatGPT apps</a></li><li class="l2"><a href="#cloudflare-tunnel">Cloudflare Tunnel</a></li><li class="l2"><a href="#your-own-reverse-proxy">Your own reverse proxy</a></li><li class="l2"><a href="#how-the-first-run-setup-code-works-behind-a-proxy">How the first-run setup code works behind a proxy</a></li></ul></aside>
+</div>
+<dialog class="sdlg" aria-label="Search the docs">
+  <form method="dialog" role="search">
+    <label class="sbox"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="vh">Search the docs</span><input type="search" placeholder="Search the docs" autocomplete="off" spellcheck="false" aria-controls="sres"><kbd>Esc</kbd></label>
+  </form>
+  <ul class="sres" id="sres" role="listbox" aria-label="Results"></ul>
+  <p class="shint">Try “setup code”, “Tailscale”, “token” or “backup”.</p>
+</dialog>
+</body>
+</html>

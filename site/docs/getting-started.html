@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting started · Mindbaton docs</title>
+<meta name="description" content="Mindbaton is one small Python program. Put it on a computer that is usually on — a home server, a NAS, a Mac mini, or just your laptop — and every AI you use can share one memory.">
+<meta name="theme-color" content="#111110">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://dkshbyte.github.io/mindbaton/docs/getting-started.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Mindbaton">
+<meta property="og:title" content="Getting started · Mindbaton docs">
+<meta property="og:description" content="Mindbaton is one small Python program. Put it on a computer that is usually on — a home server, a NAS, a Mac mini, or just your laptop — and every AI you use can share one memory.">
+<meta property="og:image" content="https://dkshbyte.github.io/mindbaton/og.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="preload" href="../fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="docs.css">
+<script src="search-index.js" defer></script>
+<script src="docs.js" defer></script>
+</head>
+<!-- Made by docs_site.py from docs/getting-started.md. Edit that file, then run: python3 docs_site.py -->
+<body class="docs">
+<a class="skip" href="#doc">Skip to content</a>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+<header class="top">
+  <div class="top-in">
+    <button class="menu" type="button" aria-controls="side" aria-expanded="false" aria-label="Menu"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <a class="brand" href="../" aria-label="Mindbaton website"><span class="wordmark" aria-hidden="true"></span></a>
+    <a class="docs-l" href="./">Docs</a>
+    <button class="find" type="button" aria-haspopup="dialog"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Search the docs</span><kbd>/</kbd></button>
+    <div class="top-act">
+      <a class="btn ghost" href="https://github.com/DkshByte/mindbaton"><span class="lg m" style="--i:url(../icons/github.svg)" aria-hidden="true"></span><span class="gh-t">GitHub</span></a>
+      <a class="btn primary" href="../#install">Install</a>
+    </div>
+  </div>
+</header>
+<div class="shell">
+  <nav class="side" id="side" aria-label="Documentation"><p class="grp">Start</p><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html" aria-current="page">Getting started</a></li><li><a href="connect.html">Connect your AIs</a></li></ul><p class="grp">Guides</p><ul><li><a href="remote-access.html">Remote access</a></li><li><a href="configuration.html">Configuration</a></li><li><a href="backup-and-upgrade.html">Backup and upgrade</a></li><li><a href="troubleshooting.html">Troubleshooting</a></li></ul><p class="grp">Reference</p><ul><li><a href="api.html">API reference</a></li><li><a href="security.html">Security</a></li><li><a href="changelog.html">Changelog</a></li></ul></nav>
+  <main class="doc" id="doc">
+    <article>
+<h1>Getting started</h1>
+<p class="lede">Mindbaton is one small Python program. Put it on a computer that is usually on — a home server, a NAS, a Mac mini, or just your laptop — and every AI you use can share one memory.</p>
+<p>You need <strong>either</strong> Python 3.9 or newer (with SQLite's FTS5, which almost every Python has), <strong>or</strong> Docker. Nothing else: no pip packages, no database server, no build step. The installer checks all of it for you.</p>
+<ul><li><a href="#linux">Linux</a></li><li><a href="#macos">macOS</a></li><li><a href="#windows">Windows</a></li><li><a href="#docker-nas-and-home-lab-boxes">Docker, NAS and home-lab boxes</a></li><li><a href="#first-run-the-setup-code">First run: the setup code</a></li><li><a href="#forgot-your-password">Forgot your password?</a></li><li><a href="#uninstall">Uninstall</a></li></ul>
+<h2 id="linux">Linux<a class="anchor" href="#linux" aria-label="Link to this section">#</a></h2>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>git clone https://github.com/DkshByte/mindbaton &amp;&amp; cd mindbaton &amp;&amp; ./install.sh</code></pre></div>
+<p>The installer:</p>
+<ol><li>checks you have Python 3.9+ with FTS5 and the system word list,</li><li>writes <code>mindbaton.env</code> (listen on your network, port 3004) if you don't have one yet,</li><li>runs the self-test (<code>python3 server.py --check</code>),</li><li>installs and starts a systemd <strong>user</strong> service called <code>mindbaton</code>,</li><li>prints your first-run link with the setup code, and the address to use from your other devices.</li></ol>
+<p>It is safe to run again — for example after an upgrade.</p>
+<p>To keep Mindbaton running when you log out, and to start it at boot, turn on "linger" once (the installer reminds you):</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>sudo loginctl enable-linger $USER</code></pre></div>
+<p>Handy commands:</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>systemctl --user status mindbaton        <span class="c"># is it running?</span>
+systemctl --user restart mindbaton       <span class="c"># restart after changing mindbaton.env</span>
+journalctl --user -u mindbaton -f        <span class="c"># logs (the setup code is printed here too)</span></code></pre></div>
+<p>No systemd (some containers, WSL1, Alpine)? The installer tells you, and you can run it in the foreground instead:</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>python3 server.py</code></pre></div>
+<h2 id="macos">macOS<a class="anchor" href="#macos" aria-label="Link to this section">#</a></h2>
+<p>Same one-liner, in Terminal:</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>git clone https://github.com/DkshByte/mindbaton &amp;&amp; cd mindbaton &amp;&amp; ./install.sh</code></pre></div>
+<p>If macOS asks to install the command line developer tools (for <code>git</code> and <code>python3</code>), say yes and run the line again. The installer sets up a launchd agent (<code>~/Library/LaunchAgents/ai.mindbaton.plist</code>) that starts Mindbaton when you log in and restarts it if it stops. Logs go to <code>~/Library/Logs/mindbaton.log</code>.</p>
+<p>The first time, macOS may ask whether Python may accept incoming network connections — allow it, or other devices won't be able to reach Mindbaton.</p>
+<h2 id="windows">Windows<a class="anchor" href="#windows" aria-label="Link to this section">#</a></h2>
+<p>Pick one:</p>
+<ul><li><strong>Docker Desktop</strong> (easiest): install <a href="https://www.docker.com/products/docker-desktop/" rel="noopener">Docker Desktop</a>, then follow <a href="#docker-nas-and-home-lab-boxes">Docker</a> below in PowerShell or Terminal.</li><li><strong>WSL2</strong>: open your Ubuntu (or other Linux) terminal and follow <a href="#linux">Linux</a>. New WSL installs have systemd turned on, so the installer sets up the service; if yours doesn't, it tells you how to run Mindbaton in the foreground. Your Windows browser can open it at <code>http://localhost:3004</code>. For your phone and other computers to reach it, Docker Desktop or <a href="remote-access.html#tailscale">Tailscale</a> is simpler than WSL's networking.</li></ul>
+<h2 id="docker-nas-and-home-lab-boxes">Docker, NAS and home-lab boxes<a class="anchor" href="#docker-nas-and-home-lab-boxes" aria-label="Link to this section">#</a></h2>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>git clone https://github.com/DkshByte/mindbaton &amp;&amp; cd mindbaton &amp;&amp; docker compose up -d
+docker compose logs mindbaton | grep "Setup code"</code></pre></div>
+<p>That builds a small image (Python only, runs as a normal user, no extra packages from pip), starts it on port 3004, restarts it automatically, and keeps your data in a Docker volume called <code>mindbaton-data</code>.</p>
+<ul><li><strong>Another port:</strong> change the left side of <code>"3004:3004"</code> in <code>compose.yaml</code> (for example <code>"8090:3004"</code>).</li><li><strong>Settings:</strong> put them in a <code>mindbaton.env</code> file next to <code>compose.yaml</code> (see <a href="configuration.html">configuration</a>); it's picked up automatically.</li><li><strong>Without compose:</strong>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>docker build -t mindbaton .
+docker run -d --name mindbaton --restart unless-stopped -p 3004:3004 -v mindbaton-data:/data mindbaton
+docker logs mindbaton | grep "Setup code"</code></pre></div></li><li><strong>NAS (Synology, Unraid, TrueNAS, …):</strong> copy this folder to the NAS and create a Compose "project" from it in your NAS's container app, or run the commands above over SSH.</li></ul>
+<h2 id="first-run-the-setup-code">First run: the setup code<a class="anchor" href="#first-run-the-setup-code" aria-label="Link to this section">#</a></h2>
+<p>Until you choose a password, Mindbaton is waiting for its owner. So that nobody else on your network can grab it first, it makes a one-time <strong>setup code</strong> (like <code>4821-7730</code>) and prints it where only you can see it:</p>
+<ul><li>the installer shows it at the end, as part of the link,</li><li>the logs show it every time Mindbaton starts (<code>journalctl --user -u mindbaton</code>, <code>~/Library/Logs/mindbaton.log</code>, or <code>docker compose logs mindbaton</code>),</li><li>and you can always ask for it on the Mindbaton computer:
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>python3 server.py --setup-code                                  <span class="c"># in the mindbaton folder</span>
+docker compose exec mindbaton python3 server.py --setup-code    <span class="c"># Docker</span></code></pre></div></li></ul>
+<p>Open the link — <code>http://&lt;your computer&gt;:3004/?code=4821-7730</code> — and choose a password (8 characters or more). Opened in a browser on the Mindbaton computer itself (<code>http://localhost:3004</code>, not through Docker), no code is needed.</p>
+<p>Next, open the <strong>Setup</strong> page. It lists every AI and device, ticks the ones that are connected, and gives you the exact copy-paste step for the rest. The same steps are in <a href="connect.html">connect.md</a>.</p>
+<div class="callout"><p><strong>Tip:</strong> try it with made-up data first. <code>MINDBATON_DATA=/tmp/mb-demo python3 demo.py --password demo-pass-123</code>, then <code>MINDBATON_DATA=/tmp/mb-demo MINDBATON_PORT=3005 python3 server.py</code> and log in at <code>http://localhost:3005</code> with that password.</p></div>
+<h2 id="forgot-your-password">Forgot your password?<a class="anchor" href="#forgot-your-password" aria-label="Link to this section">#</a></h2>
+<p>Anyone with a shell on the Mindbaton computer is the owner, so resetting happens there:</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>python3 server.py --reset-password                                  <span class="c"># in the mindbaton folder</span>
+docker compose exec mindbaton python3 server.py --reset-password    <span class="c"># Docker</span></code></pre></div>
+<p>This removes the password and signs out every browser. <strong>Your memories and your device tokens are kept</strong> — your extension and coding agents keep working. It prints a new setup code; open the link and choose a new password.</p>
+<h2 id="uninstall">Uninstall<a class="anchor" href="#uninstall" aria-label="Link to this section">#</a></h2>
+<p>Your memories live in <code>data/</code> in the mindbaton folder (or the <code>mindbaton-data</code> volume with Docker). Keep a <a href="backup-and-upgrade.html">backup</a> if you might want them back.</p>
+<p><strong>Linux</strong></p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>systemctl --user disable --now mindbaton
+rm ~/.config/systemd/user/mindbaton.service &amp;&amp; systemctl --user daemon-reload
+rm -rf ~/mindbaton        <span class="c"># the folder you cloned — this deletes your data too</span></code></pre></div>
+<p><strong>macOS</strong></p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>launchctl bootout gui/$(id -u)/ai.mindbaton
+rm ~/Library/LaunchAgents/ai.mindbaton.plist ~/Library/Logs/mindbaton.log
+rm -rf ~/mindbaton        <span class="c"># the folder you cloned — this deletes your data too</span></code></pre></div>
+<p><strong>Docker</strong></p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>docker compose down       <span class="c"># stop and remove the container; your data volume stays</span>
+docker compose down -v    <span class="c"># …and delete your data too</span></code></pre></div>
+<p>Then remove the browser extension, and the <code>mindbaton</code> entry from any AI app you connected.</p>
+    </article>
+    <nav class="pns" aria-label="Previous and next"><a class="pn prev" href="index.html"><span>Previous</span>Overview</a><a class="pn next" href="connect.html"><span>Next</span>Connect your AIs</a></nav>
+    <p class="edit"><a href="https://github.com/DkshByte/mindbaton/edit/main/docs/getting-started.md" rel="noopener"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg>Edit this page on GitHub</a></p>
+  </main>
+  <aside class="toc" aria-label="On this page"><p class="grp">On this page</p><ul><li class="l2"><a href="#linux">Linux</a></li><li class="l2"><a href="#macos">macOS</a></li><li class="l2"><a href="#windows">Windows</a></li><li class="l2"><a href="#docker-nas-and-home-lab-boxes">Docker, NAS and home-lab boxes</a></li><li class="l2"><a href="#first-run-the-setup-code">First run: the setup code</a></li><li class="l2"><a href="#forgot-your-password">Forgot your password?</a></li><li class="l2"><a href="#uninstall">Uninstall</a></li></ul></aside>
+</div>
+<dialog class="sdlg" aria-label="Search the docs">
+  <form method="dialog" role="search">
+    <label class="sbox"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="vh">Search the docs</span><input type="search" placeholder="Search the docs" autocomplete="off" spellcheck="false" aria-controls="sres"><kbd>Esc</kbd></label>
+  </form>
+  <ul class="sres" id="sres" role="listbox" aria-label="Results"></ul>
+  <p class="shint">Try “setup code”, “Tailscale”, “token” or “backup”.</p>
+</dialog>
+</body>
+</html>

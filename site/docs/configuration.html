@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configuration · Mindbaton docs</title>
+<meta name="description" content="Mindbaton works with no configuration at all. When you want to change something, put NAME=value lines in mindbaton.env next to server.py (the installer creates one; mindbaton.env.e">
+<meta name="theme-color" content="#111110">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://dkshbyte.github.io/mindbaton/docs/configuration.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Mindbaton">
+<meta property="og:title" content="Configuration · Mindbaton docs">
+<meta property="og:description" content="Mindbaton works with no configuration at all. When you want to change something, put NAME=value lines in mindbaton.env next to server.py (the installer creates one; mindbaton.env.e">
+<meta property="og:image" content="https://dkshbyte.github.io/mindbaton/og.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="preload" href="../fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="docs.css">
+<script src="search-index.js" defer></script>
+<script src="docs.js" defer></script>
+</head>
+<!-- Made by docs_site.py from docs/configuration.md. Edit that file, then run: python3 docs_site.py -->
+<body class="docs">
+<a class="skip" href="#doc">Skip to content</a>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+<header class="top">
+  <div class="top-in">
+    <button class="menu" type="button" aria-controls="side" aria-expanded="false" aria-label="Menu"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <a class="brand" href="../" aria-label="Mindbaton website"><span class="wordmark" aria-hidden="true"></span></a>
+    <a class="docs-l" href="./">Docs</a>
+    <button class="find" type="button" aria-haspopup="dialog"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Search the docs</span><kbd>/</kbd></button>
+    <div class="top-act">
+      <a class="btn ghost" href="https://github.com/DkshByte/mindbaton"><span class="lg m" style="--i:url(../icons/github.svg)" aria-hidden="true"></span><span class="gh-t">GitHub</span></a>
+      <a class="btn primary" href="../#install">Install</a>
+    </div>
+  </div>
+</header>
+<div class="shell">
+  <nav class="side" id="side" aria-label="Documentation"><p class="grp">Start</p><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="connect.html">Connect your AIs</a></li></ul><p class="grp">Guides</p><ul><li><a href="remote-access.html">Remote access</a></li><li><a href="configuration.html" aria-current="page">Configuration</a></li><li><a href="backup-and-upgrade.html">Backup and upgrade</a></li><li><a href="troubleshooting.html">Troubleshooting</a></li></ul><p class="grp">Reference</p><ul><li><a href="api.html">API reference</a></li><li><a href="security.html">Security</a></li><li><a href="changelog.html">Changelog</a></li></ul></nav>
+  <main class="doc" id="doc">
+    <article>
+<h1>Configuration</h1>
+<p class="lede">Mindbaton works with no configuration at all. When you want to change something, put <code>NAME=value</code> lines in <strong><code>mindbaton.env</code></strong> next to <code>server.py</code> (the installer creates one; <code>mindbaton.env.example</code> lists everything) and restart Mindbaton. Real environment variables win over the file. With Docker, use a <code>mindbaton.env</code> next to <code>compose.yaml</code>, or <code>-e NAME=value</code> with <code>docker run</code>.</p>
+<h2 id="settings">Settings<a class="anchor" href="#settings" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>Variable</th><th>Default</th><th>What it does</th></tr></thead><tbody><tr><td><code>MINDBATON_HOST</code></td><td><code>127.0.0.1</code></td><td>Address to listen on. <code>127.0.0.1</code> = only this computer; <code>0.0.0.0</code> = every device on your network. The installer and Docker use <code>0.0.0.0</code>.</td></tr><tr><td><code>MINDBATON_PORT</code></td><td><code>3004</code></td><td>Port to listen on. (Docker: leave it, and change the left side of the port mapping instead.)</td></tr><tr><td><code>MINDBATON_DATA</code></td><td><code>data/</code> next to <code>server.py</code></td><td>Folder for your data. Docker uses <code>/data</code> (the volume).</td></tr><tr><td><code>MINDBATON_PUBLIC_URL</code></td><td><em>(none)</em></td><td>Your HTTPS address, e.g. <code>https://mindbaton.example.com</code>, used in the Setup page's copy-paste steps and for secure cookies. Without it, Mindbaton uses the address you opened it on. See <a href="remote-access.html">remote access</a>.</td></tr><tr><td><code>MINDBATON_AI</code></td><td><code>1</code></td><td><code>0</code> turns the optional AI off completely, even if keys are saved.</td></tr><tr><td><code>MINDBATON_AI_DAILY</code></td><td><code>400</code></td><td>Most requests per day the optional AI may make.</td></tr><tr><td><code>MINDBATON_AI_ASK_DAILY</code></td><td><code>200</code></td><td>Most of those that search answers may use, so hand-offs always have some left.</td></tr><tr><td><code>MINDBATON_GEMINI_MODEL</code></td><td><code>gemini-3.6-flash</code></td><td>Gemini model for hand-off summaries.</td></tr><tr><td><code>MINDBATON_GROQ_MODEL</code></td><td><code>openai/gpt-oss-120b</code></td><td>Groq model, used when Gemini isn't available.</td></tr><tr><td><code>GEMINI_KEY</code>, <code>GROQ_KEY</code></td><td><em>(none)</em></td><td>Keys for the optional AI. Easier: paste them on the Setup page, which tests and saves them to <code>ai_keys</code> in your data folder.</td></tr><tr><td><code>MINDBATON_BRAIN</code></td><td><code>auto</code></td><td>Mindbaton's own model reads, in the background, what the rules couldn't (see below). <code>auto</code> = on when this computer has 12 GB of memory or more; <code>on</code>; <code>off</code>.</td></tr><tr><td><code>MINDBATON_BRAIN_URL</code></td><td><em>(none)</em></td><td>Use a model server elsewhere instead (a <code>llama-server</code> or LM Studio on your laptop, e.g. <code>http://192.168.1.20:8080</code>): nothing is downloaded here.</td></tr><tr><td><code>MINDBATON_BRAIN_MODEL</code></td><td><code>1972521116s/mindbaton-brain-2b</code></td><td>The Hugging Face repo the model comes from.</td></tr><tr><td><code>MINDBATON_BRAIN_BATTERY</code></td><td><code>0</code></td><td><code>1</code> lets the model read while a laptop runs on battery.</td></tr><tr><td><code>MINDBATON_WATCH_CLAUDE</code></td><td><code>1</code></td><td><code>0</code> stops Mindbaton reading Claude Code's chat history from <code>~/.claude/projects</code> on this computer. Docker sets <code>0</code> (there's nothing to read inside the container).</td></tr><tr><td><code>MINDBATON_UPDATE_CHECK</code></td><td><code>1</code></td><td><code>0</code> stops the once-a-day check with GitHub for a newer release (the "update available" notice admins see).</td></tr></tbody></table></div>
+<p>For the Claude Desktop bridge (<code>mcp_stdio.py</code>), set these in the Claude Desktop config, not in <code>mindbaton.env</code>:</p>
+<div class="table"><table><thead><tr><th>Variable</th><th>What it does</th></tr></thead><tbody><tr><td><code>MINDBATON_URL</code></td><td>Your Mindbaton address, e.g. <code>http://192.168.1.20:3004</code></td></tr><tr><td><code>MINDBATON_TOKEN</code></td><td>A device token from Settings → Devices</td></tr></tbody></table></div>
+<h2 id="the-optional-ai">The optional AI<a class="anchor" href="#the-optional-ai" aria-label="Link to this section">#</a></h2>
+<p>Everything Mindbaton understands — facts, topics, answers, redaction — comes from rules on your own computer. An AI is only used, if you add a free key, to <em>word</em> things more nicely: hand-off summaries, topic names and summaries, and short answers on the search page (with the memories they came from). It tries Gemini first, then Groq.</p>
+<ul><li>Get a free key from <a href="https://aistudio.google.com/apikey" rel="noopener">Google AI Studio</a> or <a href="https://console.groq.com/keys" rel="noopener">Groq</a> and paste it on the Setup page.</li><li>What leaves your computer: the text of the chat or memories that particular summary, name or answer is about — sent to that provider only.</li><li>No key, or <code>MINDBATON_AI=0</code>: Mindbaton uses rule-made topic names and a plain extract as the hand-off pack.</li></ul>
+<h2 id="mindbatons-own-model">Mindbaton's own model<a class="anchor" href="#mindbatons-own-model" aria-label="Link to this section">#</a></h2>
+<p>Rules read most of what you tell your AIs. For the rest (the way people really type: "5-a-side football every thursday", "zero caffeine since march") Mindbaton has its own small model: Qwen3.5-2B fine-tuned on made-up examples only, 1.3 GB.</p>
+<ul><li>On a computer with 12 GB of memory or more it turns on by itself. The first time, it downloads the model and the llama.cpp engine (about 1.3 GB, once) into <code>brain/</code> in your data folder.</li><li>It only reads messages the rules found nothing in, one at a time, at low priority on half the processor, and shuts the engine down after 5 idle minutes. On a laptop it waits while you're on battery. It uses about 1.5 GB of memory while reading.</li><li>Everything stays on your computer. The rules check every fact it reads (the words must be in your message, never from a question or a "maybe") before it's saved, and what it read is kept, so it never reads the same message twice.</li><li>Mindbaton on a small server, but a laptop with memory to spare? Run <code>llama-server</code> on the laptop and set <code>MINDBATON_BRAIN_URL</code> on the server; it reads whenever the laptop is on.</li></ul>
+<h2 id="whats-in-the-data-folder">What's in the data folder<a class="anchor" href="#whats-in-the-data-folder" aria-label="Link to this section">#</a></h2>
+<div class="table"><table><thead><tr><th>File</th><th>What it is</th></tr></thead><tbody><tr><td><code>mindbaton.db</code></td><td>Everything: every message as it arrived (secrets removed), and the memory graph built from it.</td></tr><tr><td><code>ai_keys</code></td><td>Optional AI keys (only readable by you).</td></tr><tr><td><code>access.log</code></td><td>One line per request made with a connector token (the Claude and ChatGPT apps).</td></tr><tr><td><code>brain/</code></td><td>Mindbaton's own model and its engine, if this computer runs it (about 1.3 GB). Safe to delete; it downloads again.</td></tr></tbody></table></div>
+<p>The folder is created readable only by you. Back it up — see <a href="backup-and-upgrade.html">backup and upgrade</a>.</p>
+<h2 id="command-line">Command line<a class="anchor" href="#command-line" aria-label="Link to this section">#</a></h2>
+<p>Run these in the Mindbaton folder (Docker: prefix with <code>docker compose exec mindbaton</code>):</p>
+<div class="table"><table><thead><tr><th>Command</th><th>What it does</th></tr></thead><tbody><tr><td><code>python3 server.py</code></td><td>Run Mindbaton in the foreground.</td></tr><tr><td><code>python3 server.py --check</code></td><td>Self-test of the rules, the database and login. Exits with an error if anything is wrong.</td></tr><tr><td><code>python3 server.py --setup-code</code></td><td>Show the first-run setup code and link (only before a password is set).</td></tr><tr><td><code>python3 server.py --reset-password</code></td><td>Forgot your password: removes it and signs out every browser; memories and device tokens stay. Prints a new setup code.</td></tr><tr><td><code>python3 bench.py</code></td><td>The quality benchmark (for contributors).</td></tr></tbody></table></div>
+    </article>
+    <nav class="pns" aria-label="Previous and next"><a class="pn prev" href="remote-access.html"><span>Previous</span>Remote access</a><a class="pn next" href="backup-and-upgrade.html"><span>Next</span>Backup and upgrade</a></nav>
+    <p class="edit"><a href="https://github.com/DkshByte/mindbaton/edit/main/docs/configuration.md" rel="noopener"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg>Edit this page on GitHub</a></p>
+  </main>
+  <aside class="toc" aria-label="On this page"><p class="grp">On this page</p><ul><li class="l2"><a href="#settings">Settings</a></li><li class="l2"><a href="#the-optional-ai">The optional AI</a></li><li class="l2"><a href="#mindbatons-own-model">Mindbaton's own model</a></li><li class="l2"><a href="#whats-in-the-data-folder">What's in the data folder</a></li><li class="l2"><a href="#command-line">Command line</a></li></ul></aside>
+</div>
+<dialog class="sdlg" aria-label="Search the docs">
+  <form method="dialog" role="search">
+    <label class="sbox"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="vh">Search the docs</span><input type="search" placeholder="Search the docs" autocomplete="off" spellcheck="false" aria-controls="sres"><kbd>Esc</kbd></label>
+  </form>
+  <ul class="sres" id="sres" role="listbox" aria-label="Results"></ul>
+  <p class="shint">Try “setup code”, “Tailscale”, “token” or “backup”.</p>
+</dialog>
+</body>
+</html>

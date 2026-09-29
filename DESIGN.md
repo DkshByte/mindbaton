@@ -185,6 +185,24 @@ Content column max 1120px, 40px side padding. You: kind cards in up to 3 columns
 stacking under 1100px. Under 820px (the phone) the sidebar becomes a top nav strip, topics and sources hide, the page
 scrolls and the detail panel takes the full width.
 
+## The website (`site/`, 2026-09-29)
+The landing page follows this system instead of its own costume (the "box and its manual" page it replaced). Same tokens,
+Geist and Geist Mono, flat `--panel` cards on hairlines, the app's `.btn`, chips, rows and segmented control, and the
+aurora as the only decoration: a warm dusk (ember, apricot, rose, orange over a deep wine glow), mixed in OKLab so overlaps never go muddy, with a faint film grain against banding. Left-aligned: headline, lede, the
+install command with Copy (primary), then a real screenshot of You. "How it works" is three steps, each beside one of the
+app's components filled with the demo person (Recently rows, the answer card, a pick card and its real hand-off pack);
+then the app's screens behind a segmented control, "Works with" as kind rows of chips, privacy as hairline rows,
+install as a Script / Docker switch with numbered steps, questions, footer. Screens and data come from `demo.py`, never
+invented. Privacy and terms (`legal.css`) are plain reading pages in the same palette. **Docs** (`site/docs/`, made by `docs_site.py`)
+are laid out like the app: the sidebar of pages (current one on `--panel-3`), a 720px reading column (15.5px text in
+`--fg-2`, headings in `--fg`), "On this page" on the right, code on the sidebar grey with its kind and a copy button,
+flat callouts (a "Never" one gets the danger border), hairline tables, and search as a palette dialog (`/`, Ctrl/⌘K). No eyebrows, no metric tiles, no
+feature-card grid, no gradients inside boxes. **Motion** shows the product working, never decoration: the hero relay (a fact typed
+into one AI, the baton carries it into Mindbaton, another AI answers with it; the aurora pulses on each save), new
+memories rising into Recently, the question typing itself and Porto struck through, the meter filling and the baton
+hopping to the next AI; sections rise in once, the hero screenshot settles on scroll. Transform and opacity only, only
+while on screen; under reduced motion each demo shows its finished state.
+
 ## Not allowed (found in a vibe-coding review, 2026-09-28)
 Colour washes or gradients inside cards and panels (surfaces are flat `--panel`; colour lives only in icons, marks and
 logos), eyebrow labels above headings, hero-metric number tiles (numbers are one quiet line of links), sparklines

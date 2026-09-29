@@ -103,4 +103,6 @@ No keys or `MINDBATON_AI=0` = rule names and the extractive pack. `python3 ai.py
 - Installed service: `systemctl --user restart mindbaton` (Linux) · `launchctl kickstart -k gui/$(id -u)/ai.mindbaton`
   (macOS) · `docker compose up -d --build` (Docker).
 - The extension zip (`/mindbaton-extension.zip`) is built on the fly from `extension/` — never commit a zip.
+- The website's docs (`site/docs/`) are made from `docs/*.md`, `SECURITY.md` and `CHANGELOG.md` by `python3 docs_site.py`:
+  edit the Markdown, run it, commit both (CI runs `--check`, which also fails on a broken link or an undocumented MCP tool).
 - MCP is served at `/mcp` (streamable HTTP, JSON responses); `mcp_stdio.py` bridges stdio-only clients.
