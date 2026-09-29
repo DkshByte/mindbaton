@@ -1,0 +1,1 @@
+I kept re-introducing myself to every AI, so I built Mindbaton: one private memory that ChatGPT, Claude, Gemini, Cursor and Claude Code all share, running on your own computer. When a chat hits its limit, pass the baton and another AI picks it up. Free and open source: github.com/DkshByte/mindbaton
