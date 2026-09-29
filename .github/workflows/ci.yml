@@ -14,6 +14,7 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: python3 server.py --check
       - run: python3 bench.py
+      - run: python3 docs_site.py --check
       - name: Lint install.sh
         run: if command -v shellcheck >/dev/null; then shellcheck install.sh; else sh -n install.sh; fi
 

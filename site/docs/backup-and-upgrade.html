@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backup and upgrade · Mindbaton docs</title>
+<meta name="description" content="Backup and upgrade: Mindbaton documentation.">
+<meta name="theme-color" content="#111110">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://dkshbyte.github.io/mindbaton/docs/backup-and-upgrade.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Mindbaton">
+<meta property="og:title" content="Backup and upgrade · Mindbaton docs">
+<meta property="og:description" content="Backup and upgrade: Mindbaton documentation.">
+<meta property="og:image" content="https://dkshbyte.github.io/mindbaton/og.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="preload" href="../fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="docs.css">
+<script src="search-index.js" defer></script>
+<script src="docs.js" defer></script>
+</head>
+<!-- Made by docs_site.py from docs/backup-and-upgrade.md. Edit that file, then run: python3 docs_site.py -->
+<body class="docs">
+<a class="skip" href="#doc">Skip to content</a>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+<header class="top">
+  <div class="top-in">
+    <button class="menu" type="button" aria-controls="side" aria-expanded="false" aria-label="Menu"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <a class="brand" href="../" aria-label="Mindbaton website"><span class="wordmark" aria-hidden="true"></span></a>
+    <a class="docs-l" href="./">Docs</a>
+    <button class="find" type="button" aria-haspopup="dialog"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Search the docs</span><kbd>/</kbd></button>
+    <div class="top-act">
+      <a class="btn ghost" href="https://github.com/DkshByte/mindbaton"><span class="lg m" style="--i:url(../icons/github.svg)" aria-hidden="true"></span><span class="gh-t">GitHub</span></a>
+      <a class="btn primary" href="../#install">Install</a>
+    </div>
+  </div>
+</header>
+<div class="shell">
+  <nav class="side" id="side" aria-label="Documentation"><p class="grp">Start</p><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="connect.html">Connect your AIs</a></li></ul><p class="grp">Guides</p><ul><li><a href="remote-access.html">Remote access</a></li><li><a href="configuration.html">Configuration</a></li><li><a href="backup-and-upgrade.html" aria-current="page">Backup and upgrade</a></li><li><a href="troubleshooting.html">Troubleshooting</a></li></ul><p class="grp">Reference</p><ul><li><a href="api.html">API reference</a></li><li><a href="security.html">Security</a></li><li><a href="changelog.html">Changelog</a></li></ul></nav>
+  <main class="doc" id="doc">
+    <article>
+<h1>Backup and upgrade</h1>
+<h2 id="what-to-back-up">What to back up<a class="anchor" href="#what-to-back-up" aria-label="Link to this section">#</a></h2>
+<p>Everything lives in the <strong>data folder</strong>: <code>data/</code> inside the mindbaton folder (or wherever <code>MINDBATON_DATA</code> points), or the <code>mindbaton-data</code> volume with Docker. The one file that matters is <code>mindbaton.db</code>; <code>ai_keys</code> holds your optional AI keys. Your <code>mindbaton.env</code> (if you changed it) is worth keeping too.</p>
+<h2 id="make-a-backup">Make a backup<a class="anchor" href="#make-a-backup" aria-label="Link to this section">#</a></h2>
+<p>Mindbaton can keep running. This uses SQLite's own backup, so the copy is consistent even mid-write:</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>cd ~/mindbaton
+python3 -c "import sqlite3; sqlite3.connect('data/mindbaton.db').backup(sqlite3.connect('mindbaton-backup.db'))"</code></pre></div>
+<p>With Docker:</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>docker compose exec mindbaton python3 -c "import sqlite3; sqlite3.connect('/data/mindbaton.db').backup(sqlite3.connect('/data/backup.db'))"
+docker compose cp mindbaton:/data/backup.db ./mindbaton-backup.db
+docker compose exec mindbaton rm /data/backup.db</code></pre></div>
+<p>Keep the backup somewhere private — it contains everything you've told your AIs (secrets are removed, but it is still your life). To back up every night, put the first command in a cron job or systemd timer.</p>
+<p>Want your memory in another tool instead? <strong>Export</strong> it from the app, or with a full token: <code>curl -H "Authorization: Bearer mb_xxxxxxxx" "http://localhost:3004/export?format=json"</code> (also <code>cypher</code> for Neo4j and <code>graphml</code> for Gephi).</p>
+<h2 id="restore">Restore<a class="anchor" href="#restore" aria-label="Link to this section">#</a></h2>
+<p>Stop Mindbaton, put the backup in place, start it again:</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>systemctl --user stop mindbaton                        <span class="c"># macOS: launchctl bootout gui/$(id -u)/ai.mindbaton</span>
+cp mindbaton-backup.db data/mindbaton.db
+rm -f data/mindbaton.db-wal data/mindbaton.db-shm
+systemctl --user start mindbaton                       <span class="c"># macOS: ./install.sh</span></code></pre></div>
+<p>With Docker:</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>docker compose stop
+docker compose run --rm -v "$PWD:/backup" mindbaton \
+  sh -c "cp /backup/mindbaton-backup.db /data/mindbaton.db &amp;&amp; rm -f /data/mindbaton.db-wal /data/mindbaton.db-shm"
+docker compose start</code></pre></div>
+<p>(Removing the old <code>-wal</code>/<code>-shm</code> files matters: they belong to the database you're replacing.)</p>
+<h2 id="upgrade">Upgrade<a class="anchor" href="#upgrade" aria-label="Link to this section">#</a></h2>
+<p>Upgrades keep all your data. Mindbaton saves every message as it arrived and builds the memory graph from those, so when a new version understands messages better it simply rebuilds the graph on its first start — and anything you told it to forget stays forgotten. A backup first never hurts.</p>
+<p><strong>Installed with <code>install.sh</code>:</strong></p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>mindbaton update   <span class="c"># from any folder: downloads, runs the self-test (goes back if it fails), restarts the service</span></code></pre></div>
+<p>The installer adds the <code>mindbaton</code> command (to <code>~/.local/bin</code>, or Homebrew's folder on a Mac). On an install older than that, run <code>cd ~/mindbaton &amp;&amp; python3 mindbaton.py update</code> once: the update adds the command, and from then on <code>mindbaton update</code> is all you need. <code>mindbaton doctor</code> checks everything; <code>mindbaton --help</code> lists the rest.</p>
+<p><strong>Docker</strong> (Windows, macOS, Linux, NAS), in the folder with <code>compose.yaml</code>:</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>docker compose pull
+docker compose up -d</code></pre></div>
+<p>That fetches the newest published image (<code>ghcr.io/dkshbyte/mindbaton</code>) and restarts on it. Your data stays in the <code>mindbaton-data</code> volume. Started with plain <code>docker run</code> instead? Then <code>docker pull ghcr.io/dkshbyte/mindbaton</code>, remove the old container (<code>docker rm -f mindbaton</code>) and run the same <code>docker run</code> command again: the volume keeps everything.</p>
+<h3 id="automatic-updates">Automatic updates<a class="anchor" href="#automatic-updates" aria-label="Link to this section">#</a></h3>
+<p>Let Mindbaton update itself every night. Each update is tested first, and if the new version fails, you stay on (or go back to) the one you had, and that release is skipped until a newer one comes out. Your memories are never touched.</p>
+<ul><li><strong>Installed with <code>install.sh</code></strong> (Linux, macOS): <code>python3 mindbaton.py autoupdate on</code> (a systemd timer or launchd job, around 4:00 each night; a night the computer was off runs at the next start). <code>autoupdate off</code> stops it; <code>autoupdate status</code> shows it.</li><li><strong>Docker on Windows</strong> (PowerShell, in the folder with <code>compose.yaml</code>): <code>powershell -ExecutionPolicy Bypass -File scripts\auto-update.ps1 -Install</code> adds a Task Scheduler job for 04:00 (<code>-Remove</code> takes it away; without a switch it updates once, now).</li><li><strong>Docker on Linux, macOS or a NAS:</strong> <code>sh scripts/auto-update.sh --install</code> adds one line to your crontab (<code>--remove</code> takes it away).</li></ul>
+<p>What each run did is in <code>auto-update.log</code> next to <code>compose.yaml</code> (Docker) or <code>~/.mindbaton/install.log</code>.</p>
+<p>Why not Watchtower? It was archived in December 2025, and it needs full control of Docker to work. These scripts only update Mindbaton's own container.</p>
+<p><strong>Your folder is from before 25 September 2026?</strong> The project's history was rewritten once that day, so <code>git pull</code> refuses in older copies. Run this once in the folder (your data and <code>mindbaton.env</code> aren't touched):</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>git fetch origin
+git reset --hard origin/main</code></pre></div>
+<p>After upgrading, reload the browser extension if it changed: download <code>/mindbaton-extension.zip</code> again, unzip it over the old folder, and press the reload button on it in <code>chrome://extensions</code>.</p>
+<h2 id="moving-to-another-computer">Moving to another computer<a class="anchor" href="#moving-to-another-computer" aria-label="Link to this section">#</a></h2>
+<p>Install Mindbaton on the new computer, stop it, copy <code>mindbaton.db</code> (and <code>ai_keys</code>) into its data folder, and start it. Your password, device tokens and memories all come along — just update the address in your extension and apps if it changed.</p>
+    </article>
+    <nav class="pns" aria-label="Previous and next"><a class="pn prev" href="configuration.html"><span>Previous</span>Configuration</a><a class="pn next" href="troubleshooting.html"><span>Next</span>Troubleshooting</a></nav>
+    <p class="edit"><a href="https://github.com/DkshByte/mindbaton/edit/main/docs/backup-and-upgrade.md" rel="noopener"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg>Edit this page on GitHub</a></p>
+  </main>
+  <aside class="toc" aria-label="On this page"><p class="grp">On this page</p><ul><li class="l2"><a href="#what-to-back-up">What to back up</a></li><li class="l2"><a href="#make-a-backup">Make a backup</a></li><li class="l2"><a href="#restore">Restore</a></li><li class="l2"><a href="#upgrade">Upgrade</a></li><li class="l3"><a href="#automatic-updates">Automatic updates</a></li><li class="l2"><a href="#moving-to-another-computer">Moving to another computer</a></li></ul></aside>
+</div>
+<dialog class="sdlg" aria-label="Search the docs">
+  <form method="dialog" role="search">
+    <label class="sbox"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="vh">Search the docs</span><input type="search" placeholder="Search the docs" autocomplete="off" spellcheck="false" aria-controls="sres"><kbd>Esc</kbd></label>
+  </form>
+  <ul class="sres" id="sres" role="listbox" aria-label="Results"></ul>
+  <p class="shint">Try “setup code”, “Tailscale”, “token” or “backup”.</p>
+</dialog>
+</body>
+</html>

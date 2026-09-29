@@ -18,6 +18,8 @@ unmodified SVG files: colour marks as they are, one-colour marks tinted with the
 - **The page** (`index.html`, `style.css`, `site.js`) is hand-written HTML, CSS and JavaScript with no dependencies,
   in the app's own design system (`DESIGN.md`). The rows, answer card, chat card and chips are the app's components
   redrawn in HTML with the demo person's real data.
+- **The docs** (`docs/`) are made by the repo's `docs_site.py` from `docs/*.md`, `SECURITY.md` and `CHANGELOG.md`;
+  `docs.css` and `docs.js` are hand-written.
 - **The brand** (`brand/`, `favicon.svg`, `favicon-32.png`, `apple-touch-icon.png`) comes from the repo's
   `assets/brand/`.
 - **The hand-off pack** under "Pass the baton" is real output of `live.make_handoff()` (with what Mindbaton knows about

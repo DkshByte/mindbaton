@@ -180,7 +180,10 @@ install command with Copy (primary), then a real screenshot of You. "How it work
 app's components filled with the demo person (Recently rows, the answer card, a pick card and its real hand-off pack);
 then the app's screens behind a segmented control, "Works with" as kind rows of chips, privacy as hairline rows,
 install as a Script / Docker switch with numbered steps, questions, footer. Screens and data come from `demo.py`, never
-invented. Privacy and terms (`legal.css`) are plain reading pages in the same palette. No eyebrows, no metric tiles, no
+invented. Privacy and terms (`legal.css`) are plain reading pages in the same palette. **Docs** (`site/docs/`, made by `docs_site.py`)
+are laid out like the app: the sidebar of pages (current one on `--panel-3`), a 720px reading column (15.5px text in
+`--fg-2`, headings in `--fg`), "On this page" on the right, code on the sidebar grey with its kind and a copy button,
+flat callouts (a "Never" one gets the danger border), hairline tables, and search as a palette dialog (`/`, Ctrl/⌘K). No eyebrows, no metric tiles, no
 feature-card grid, no gradients inside boxes.
 
 ## Not allowed (found in a vibe-coding review, 2026-09-28)
