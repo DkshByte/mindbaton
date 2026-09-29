@@ -287,7 +287,7 @@ def page_html(n, slug, label, p, body):
 <!-- Made by docs_site.py from {p.src}. Edit that file, then run: python3 docs_site.py -->
 <body class="docs{' home' if slug == 'index' else ''}">
 <a class="skip" href="#doc">Skip to content</a>
-<div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
 <header class="top">
   <div class="top-in">
     <button class="menu" type="button" aria-controls="side" aria-expanded="false" aria-label="Menu">{ICON('<path d="M4 7h16M4 12h16M4 17h16"/>')}</button>

@@ -10,8 +10,8 @@
   --brand: #eeeeec; --brand-hi: #fff; --brand-ink: #111110;
   --glass: rgba(255, 253, 243, .06); --glass-hi: rgba(255, 253, 243, .11); --glass-rim: rgba(255, 253, 243, .14);
   --ok: #3dd68c; --danger: #ff8fa3; --danger-soft: rgba(233, 61, 130, .14);
-  /* the aurora is warm: tomato, amber, rose, orange (Radix dark, step 11) */
-  --a1: #ff977d; --a2: #ffca16; --a3: #ff8dcc; --a4: #ffa057;
+  /* the aurora is a warm dusk: ember, apricot, rose, and a deep wine underneath (one family, so overlaps never go muddy) */
+  --a1: #ff5a36; --a2: #ffae6b; --a3: #ee5f86; --a4: #ff8f3f; --a5: #6e1f33;
   --sans: "Geist", ui-sans-serif, system-ui, sans-serif; --mono: "Geist Mono", ui-monospace, monospace;
   --r: 10px; --r-sm: 7px; --gut: clamp(16px, 4vw, 40px);
   color-scheme: dark;
@@ -43,14 +43,19 @@ svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor;
   -webkit-mask: url(brand/wordmark.svg) left center / contain no-repeat; mask: url(brand/wordmark.svg) left center / contain no-repeat; }
 
 /* the aurora: four soft warm glows rise from the top edge, drift, and fade out over ~700px (a stepped mask) */
-.aurora { position: absolute; left: 0; right: 0; top: 0; height: 760px; overflow: hidden; pointer-events: none; z-index: 0; opacity: .5;
+.aurora { position: absolute; left: 0; right: 0; top: 0; height: 760px; overflow: hidden; pointer-events: none; z-index: 0; opacity: .72;
   -webkit-mask: linear-gradient(#000 0%, rgba(0, 0, 0, .72) 22%, rgba(0, 0, 0, .34) 52%, rgba(0, 0, 0, .1) 78%, transparent 100%);
   mask: linear-gradient(#000 0%, rgba(0, 0, 0, .72) 22%, rgba(0, 0, 0, .34) 52%, rgba(0, 0, 0, .1) 78%, transparent 100%); }
 .aurora::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; opacity: .85;
   background: linear-gradient(90deg, transparent, var(--a1) 18%, var(--a2) 40%, var(--a3) 62%, var(--a4) 84%, transparent); }
-.aurora i { position: absolute; top: -300px; width: 56%; height: 640px; border-radius: 50%; mix-blend-mode: screen; will-change: transform;
-  background: radial-gradient(closest-side, var(--c), transparent); animation: 24s ease-in-out infinite alternate; }
-.aurora i:nth-child(1) { --c: var(--a1); left: -14%; animation-name: aur1; }
+.aurora i { position: absolute; top: -250px; width: 50%; height: 600px; border-radius: 50%; mix-blend-mode: screen; will-change: transform;
+  background: radial-gradient(closest-side in oklab, var(--c), color-mix(in oklab, var(--c) 0%, transparent)); animation: 24s ease-in-out infinite alternate; }
+/* a wide wine glow under the others gives the dusk its depth; grain on top stops banding on 8-bit screens */
+.aurora i:nth-child(5) { --c: var(--a5); left: -10%; top: -420px; width: 120%; height: 720px; opacity: .45; animation-name: aur5; animation-duration: 40s; }
+@keyframes aur5 { to { transform: translate(4%, 30px) scale(1.06); } }
+.aurora::after { content: ""; position: absolute; inset: 0; opacity: .14; mix-blend-mode: overlay; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.aurora i:nth-child(1) { --c: var(--a1); left: -14%; animation-name: aur1; z-index: 1; }
 .aurora i:nth-child(2) { --c: var(--a2); left: 16%; top: -340px; animation-name: aur2; animation-duration: 29s; }
 .aurora i:nth-child(3) { --c: var(--a3); left: 44%; animation-name: aur3; animation-duration: 21s; }
 .aurora i:nth-child(4) { --c: var(--a4); left: 66%; top: -330px; animation-name: aur4; animation-duration: 33s; }

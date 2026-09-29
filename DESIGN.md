@@ -175,7 +175,7 @@ scrolls and the detail panel takes the full width.
 ## The website (`site/`, 2026-09-29)
 The landing page follows this system instead of its own costume (the "box and its manual" page it replaced). Same tokens,
 Geist and Geist Mono, flat `--panel` cards on hairlines, the app's `.btn`, chips, rows and segmented control, and the
-aurora in its warm colours (tomato, amber, rose, orange) as the only decoration. Left-aligned: headline, lede, the
+aurora as the only decoration: a warm dusk (ember, apricot, rose, orange over a deep wine glow), mixed in OKLab so overlaps never go muddy, with a faint film grain against banding. Left-aligned: headline, lede, the
 install command with Copy (primary), then a real screenshot of You. "How it works" is three steps, each beside one of the
 app's components filled with the demo person (Recently rows, the answer card, a pick card and its real hand-off pack);
 then the app's screens behind a segmented control, "Works with" as kind rows of chips, privacy as hairline rows,
