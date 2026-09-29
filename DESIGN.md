@@ -104,10 +104,11 @@ with no logo gets a small dot in its kind's colour; people get a round lettered 
   cross-fading over 1.4 s. A new memory brightens it for ~1.5 s anywhere — the app's heartbeat. Plain gradients moving
   by transform, no blur filters; still under reduced motion. It sits behind `.side` and `.main`, so re-renders never
   restart it.
-- **Frosted chrome:** the sidebar (`rgba(12,12,14,.58)`, blur 28px) and the top bar (`rgba(9,9,11,.34)`, blur 24px) are
-  glass over the aurora, so the colour carries through them instead of stopping at a black edge. The top bar sits at
-  z-index 4 (over the page and its menu, under the detail panel). On the phone the sidebar drops its filter — a filter
-  there would make it the containing block of the fixed tab bar.
+- **Seamless chrome:** the glow runs unbroken behind the sidebar and top bar. On desktop the top bar is clear (the
+  page scrolls below it, never under it) and shows its hairline only once the page is scrolled; the sidebar is a light
+  tint (`rgba(20,20,19,.22)`) with no blur or saturation, which shifted the colours at its edge. Every glow fades on an
+  eased curve that reaches zero flat, the vertical fade has eight stops, and a 5% grain sits over the aurora, so no
+  rim, band or 8-bit step shows. On the phone the top bar is frosted again, since the page scrolls under it.
 - **Number tiles** (`kpis`): four clickable cells in one hairline-divided panel — a mono 26px number, a label, and a
   one-line note (green when something's new, red when chats are near their limit). Each goes somewhere: You → Topics,
   Map, Chats, Setup; Chats → sort by recent, longest, fullest.
@@ -163,6 +164,18 @@ Same engine as before, restyled: charcoal field with a soft glow of the centre's
 pills; things carry their real logo inside a ring of their kind's colour; the centre shows your initial (or the thing's
 logo). Labels are placed most-important first and never overlap. Motion: unfurl from the clicked point, flowing hovered
 links, pulsing search hits, breathing centre — all off under reduced motion.
+On a phone the legend is one scrolling strip along the bottom (Fit above it), so the map keeps the full width.
+
+## Appearance (added 2026-09-29)
+Settings → Appearance (account menu → Gradient, or the palette): **Theme** as three cards with a small app preview
+each, and **Gradient** as a grid of cards (4 across, 2 on the phone), each a small live aurora of its four colours that
+drifts on hover and while it's selected. Presets live in `GRADS` in the `<head>` script, so the chosen one (`mb-grad`,
+per device, like the theme) is set on `:root` as `--a1…--a4` before the first paint; the sign-in screen follows it until
+someone is picked. **Auto** follows the hour (`GRAD_AUTO`: Dawn Peach, Day Azur Lane, Golden hour, Dusk Relay, Night
+Borealis) and shows the day as a strip with a tick at now; **None** hides the aurora. Picking one is a **reveal**:
+the new aurora spreads from the card as a growing circle over the old one (1.1 s) while the glow comes up; off
+under reduced motion. While Appearance is open the aurora is at full strength so you see what you pick. These
+previews are the one place the aurora sits inside a box: they are samples of it, not decoration.
 
 ## Motion
 150ms hovers, 240ms panel slide, a 0.4s rise for newly captured entries. Nothing else moves outside the map.

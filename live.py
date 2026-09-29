@@ -289,6 +289,13 @@ def find(g, ref=None):
     return hits[0]["id"] if hits else None
 
 
+def snip(text, pos, before=80, limit=240):
+    """The words around pos: starts and ends on a whole word, with … where it was cut."""
+    start = max(0, pos - before)
+    start = text.find(" ", start, pos) + 1 or start if start else 0
+    return ("…" if start else "") + handoff._clip(text[start:], limit)
+
+
 def search(g, q, k=3):
     """Conversations whose turns match q, best first, with the matching snippet."""
     words = [w for w in re.findall(r"\w+", brain.expand(q).lower()) if w not in brain.STOP and len(w) > 1]
@@ -309,7 +316,7 @@ def search(g, q, k=3):
         m = meter(g, sid)
         low = text.lower()
         pos = min([low.find(w) for w in words if low.find(w) >= 0] or [0])
-        m.update(snippet=handoff._clip(text[max(0, pos - 80):pos + 220], 240), role=role, score=round(score, 3))
+        m.update(snippet=snip(text, pos), role=role, score=round(score, 3))
         out.append(m)
     return out
 

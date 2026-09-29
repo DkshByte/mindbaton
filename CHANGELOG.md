@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Pick your gradient.** Settings → Appearance (also Gradient in the account menu and the command palette) shows the
+  theme and the glow behind the app as cards with live previews: 17 presets (most from uiGradients), Auto, which
+  follows the time of day (Dawn, Day, Golden hour, Dusk, Night), and None. The new gradient spreads out from the card
+  you press. It's remembered on this device and applied before the first paint.
+- **Smooth gradients.** No more visible rims under each glow, bands in the fade, or a strip under the top bar: the
+  glows fade on an eased curve, a faint grain hides 8-bit steps, and the top bar is clear until you scroll.
+- **UI fixes from an audit.** The sidebar wordmark no longer has a stray mark over its "i"; the nav reads You · Topics
+  · Chats · Map · Setup, matching keys 1–5; the Topics count includes Loose ends like the Topics page does; panels say
+  what a related memory is and when, not its row number; a failed model download says so in words (the raw error on
+  hover); search snippets start and end on whole words. On a phone: a new page opens at its top, the map's legend is a
+  strip along the bottom so the map uses the full width, the search hint is never cut mid-word, and header lines no
+  longer start with a stray dot. "Bring your old memory" in the command palette brings that card to the front.
 - **Understands meaning, not just words.** A built-in table of word meanings (Model2Vec potion-base-8M, 7.7 MB, plain
   Python, offline) finds "I love cricket" for "what do I do for fun?" and links memories about one subject in other
   words. Questions asked in other words: 15/23 → 23/23 on the benchmark; 11/11 for a new person it was never tuned on.
