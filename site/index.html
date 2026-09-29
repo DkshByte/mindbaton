@@ -52,6 +52,8 @@ No costume, no eyebrows, no metric tiles, no gradients inside boxes. Motion: the
 <main id="main">
 
 <section class="hero wrap" id="top" aria-labelledby="hero-h">
+ <div class="hero-g">
+ <div class="hero-t">
   <h1 id="hero-h">Tell one AI.<br>Every AI knows.</h1>
   <p class="lede">One private memory for ChatGPT, Claude, Gemini, Claude Code, Cursor and every other AI you use. It runs on a computer you already own. When a chat fills up, pass the baton and keep going.</p>
   <div class="cmd">
@@ -59,6 +61,26 @@ No costume, no eyebrows, no metric tiles, no gradients inside boxes. Motion: the
     <button class="btn primary" type="button" data-copy="#cmd-hero"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span data-label>Copy</span></button>
   </div>
   <p class="hero-meta">Linux, macOS and WSL2. <a href="#install">Docker</a> for Windows and NAS boxes. Free, open source, no account.</p>
+ </div>
+  <div class="relay" role="img" aria-label="Demo: Maya tells ChatGPT she's vegetarian. Mindbaton saves it on her computer. Later, Claude plans vegetarian dinners without being told.">
+    <div class="rl-card rl-from" aria-hidden="true">
+      <p class="rl-h"><span class="lg m" style="--i:url(icons/openai.svg)" data-logo></span><b data-ai>ChatGPT</b><span class="model" data-model>GPT-5.5</span></p>
+      <p class="rl-say"><span data-say>I'm vegetarian, by the way.</span></p>
+    </div>
+    <div class="rl-link" aria-hidden="true"><span class="bt"></span></div>
+    <div class="rl-card rl-mem" aria-hidden="true">
+      <p class="rl-h"><span class="lg mk"></span><b>Mindbaton</b><span class="rl-s">on your computer</span></p>
+      <div class="row rl-row"><span class="lg m" style="--i:url(icons/openai.svg)" data-logo></span><div><p class="txt" data-say>I'm vegetarian, by the way.</p><p class="meta"><span class="k" data-kind>Fact</span><span>said in <span data-ai>ChatGPT</span></span></p></div><time>now</time></div>
+    </div>
+    <div class="rl-link" aria-hidden="true"><span class="bt"></span></div>
+    <div class="rl-card rl-to" aria-hidden="true">
+      <p class="rl-h"><span class="lg c" style="--i:url(icons/claude-color.svg)" data-logo></span><b data-ai>Claude</b><span class="model" data-model>Opus 5</span><span class="rl-s">days later</span></p>
+      <p class="rl-ask" data-ask>Plan my dinners for this week.</p>
+      <p class="rl-reply" data-reply>Seven vegetarian dinners, starting Monday with a chickpea and spinach curry.</p>
+      <p class="rl-used"><span class="lg mk"></span>Knew it from Mindbaton</p>
+    </div>
+  </div>
+ </div>
   <figure class="shot hero-shot">
     <img src="shots/app-you.png" width="2160" height="1350" fetchpriority="high" alt="Mindbaton's You page: a greeting, what six AIs know about the demo person sorted by kind (who she is, where, what she uses, likes, people), and what changed lately.">
   </figure>
@@ -121,13 +143,15 @@ No costume, no eyebrows, no metric tiles, no gradients inside boxes. Motion: the
             <p class="meta"><span class="model">Opus 5</span><span>Claude</span><span>19 messages</span><span class="hot">hit its limit</span></p>
           </div>
         </div>
-        <p class="meter"><i><b></b></i>full</p>
+        <p class="meter"><i><b></b></i><span data-pct>full</span></p>
         <div class="pick-a">
           <span class="lab">Continue in</span>
-          <span class="chip"><span class="lg m" style="--i:url(icons/openai.svg)" aria-hidden="true"></span>ChatGPT</span>
+          <span class="chip" data-to><span class="lg m" style="--i:url(icons/openai.svg)" aria-hidden="true"></span>ChatGPT</span>
           <span class="chip"><img class="lg" src="icons/gemini-color.svg" alt="">Gemini</span>
           <button class="btn sm" type="button" data-copy="#pack"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span data-label>Copy hand-off</span></button>
         </div>
+        <p class="passed"><span class="lg mk" aria-hidden="true"></span>Baton passed to ChatGPT: the pack is 737 tokens, and it carries on from your last message.</p>
+        <span class="hop lg mk" aria-hidden="true"></span>
       </div>
       <details class="pack">
         <summary>Read the pack <span>737 tokens, made by <code>handoff.py</code></span></summary>

@@ -184,7 +184,11 @@ invented. Privacy and terms (`legal.css`) are plain reading pages in the same pa
 are laid out like the app: the sidebar of pages (current one on `--panel-3`), a 720px reading column (15.5px text in
 `--fg-2`, headings in `--fg`), "On this page" on the right, code on the sidebar grey with its kind and a copy button,
 flat callouts (a "Never" one gets the danger border), hairline tables, and search as a palette dialog (`/`, Ctrl/⌘K). No eyebrows, no metric tiles, no
-feature-card grid, no gradients inside boxes.
+feature-card grid, no gradients inside boxes. **Motion** shows the product working, never decoration: the hero relay (a fact typed
+into one AI, the baton carries it into Mindbaton, another AI answers with it; the aurora pulses on each save), new
+memories rising into Recently, the question typing itself and Porto struck through, the meter filling and the baton
+hopping to the next AI; sections rise in once, the hero screenshot settles on scroll. Transform and opacity only, only
+while on screen; under reduced motion each demo shows its finished state.
 
 ## Not allowed (found in a vibe-coding review, 2026-09-28)
 Colour washes or gradients inside cards and panels (surfaces are flat `--panel`; colour lives only in icons, marks and

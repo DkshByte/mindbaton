@@ -267,3 +267,86 @@ h4 { margin: 0; font-size: 13.5px; font-weight: 600; }
   .aurora i, .search span::after { animation: none; }
   * { transition-duration: 0s !important; }
 }
+
+/* ── Motion (2026-09-29): the product doing its job, not decoration. Everything below is transform/opacity, plays only
+   while it's on screen, and under reduced motion the page shows each demo's finished state. ── */
+.lg.c { background: var(--i) center / contain no-repeat; }
+.lg.mk { background: var(--fg); -webkit-mask: url(brand/mark.svg) center / contain no-repeat; mask: url(brand/mark.svg) center / contain no-repeat; }
+
+/* hero: text left, the relay right */
+.hero-g { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 430px); gap: 56px; align-items: center; }
+@media (min-width: 1100px) { .hero h1 { font-size: clamp(56px, 5.6vw, 76px); } }
+
+/* the relay: tell one AI → Mindbaton → another AI knows */
+.relay { position: relative; display: grid; font-size: 13.5px; }
+.rl-card { position: relative; z-index: 1; background: rgba(25, 25, 24, .82); border: 1px solid var(--line-2); border-radius: 12px; padding: 12px 14px;
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: 0 16px 40px -20px rgba(0, 0, 0, .7); }
+.rl-h { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.rl-h b { font-weight: 500; }
+.rl-h .model { margin-left: 2px; }
+.rl-s { margin-left: auto; font-size: 12px; color: var(--fg-3); }
+.rl-say { margin-top: 10px; display: flex; justify-content: flex-end; }
+.rl-say span { max-width: 90%; padding: 7px 12px; border-radius: 14px 14px 4px 14px; background: var(--panel-3); color: var(--fg); min-height: 34px; }
+.rl-row { padding: 8px 0 0; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 10px; }
+.rl-row:hover { background: none; }
+.rl-row .txt { font-size: 13.5px; }
+.rl-ask { margin: 10px 0 0 auto; width: fit-content; max-width: 90%; padding: 7px 12px; border-radius: 14px 14px 4px 14px; background: var(--panel-3); color: var(--fg); }
+.rl-reply { margin-top: 10px; color: var(--fg-2); min-height: 42px; }
+.rl-used { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; color: var(--fg-3); }
+.rl-used .mk, .rl-h .mk { width: 14px; height: 14px; }
+.rl-h .mk { width: 16px; height: 16px; }
+.rl-link { position: relative; height: 26px; margin-left: 27px; width: 1px; background: linear-gradient(var(--line-3), var(--line-2)); }
+.rl-link .bt { position: absolute; left: -6px; top: -6px; width: 13px; height: 13px; opacity: 0; background: var(--fg);
+  -webkit-mask: url(brand/mark.svg) center / contain no-repeat; mask: url(brand/mark.svg) center / contain no-repeat; }
+.rl-link.go .bt { animation: carry .62s cubic-bezier(.5, 0, .3, 1) both; }
+@keyframes carry { 0% { opacity: 0; transform: translateY(0) rotate(-20deg); } 20%, 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(26px) rotate(20deg); } }
+.caret::after { content: ""; display: inline-block; width: 1.5px; height: 1em; margin-left: 1px; vertical-align: -2px; background: currentColor;
+  animation: caret 1s steps(1) infinite; }
+.dots { display: inline-flex; gap: 4px; padding: 6px 0; }
+.dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--fg-3); animation: dot 1s ease-in-out infinite; }
+.dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes dot { 0%, 100% { opacity: .3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-2px); } }
+
+/* shared states the script toggles */
+.rise { animation: rise .4s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+.gone { opacity: 0 !important; }
+.fadeable { transition: opacity .35s ease; }
+.aurora { transition: opacity 1.2s ease; }
+.aurora.pulse { opacity: .85; transition-duration: .35s; }
+
+/* every AI knows: the old fact is struck as it's replaced */
+.row.old s { text-decoration: none; background: linear-gradient(rgba(233, 61, 130, .7), rgba(233, 61, 130, .7)) 0 55% / 100% 1.5px no-repeat; }
+.row.old.strike s { animation: strike .6s ease both; }
+@keyframes strike { from { background-size: 0 1.5px; } }
+
+/* pass the baton: the meter fills, the baton hops to the next AI */
+.pick { position: relative; }
+.meter b { transition: width 1.6s cubic-bezier(.4, 0, .2, 1), background-color .3s; }
+.meter.cool { color: var(--fg-3); }
+.meter.cool b { background: var(--fg-2); }
+.passed { display: flex; align-items: center; gap: 8px; padding: 10px 0 0 34px; margin-top: 2px; border-top: 1px solid var(--line); font-size: 13px; color: var(--fg-2); }
+.passed .mk { width: 14px; height: 14px; }
+.hop { position: absolute; left: 14px; top: 14px; width: 18px; height: 18px; opacity: 0; pointer-events: none; z-index: 2; }
+.chip.lit { border-color: var(--line-3); background: var(--panel-3); transition: background .3s, border-color .3s; }
+
+/* sections rise in as they arrive; the hero screenshot settles as you scroll to it */
+.motion .reveal { transition: opacity .7s cubic-bezier(.2, .8, .2, 1), transform .7s cubic-bezier(.2, .8, .2, 1); }
+.motion .reveal:not(.in) { opacity: 0; transform: translateY(18px); }
+.motion .chips.reveal li { transition: opacity .5s ease, transform .5s ease; transition-delay: calc(var(--n, 0) * 22ms); }
+.motion .chips.reveal:not(.in) li { opacity: 0; transform: translateY(6px); }
+.motion .chips.reveal:not(.in) { opacity: 1; transform: none; }
+@supports (animation-timeline: view()) {
+  .motion .hero-shot { animation: settle linear both; animation-timeline: view(); animation-range: entry 10% cover 45%; transform-origin: 50% 0; }
+  @keyframes settle { from { transform: perspective(1600px) rotateX(16deg) scale(.94); opacity: .55; } }
+}
+.tab:not([hidden]) { animation: fadein .3s ease; }
+@keyframes fadein { from { opacity: 0; } }
+
+@media (max-width: 1099px) {
+  .hero-g { grid-template-columns: minmax(0, 1fr); gap: 48px; }
+  .relay { max-width: 520px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .caret::after, .dots i, .rl-link.go .bt, .rise, .tab:not([hidden]), .row.old.strike s { animation: none !important; }
+}
