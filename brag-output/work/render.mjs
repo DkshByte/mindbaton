@@ -3,7 +3,7 @@ import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { spawn } from 'child_process';
 const [a, b, fps, out] = [+process.argv[2], +process.argv[3], +process.argv[4], process.argv[5]];
 const br = await chromium.launch({ args: ['--font-render-hinting=none', '--disable-lcd-text', '--force-color-profile=srgb'] });
-const p = await (await br.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 2 })).newPage();
+const p = await (await br.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: +(process.env.SCALE || 2) })).newPage();
 p.on('pageerror', e => console.log('pageerror', e.message));
 await p.goto('http://127.0.0.1:8765/brag-output/composition/index.html?t=0');
 await p.evaluate(() => window.__ready);
