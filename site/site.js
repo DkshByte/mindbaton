@@ -41,12 +41,33 @@ document.querySelectorAll('[role="tablist"]').forEach((list) => {
   });
 });
 
+// Perspective mode (Human / Agent) toggle syncing
+const setPerspective = (mode) => {
+  const isAgent = mode === "agent";
+  document.querySelectorAll('[data-mode="human"]').forEach((b) => {
+    b.setAttribute("aria-selected", !isAgent);
+    b.tabIndex = isAgent ? -1 : 0;
+  });
+  document.querySelectorAll('[data-mode="agent"]').forEach((b) => {
+    b.setAttribute("aria-selected", isAgent);
+    b.tabIndex = isAgent ? 0 : -1;
+  });
+  const vHuman = document.getElementById("view-human");
+  const vAgent = document.getElementById("view-agent");
+  if (vHuman) vHuman.hidden = isAgent;
+  if (vAgent) vAgent.hidden = !isAgent;
+  window.scrollTo(0, 0);
+};
+
+document.querySelectorAll("[data-mode]").forEach((btn) => {
+  btn.addEventListener("click", () => setPerspective(btn.dataset.mode));
+});
+
 // Perspective mode URL trigger: ?mode=agent or #agent opens the Agent view immediately
 try {
   const p = new URLSearchParams(location.search);
   if (p.get("mode") === "agent" || location.hash === "#agent") {
-    const agTab = document.getElementById("tab-agent");
-    if (agTab) agTab.click();
+    setPerspective("agent");
   }
 } catch {}
 
