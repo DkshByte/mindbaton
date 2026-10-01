@@ -6,7 +6,7 @@ report a problem.
 ## Reporting a vulnerability
 
 Please report privately through GitHub: **Security → Report a vulnerability** on
-<https://github.com/DkshByte/mindbaton/security>. Don't open a public issue for a security problem.
+<https://github.com/DkshByte/mindbaton/security>, or email [support@mindbaton.com](mailto:support@mindbaton.com). Don't open a public issue for a security problem.
 
 Include what you found, how to reproduce it, and the version (`/health` shows it). This is a small open-source project:
 you'll get a reply as soon as we can, usually within a week, and credit in the release notes if you'd like it. Fixes go
