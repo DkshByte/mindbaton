@@ -269,12 +269,12 @@ def page_html(n, slug, label, p, body):
 <meta name="description" content="{attr(desc)}">
 <meta name="theme-color" content="#111110">
 <meta name="color-scheme" content="dark">
-<link rel="canonical" href="https://dkshbyte.github.io/mindbaton/docs/{'' if slug == 'index' else slug + '.html'}">
+<link rel="canonical" href="https://mindbaton.com/docs/{'' if slug == 'index' else slug + '.html'}">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Mindbaton">
 <meta property="og:title" content="{attr(title)}">
 <meta property="og:description" content="{attr(desc)}">
-<meta property="og:image" content="https://dkshbyte.github.io/mindbaton/og.png">
+<meta property="og:image" content="https://mindbaton.com/og.png">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
