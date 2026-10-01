@@ -13,7 +13,7 @@
   <a href="#quick-start">Quick start</a> ·
   <a href="docs/connect.md">Connect your AIs</a> ·
   <a href="docs/getting-started.md">Docs</a> ·
-  <a href="https://dkshbyte.github.io/mindbaton/">Website</a>
+  <a href="https://mindbaton.com">Website</a>
 </p>
 
 ![Mindbaton's memory map: what it knows about you, grouped into topics](site/shots/app-graph.png)
@@ -151,5 +151,5 @@ Mindbaton is free software under the [GNU Affero General Public License v3.0](LI
 change and share it; if you run a changed version for other people over a network, you must offer them its source too.
 
 ChatGPT, Claude, Gemini and other product names and logos are trademarks of their owners. Mindbaton is an independent
-project, not affiliated with or endorsed by them. [Privacy](https://dkshbyte.github.io/mindbaton/privacy.html) ·
-[Terms](https://dkshbyte.github.io/mindbaton/terms.html)
+project, not affiliated with or endorsed by them. [Privacy](https://mindbaton.com/privacy.html) ·
+[Terms](https://mindbaton.com/terms.html)

@@ -41,6 +41,15 @@ document.querySelectorAll('[role="tablist"]').forEach((list) => {
   });
 });
 
+// Perspective mode URL trigger: ?mode=agent or #agent opens the Agent view immediately
+try {
+  const p = new URLSearchParams(location.search);
+  if (p.get("mode") === "agent" || location.hash === "#agent") {
+    const agTab = document.getElementById("tab-agent");
+    if (agTab) agTab.click();
+  }
+} catch {}
+
 // ── Motion: the product doing its job. Plays only on screen; reduced motion keeps each demo's finished state. ──
 const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));

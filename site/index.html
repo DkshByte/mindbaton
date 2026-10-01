@@ -84,6 +84,7 @@
 <link rel="preconnect" href="https://github.com" crossorigin>
 <link rel="dns-prefetch" href="https://github.com">
 <link rel="preload" href="fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="alternate" type="text/markdown" href="llms.txt" title="Mindbaton for AI agents (llms.txt)">
 
 <!-- Styles and scripts -->
 <link rel="stylesheet" href="style.css">
@@ -103,6 +104,10 @@ No costume, no eyebrows, no metric tiles, no gradients inside boxes. Motion: the
 <header class="top">
   <div class="top-in">
     <a class="brand" href="#top" aria-label="Mindbaton, back to the top"><span class="wordmark" aria-hidden="true"></span></a>
+    <div class="segs segs-view" role="tablist" aria-label="Perspective mode">
+      <button type="button" role="tab" id="tab-human" aria-controls="view-human" aria-selected="true"><span class="dot-indicator"></span>Human</button>
+      <button type="button" role="tab" id="tab-agent" aria-controls="view-agent" aria-selected="false" tabindex="-1"><span class="dot-indicator"></span>Agent</button>
+    </div>
     <nav class="nav" aria-label="Page">
       <a href="#how">How it works</a><a href="#app">The app</a><a href="#privacy">Privacy</a><a href="#faq">Questions</a><a href="docs/">Docs</a>
     </nav>
@@ -112,6 +117,8 @@ No costume, no eyebrows, no metric tiles, no gradients inside boxes. Motion: the
     </div>
   </div>
 </header>
+
+<div id="view-human" role="tabpanel" aria-labelledby="tab-human">
 
 <main id="main">
 
@@ -443,6 +450,95 @@ That's where we stopped. My last message is the final "Me:" line above — carry
     <p class="fine">Maya Haddad and all her chats are made up; they come from the project's <code>demo.py</code>. Product names and logos are trademarks of their owners. Mindbaton is not affiliated with or endorsed by them.</p>
   </div>
 </footer>
+</div> <!-- /view-human -->
+
+<div id="view-agent" role="tabpanel" aria-labelledby="tab-agent" class="agent-view wrap" hidden>
+  <div class="agent-pane">
+    <div class="agent-bar">
+      <div class="agent-meta">
+        <span class="badge"><span class="dot-indicator" style="background:var(--a1)"></span>llms.txt</span>
+        <span>Machine-readable interface for AI agents, LLMs, and scrapers</span>
+      </div>
+      <div class="agent-actions">
+        <button class="btn sm" type="button" data-copy="#agent-raw"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span data-label>Copy llms.txt</span></button>
+        <a class="btn sm ghost" href="llms.txt" target="_blank" rel="noopener"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="m15 3 6 6"/><path d="M10 14 21 3"/></svg>Raw</a>
+      </div>
+    </div>
+    <pre class="agent-code" id="agent-raw" tabindex="0"># Mindbaton
+
+&gt; One private memory for ChatGPT, Claude, Gemini, Claude Code, Cursor and every other AI you use — running on your own computer. Free and open source (AGPL-3.0).
+
+Mindbaton is a local-first memory daemon and MCP server that connects all AI chat interfaces, coding agents, and IDEs to a single private context store. When you talk to one AI, Mindbaton extracts facts, preferences, and decisions. When another AI needs context, it accesses the same memory over MCP or browser shortcuts. When a chat hits its context limit, Mindbaton packages the session into an ultra-dense handoff briefing (&lt; 800 tokens) so another model continues seamlessly.
+
+## Quick Links
+- Website: https://mindbaton.com
+- GitHub Repository: https://github.com/DkshByte/mindbaton
+- Documentation: https://mindbaton.com/docs/
+- API Reference: https://mindbaton.com/docs/api.html
+- Connect your AIs: https://mindbaton.com/docs/connect.html
+- Security Policy: https://mindbaton.com/docs/security.html
+- Chrome Web Store Extension: https://chromewebstore.google.com/detail/mindbaton/nfadphcjimkchbapapbcphnbpajmfmih
+
+## Core Architecture
+- Zero Cloud / Local-First: Runs on Python (stdlib only) and SQLite. No cloud accounts, external databases, or subscriptions.
+- Embedded Natural Language Understanding: 256-dimensional semantic embeddings and rules-based entity extraction run locally with zero API keys or GPU requirements.
+- Multi-Client Sync: Captures context from browser chats via a lightweight browser extension and from IDEs/coding agents via MCP.
+- Baton Handoff Protocol: Converts long conversations into structured continuation packs containing goals, decisions, open questions, code symbols, and verbatim recent turns.
+- Privacy &amp; Security: Automated redaction of API keys, tokens, and passwords prior to disk write. Data never leaves your network unless explicitly forwarded to an optional inference provider.
+
+## Installation
+
+### Shell Script (Linux, macOS, WSL2)
+git clone https://github.com/DkshByte/mindbaton &amp;&amp; cd mindbaton &amp;&amp; ./install.sh
+
+### Docker (Windows, NAS, Unraid)
+git clone https://github.com/DkshByte/mindbaton &amp;&amp; cd mindbaton &amp;&amp; docker compose up -d
+
+## Model Context Protocol (MCP) Tools
+
+Mindbaton exposes an MCP server for coding agents (Claude Code, Cursor, Windsurf, Zed, OpenCode, Antigravity, Claude Desktop) and custom connectors:
+
+- `context`: Retrieve briefing about the user, preferences, and topic-specific background.
+- `recall`: Natural-language semantic search across all memories across all AIs.
+- `remember`: Save a lasting fact or preference directly into memory.
+- `profile`: Structured summary of user identity, active projects, and preferences.
+- `handoff`: Generate a continuation pack for the active or specified chat session.
+- `sessions`: List recent conversations across all connected AI tools.
+- `save_conversation`: Persist chat turns to enable cross-model continuation.
+- `forget`: Delete a specific memory by ID.
+
+### MCP Configuration Example
+Add to your mcpServers configuration:
+{
+  "mcpServers": {
+    "mindbaton": {
+      "command": "python3",
+      "args": ["/path/to/mindbaton/mcp_stdio.py"],
+      "env": {
+        "MINDBATON_URL": "http://localhost:3004",
+        "MINDBATON_TOKEN": "mb_xxxxxxxx"
+      }
+    }
+  }
+}
+
+Or connect directly via HTTP SSE/POST at http://localhost:3004/mcp with Authorization: Bearer mb_xxxxxxxx.
+
+## HTTP API Reference
+
+- GET /health - System health, version, and auth status (unauthenticated)
+- GET /recall?q={query}&amp;k={count} - Semantic search across memories
+- GET /context?q={topic}&amp;budget={tokens} - Formatted LLM prompt context injection
+- GET /profile - Full user profile grouped by category
+- GET /sessions - Recent conversation sessions with token fullness metrics
+- GET /handoff?session={id}&amp;budget={tokens} - Structured handoff continuation pack
+- POST /mcp - Standard Model Context Protocol endpoint
+- POST /capture - Ingest message from browser extension (auto-redacts secrets)
+- POST /remember - Save explicit memory fact
+- DELETE /node/{id} - Permanently erase memory item</pre>
+  </div>
+</div>
+
 <p class="vh" id="status" role="status" aria-live="polite"></p>
 </body>
 </html>
