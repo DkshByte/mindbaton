@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#111110">
 <script>/* the theme and the gradient behind the app, set before the first paint; both remembered on this device */
 const GRADS = [  // [id, name, note, four glows] — most from uiGradients (MIT), chosen to glow on a dark page
-  ["vermilion", "Vermilion", "Mindbaton's own", "#e54d2e #ffc53d #e93d82 #f76b15"],
+  ["vermilion", "Vermilion", "Mindbaton's own", "#ff5a3c #f5325e #d93a74 #1c4a6e"],
   ["mesh", "Mesh", "Magenta, sky, violet, gold", "#ef008f #6ec3f4 #7038ff #ffba27"],
   ["relay", "Relay", "Plum into apricot", "#6a3cb5 #d76d77 #ffaf7b #d76d77"],
   ["jshine", "JShine", "Cyan, orchid, coral", "#12c2e9 #c471ed #f64f59 #c471ed"],
@@ -124,11 +124,14 @@ img.lg { object-fit: contain; }
   background: color-mix(in srgb, var(--c) 22%, transparent); color: var(--c); }
 .stack { display: inline-flex; align-items: center; }
 .stack > * { margin-left: -4px; border-radius: 50%; background-color: var(--panel-2); box-shadow: 0 0 0 2px var(--bg); padding: 2px; width: 20px; height: 20px; }
-.stack > span.lg { background: var(--c); }
+/* a stack is a row of equal discs. A colour mark is an image inside one; a one-colour mark is a mask, and a mask on the
+   disc itself would cut the disc away, so its mark is drawn on a pseudo-element inside the disc instead */
+.stack > span.lg { position: relative; -webkit-mask: none; mask: none; background: var(--panel-2); }
+.stack > span.lg::before { content: ""; position: absolute; inset: 3px; background: var(--c); -webkit-mask: var(--src) center / contain no-repeat; mask: var(--src) center / contain no-repeat; }
 .stack > :first-child { margin-left: 0; }
 
 /* ---- shell ---- */
-.app { display: grid; grid-template-columns: 248px minmax(0, 1fr); height: 100vh; }
+.app { display: grid; grid-template-columns: 248px minmax(0, 1fr); height: 100vh; height: 100dvh; }
 .side { background: rgba(20, 20, 19, .22); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 16px 16px 12px; }
 .brand-baton { width: 30px; height: 30px; flex: none; display: grid; place-items: center; color: var(--fg); transition: opacity .4s; }
@@ -156,7 +159,7 @@ img.lg { object-fit: contain; }
 .pl-dot.off { width: 10px; height: 10px; background: none; border: 1.6px solid var(--danger); border-top-color: transparent; animation: plspin .9s linear infinite; }
 @keyframes plspin { to { transform: rotate(360deg); } }
 .pl-bars { display: flex; align-items: flex-end; gap: 2px; height: 20px; }
-.pl-bars i { flex: 1; min-height: 2px; border-radius: 1.5px; background: var(--fg-3); opacity: .38; transition: height .6s var(--ease); }
+.pl-bars i { flex: 1; height: 100%; border-radius: 1.5px; background: var(--fg-3); opacity: .38; transform-origin: 50% 100%; transition: transform .6s var(--ease); }
 .pl-bars i.today { background: var(--ok); opacity: .95; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--fg-3)); flex: none; }
 .dot.on { background: var(--ok); }
@@ -166,7 +169,7 @@ img.lg { object-fit: contain; }
   transition: background .15s, color .15s; }
 .nav button:hover { background: var(--panel-2); color: var(--fg); }
 .nav button[aria-current="page"] { background: var(--panel-3); color: var(--fg); }
-.nav kbd { margin-left: auto; font: 10.5px var(--mono); color: var(--fg-3); border: 1px solid var(--line-2); border-radius: 4px; padding: 0 5px;
+.nav kbd { margin-left: auto; font: 11.5px var(--mono); color: var(--fg-3); border: 1px solid var(--line-2); border-radius: 4px; padding: 0 5px;
   opacity: 0; transition: opacity .15s; }
 .nav button:hover kbd, .nav button:focus-visible kbd { opacity: 1; }
 .search input:not(:placeholder-shown) ~ kbd { display: none; }
@@ -178,6 +181,7 @@ img.lg { object-fit: contain; }
 .side-list button:hover { background: var(--panel-2); color: var(--fg); }
 .side-list .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .side-list .n { font: 11.5px var(--mono); color: var(--fg-3); }
+.side-list .more { color: var(--fg-3); font-size: 12.5px; padding-left: 38px; }
 .side-foot { border-top: 1px solid var(--line); padding: 10px 16px 12px; display: grid; gap: 8px; font-size: 12px; color: var(--fg-3); }
 .side-foot .row-s { display: flex; justify-content: space-between; align-items: center; }
 .side-foot b { color: var(--fg-2); font: 500 12px var(--mono); }
@@ -198,11 +202,14 @@ img.lg { object-fit: contain; }
 .search input::placeholder { color: var(--fg-3); }
 .search input:hover { border-color: var(--line-3); }
 .search input:focus { outline: none; border-color: var(--accent-line); background: var(--panel-2); box-shadow: 0 0 0 3px var(--accent-soft); }
-.search kbd { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font: 11px var(--mono); color: var(--fg-3);
+.search kbd { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font: 11.5px var(--mono); color: var(--fg-3);
   border: 1px solid var(--line-2); border-radius: 5px; padding: 1px 6px; }
 .btn { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 13px; border-radius: 8px; font-weight: 500; font-size: 13px;
   border: 1px solid var(--line-2); background: var(--panel); color: var(--fg); transition: background .15s, border-color .15s; white-space: nowrap; }
 .btn:hover { background: var(--panel-3); border-color: var(--line-3); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.skip { position: absolute; left: 12px; top: -48px; z-index: 40; background: var(--fg); color: var(--bg); padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 500; }
+.skip:focus { top: 12px; }
 /* Liquid glass: frost + translucency + a soft top highlight. No SVG refraction at the edges (by choice). */
 @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
   .btn, .handoff button { background: var(--glass); border-color: var(--glass-rim); -webkit-backdrop-filter: blur(14px) saturate(160%);
@@ -218,7 +225,7 @@ img.lg { object-fit: contain; }
 
 .view { flex: 1; overflow-y: auto; min-height: 0; }
 [hidden] { display: none !important; }
-.wrap { max-width: 1120px; margin: 0 auto; padding: 36px 40px 64px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 44px 48px 80px; }
 .hello { margin: 0; font-size: 30px; line-height: 1.15; font-weight: 600; letter-spacing: -.025em; }
 .hello-sub { margin: 10px 0 0; color: var(--fg-2); font-size: 15px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .hello-sub .stack { margin-right: 2px; }
@@ -226,7 +233,7 @@ img.lg { object-fit: contain; }
 .sep-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--fg-3); }
 .grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr); gap: 20px; margin-top: 30px; align-items: stretch; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); display: flex; flex-direction: column;
-  max-height: calc(100vh - 200px); /* ponytail: 200px ~= topbar + wrap padding + hello block, retune if that block's height changes */ }
+  max-height: calc(100vh - 200px); max-height: calc(100dvh - 200px); /* ponytail: 200px ~= topbar + wrap padding + hello block, retune if that block's height changes */ }
 .card-h { display: flex; align-items: center; gap: 10px; padding: 14px 16px 12px; border-bottom: 1px solid var(--line); flex: none; flex-wrap: wrap; row-gap: 2px; }
 .card-h h2 { margin: 0; font-size: 13.5px; font-weight: 600; white-space: nowrap; }  /* a narrow card wraps its note below, never splits the title */
 .card-h p { margin: 0; color: var(--fg-3); font-size: 12.5px; }
@@ -239,7 +246,7 @@ img.lg { object-fit: contain; }
 .kind-name { display: flex; align-items: center; gap: 8px; color: var(--fg-2); font-size: 13px; padding-top: 3px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 11px 0 9px; border-radius: 999px; background: var(--panel-2);
-  border: 1px solid var(--line); font-size: 13px; color: var(--fg); transition: background .15s, border-color .15s; max-width: 100%; }
+  border: 1px solid transparent; font-size: 13px; color: var(--fg); transition: background .15s, border-color .15s; max-width: 100%; }  /* a fill, no outline: a row of chips is not a row of boxes */
 .chip:hover { background: var(--panel-3); border-color: var(--line-3); }
 .chip .desc { color: var(--fg-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chip[aria-pressed="true"] { border-color: var(--accent-line); background: var(--accent-soft); }
@@ -259,7 +266,7 @@ img.lg { object-fit: contain; }
 .row .rank { font: 12px var(--mono); color: var(--fg-3); padding-top: 2px; text-align: center; }
 .tag { display: inline-flex; align-items: center; gap: 5px; }
 
-.section-h { display: flex; align-items: baseline; gap: 6px 10px; margin: 36px 0 10px; flex-wrap: wrap; }
+.section-h { display: flex; align-items: baseline; gap: 6px 10px; margin: 52px 0 14px; flex-wrap: wrap; }
 .section-h h2 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; }
 .section-h p { margin: 0; color: var(--fg-3); font-size: 13px; }
 .segs { display: inline-flex; gap: 2px; padding: 2px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; margin-left: auto; }
@@ -267,7 +274,7 @@ img.lg { object-fit: contain; }
 .segs button { padding: 4px 10px; border-radius: 6px; font-size: 12.5px; color: var(--fg-2); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
 .segs button:hover { color: var(--fg); }
 .segs button[aria-pressed="true"] { background: var(--panel-3); color: var(--fg); }
-.segs .n { font: 11px var(--mono); color: var(--fg-3); }
+.segs .n { font: 11.5px var(--mono); color: var(--fg-3); }
 
 .connect { display: grid; gap: 2px; }
 .conn { display: grid; grid-template-columns: minmax(24px, max-content) minmax(0, 1fr); gap: 10px; padding: 9px 8px; align-items: start; }
@@ -309,7 +316,7 @@ code { font: 12px var(--mono); color: var(--fg); background: var(--panel-3); bor
 .ai-card .next { font-size: 13px; color: var(--fg-2); }
 .ai-card.loading p { color: var(--fg-3); }
 .cite { display: inline-flex; align-items: center; height: 18px; padding: 0 5px; margin: 0 1px; border-radius: 5px; vertical-align: 1px;
-  font: 11px var(--mono); color: var(--accent-strong); background: var(--accent-soft); }
+  font: 11.5px var(--mono); color: var(--accent-strong); background: var(--accent-soft); }
 .cite:hover { background: var(--accent-line); color: var(--fg); }
 .handoff { display: flex; flex-wrap: wrap; gap: 6px; }
 .handoff button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px 0 8px; border-radius: 8px; border: 1px solid var(--line-2);
@@ -319,7 +326,7 @@ code { font: 12px var(--mono); color: var(--fg); background: var(--panel-3); bor
 
 /* setup: every piece, its tick, and the one thing to do */
 .progress { height: 6px; border-radius: 3px; background: var(--panel-3); overflow: hidden; margin-top: 14px; max-width: 420px; }
-.progress b { display: block; height: 100%; background: var(--ok); border-radius: 3px; transition: width .4s var(--ease); }
+.progress b { display: block; height: 100%; background: var(--ok); transform-origin: 0 50%; transition: transform .4s var(--ease); }
 #setup .section-h { margin-top: 36px; }
 .deck { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 10px; }
 .sc { position: relative; display: grid; gap: 3px; align-content: start; padding: 14px 16px 18px; border-radius: var(--r); background: var(--panel);
@@ -383,7 +390,7 @@ code { font: 12px var(--mono); color: var(--fg); background: var(--panel-3); bor
 .mote { position: absolute; width: 6px; height: 6px; border-radius: 50%; pointer-events: none; background: var(--c); box-shadow: 0 0 10px 1px var(--c); }
 .brain-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
 .brain-stats div { background: rgba(25, 25, 24, .78); padding: 12px 14px; display: grid; gap: 2px; align-content: start; }
-.brain-stats b { font: 500 22px/1.25 var(--mono); letter-spacing: -.02em; }
+.brain-stats b { font: 500 24px/1.25 var(--mono); letter-spacing: -.02em; }
 .brain-stats span { color: var(--fg-3); font-size: 12.5px; }
 .brain-now { margin: 0; font-size: 13.5px; }
 /* the model, live: what it is, what it's doing, how far, how long, what it costs */
@@ -394,11 +401,11 @@ code { font: 12px var(--mono); color: var(--fg); background: var(--panel-3); bor
 @keyframes blpulse { 50% { opacity: .35; } }
 .bl-model b { color: var(--fg); font-weight: 500; font-family: var(--mono); font-size: 12.5px; }
 .bl-bar { height: 6px; border-radius: 3px; background: var(--panel-3); overflow: hidden; }
-.bl-bar i { display: block; height: 100%; border-radius: 3px; background: var(--ok); transition: width .8s var(--ease); }
+.bl-bar i { display: block; height: 100%; background: var(--ok); transform-origin: 0 50%; transition: transform .8s var(--ease); }
 .bl-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; border-radius: var(--r-sm); overflow: hidden; background: var(--line); border: 1px solid var(--line); }
 .bl-cell { display: grid; gap: 2px; align-content: start; padding: 10px 12px; background: var(--panel); min-width: 0; }
 .bl-cell small { font-size: 12px; color: var(--fg-3); }
-.bl-cell b { font: 600 18px/1.3 var(--mono); color: var(--fg); font-variant-numeric: tabular-nums; }
+.bl-cell b { font: 600 19px/1.3 var(--mono); color: var(--fg); font-variant-numeric: tabular-nums; }
 .bl-cell b em { font-style: normal; color: var(--fg-3); font-weight: 500; font-size: 14px; }
 .bl-cell span { font-size: 12px; color: var(--fg-3); }
 .bl-row.graphs { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
@@ -459,7 +466,7 @@ a.btn { text-decoration: none; }
 .banner { display: flex; align-items: center; gap: 10px; padding: 9px 20px; background: var(--danger-soft); color: #ffb3b6; border-bottom: 1px solid rgba(233, 61, 130, .3); font-size: 13px; }
 dialog.help { background: var(--panel); color: var(--fg); border: 1px solid var(--line-2); border-radius: var(--r); padding: 20px 22px; max-width: 380px; width: 90vw; }
 dialog.help::backdrop { background: rgba(0, 0, 0, .55); }
-dialog.help h3 { margin: 0 0 12px; font-size: 16px; }
+dialog.help h2 { margin: 0 0 12px; font-size: 16px; }
 dialog.help dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; margin: 0; font-size: 13.5px; }
 dialog.help dt kbd { font: 11.5px var(--mono); border: 1px solid var(--line-2); border-radius: 5px; padding: 1px 6px; }
 dialog.help dd { margin: 0; color: var(--fg-2); }
@@ -474,8 +481,9 @@ dialog.help dd { margin: 0; color: var(--fg-2); }
 .app { position: relative; isolation: isolate; }
 .app > .side, .app > .main { position: relative; z-index: 1; }
 .aurora { position: absolute; left: 0; right: 0; top: 0; height: 640px; overflow: hidden; pointer-events: none; z-index: 0; opacity: .2;
-  -webkit-mask: linear-gradient(#000, rgba(0, 0, 0, .83) 10%, rgba(0, 0, 0, .64) 22%, rgba(0, 0, 0, .46) 35%, rgba(0, 0, 0, .31) 48%, rgba(0, 0, 0, .18) 61%, rgba(0, 0, 0, .09) 74%, rgba(0, 0, 0, .03) 87%, transparent);
-  mask: linear-gradient(#000, rgba(0, 0, 0, .83) 10%, rgba(0, 0, 0, .64) 22%, rgba(0, 0, 0, .46) 35%, rgba(0, 0, 0, .31) 48%, rgba(0, 0, 0, .18) 61%, rgba(0, 0, 0, .09) 74%, rgba(0, 0, 0, .03) 87%, transparent);
+  background: radial-gradient(ellipse 95% 80% at 42% -6% in oklab, color-mix(in oklab, var(--a3) 30%, transparent), color-mix(in oklab, var(--a3) 13%, transparent) 52%, color-mix(in oklab, var(--a3) 0%, transparent));
+  -webkit-mask: linear-gradient(rgba(0, 0, 0, .5) 0%, rgba(0, 0, 0, .62) 5%, rgba(0, 0, 0, .86) 10%, #000 16%, rgba(0, 0, 0, .9) 26%, rgba(0, 0, 0, .7) 39%, rgba(0, 0, 0, .46) 53%, rgba(0, 0, 0, .25) 67%, rgba(0, 0, 0, .1) 81%, rgba(0, 0, 0, .02) 93%, transparent 100%);
+  mask: linear-gradient(rgba(0, 0, 0, .5) 0%, rgba(0, 0, 0, .62) 5%, rgba(0, 0, 0, .86) 10%, #000 16%, rgba(0, 0, 0, .9) 26%, rgba(0, 0, 0, .7) 39%, rgba(0, 0, 0, .46) 53%, rgba(0, 0, 0, .25) 67%, rgba(0, 0, 0, .1) 81%, rgba(0, 0, 0, .02) 93%, transparent 100%);
   transition: opacity 1.4s var(--ease), --a1 .9s, --a2 .9s, --a3 .9s, --a4 .9s; }
 .aurora.pulse { opacity: .45; transition-duration: .5s; }
 .app[data-view="overview"] .aurora { opacity: .55; }
@@ -483,20 +491,25 @@ dialog.help dd { margin: 0; color: var(--fg-2); }
 .app[data-view="map"] .aurora { opacity: 0; }
 .aurora::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; opacity: .45;
   background: linear-gradient(90deg, transparent, var(--a1) 18%, var(--a2) 40%, var(--a3) 62%, var(--a4) 84%, transparent); }
-.aurora i { position: absolute; top: -300px; width: 56%; height: 620px; border-radius: 50%; mix-blend-mode: screen; will-change: transform;
-  animation: 24s ease-in-out infinite alternate; }
-.aurora i:nth-child(1) { --c: var(--a1); left: -14%; animation-name: aur1; }
-.aurora i:nth-child(2) { --c: var(--a2); left: 16%; top: -340px; animation-name: aur2; animation-duration: 29s; }
-.aurora i:nth-child(3) { --c: var(--a3); left: 44%; animation-name: aur3; animation-duration: 21s; }
-.aurora i:nth-child(4) { --c: var(--a4); left: 66%; top: -330px; animation-name: aur4; animation-duration: 33s; }
-@keyframes aur1 { to { transform: translate(22%, 50px) scale(1.18); } }
-@keyframes aur2 { to { transform: translate(-16%, 70px) scale(.9); } }
-@keyframes aur3 { to { transform: translate(18%, 30px) scale(1.2); } }
-@keyframes aur4 { to { transform: translate(-24%, 60px) scale(1.05); } }
+/* the four glows read as one light, like the website's: they overlap unevenly (the first colour is the core, the last
+   sits far right), and each drifts on four sine waves of unrelated lengths (across, down, size, strength), so it never
+   stops, ping-pongs or repeats */
+.aurora i { position: absolute; left: calc(var(--x) - var(--w) / 2); top: calc(var(--y) - var(--h) / 2); width: var(--w); height: var(--h);
+  border-radius: 50%; mix-blend-mode: screen; opacity: var(--o); will-change: transform, opacity;
+  animation: aur-x, aur-y, aur-s, aur-o; animation-timing-function: cubic-bezier(.37, 0, .63, 1); animation-iteration-count: infinite; animation-direction: alternate;
+  animation-duration: var(--t), calc(var(--t) * 1.37), calc(var(--t) * .81), calc(var(--t) * .63); animation-delay: calc(var(--t) * -.3), calc(var(--t) * -.9), calc(var(--t) * -.5), calc(var(--t) * -.2); }
+.aurora i:nth-child(1) { --c: var(--a1); --x: 12%; --y: -40px; --w: max(48%, 400px); --h: 500px; --o: .62; --t: 17s; --dx: 12%; }
+.aurora i:nth-child(2) { --c: var(--a2); --x: 46%; --y: -70px; --w: max(70%, 560px); --h: 760px; --o: .66; --t: 23s; --dx: 9%; }
+.aurora i:nth-child(3) { --c: var(--a3); --x: 72%; --y: -70px; --w: max(78%, 600px); --h: 820px; --o: .74; --t: 27s; --dx: 8%; }
+.aurora i:nth-child(4) { --c: var(--a4); --x: 100%; --y: -40px; --w: max(64%, 480px); --h: 700px; --o: .7; --t: 31s; --dx: 7%; }
+@keyframes aur-x { from { translate: calc(var(--dx) * -1) 0; } to { translate: var(--dx) 0; } }
+@keyframes aur-y { from { transform: translateY(-18px) rotate(-5deg); } to { transform: translateY(26px) rotate(6deg); } }
+@keyframes aur-s { from { scale: .9; } to { scale: 1.14; } }
+@keyframes aur-o { from { opacity: calc(var(--o) * .66); } to { opacity: var(--o); } }
 :root[data-grad="off"] .app > .aurora { display: none; }
 /* one glow for the aurora and every preview of it: an eased falloff (no visible rim), and a faint grain over the big one so 8-bit colour can't band */
-:is(.aurora, .gp, .thp) i { background: radial-gradient(closest-side, var(--c), color-mix(in srgb, var(--c) 92%, transparent) 12%, color-mix(in srgb, var(--c) 78%, transparent) 25%, color-mix(in srgb, var(--c) 60%, transparent) 38%, color-mix(in srgb, var(--c) 42%, transparent) 51%, color-mix(in srgb, var(--c) 26%, transparent) 64%, color-mix(in srgb, var(--c) 13%, transparent) 77%, color-mix(in srgb, var(--c) 5%, transparent) 89%, transparent); }
-.aurora::after { content: ""; position: absolute; inset: 0; opacity: .05; mix-blend-mode: overlay; pointer-events: none;
+:is(.aurora, .gp, .thp) i { background: radial-gradient(closest-side in oklab, var(--c), color-mix(in oklab, var(--c) 92%, transparent) 12%, color-mix(in oklab, var(--c) 78%, transparent) 25%, color-mix(in oklab, var(--c) 60%, transparent) 38%, color-mix(in oklab, var(--c) 42%, transparent) 51%, color-mix(in oklab, var(--c) 26%, transparent) 64%, color-mix(in oklab, var(--c) 13%, transparent) 77%, color-mix(in oklab, var(--c) 5%, transparent) 89%, transparent); }
+.aurora::after { content: ""; position: absolute; inset: 0; opacity: .1; mix-blend-mode: overlay; pointer-events: none;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 .aurora.reveal { z-index: 0; }  /* a new gradient spreading over the old one, from the card you pressed */
 /* Appearance: the theme and the gradient as cards that show what you get; the glow comes up while you choose */
@@ -561,7 +574,7 @@ dialog.help dd { margin: 0; color: var(--fg-2); }
 .jump { display: flex; align-items: center; gap: 9px; margin: 0 8px 6px; padding: 7px 10px; border-radius: var(--r-sm); color: var(--fg-3); font-size: 13px;
   border: 1px solid var(--line); background: rgba(255, 255, 255, .02); transition: background .15s, color .15s, border-color .15s; }
 .jump:hover { color: var(--fg); background: var(--panel-2); border-color: var(--line-2); }
-.jump kbd { margin-left: auto; font: 10.5px var(--mono); color: var(--fg-3); border: 1px solid var(--line-2); border-radius: 4px; padding: 0 5px; }
+.jump kbd { margin-left: auto; font: 11.5px var(--mono); color: var(--fg-3); border: 1px solid var(--line-2); border-radius: 4px; padding: 0 5px; }
 dialog.palette { margin: 11vh auto auto; width: min(640px, calc(100vw - 24px)); padding: 0; border-radius: 14px; border: 1px solid var(--line-2); color: var(--fg);
   background: rgba(25, 25, 24, .9); -webkit-backdrop-filter: blur(28px) saturate(150%); backdrop-filter: blur(28px) saturate(150%);
   box-shadow: 0 30px 80px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .06); overflow: hidden; }
@@ -570,7 +583,7 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
 .pal-in svg.i { color: var(--fg-3); }
 .pal-in input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--fg); font: 400 16px var(--sans); }
 .pal-in input::placeholder { color: var(--fg-3); }
-.pal-in kbd, .pal-foot kbd { font: 10.5px var(--mono); color: var(--fg-3); border: 1px solid var(--line-2); border-radius: 4px; padding: 1px 5px; }
+.pal-in kbd, .pal-foot kbd { font: 11.5px var(--mono); color: var(--fg-3); border: 1px solid var(--line-2); border-radius: 4px; padding: 1px 5px; }
 .pal-list { max-height: min(56vh, 460px); overflow-y: auto; padding: 6px; }
 .pal-h { padding: 10px 10px 4px; font-size: 11.5px; font-weight: 500; color: var(--fg-3); }
 .pal-i { width: 100%; display: flex; align-items: center; gap: 11px; padding: 8px 10px; border-radius: 9px; font-size: 13.5px; text-align: left; color: var(--fg-2); }
@@ -585,7 +598,7 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
 .pal-foot { display: flex; gap: 16px; padding: 9px 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--fg-3); }
 .pal-foot span { display: inline-flex; gap: 4px; align-items: center; }
 /* You: this week, what changed, what to ask */
-.week { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0 0; font-size: 14.5px; color: var(--fg); max-width: 70ch; text-wrap: pretty; }
+.week { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0 0; font-size: 14px; color: var(--fg); max-width: 70ch; text-wrap: pretty; }
 .week svg.i { flex: none; margin-top: 3px; color: var(--fg-2); }
 .chg { width: 100%; display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 11px 10px; border-radius: var(--r-sm); text-align: left; }
 .chg:hover { background: var(--panel-2); }
@@ -623,17 +636,30 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
 .hero { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
 .hero > div:first-child { flex: 1; min-width: 280px; }
 .hero-act { display: flex; gap: 8px; flex-wrap: wrap; }
-.stats { display: flex; flex-wrap: wrap; margin-top: 22px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.stat { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; padding: 12px 20px 12px 0; margin-right: 20px; font-size: 13.5px; color: var(--fg-2); }
+.stats { display: flex; flex-wrap: wrap; margin-top: 16px; }
+.stat { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; padding: 6px 20px 6px 0; margin-right: 8px; font-size: 13.5px; color: var(--fg-2); }
 .stat b { font: 600 15px var(--mono); color: var(--fg); font-variant-numeric: tabular-nums; }
 .stat small { font-size: 12.5px; color: var(--fg-3); }
 .stat small.up { color: var(--ok); } .stat small.hot { color: var(--danger); }
 .stat:hover { color: var(--fg); } .stat:hover b { text-decoration: underline; text-decoration-color: var(--line-3); text-underline-offset: 4px; }
-.kinds { columns: 3 290px; column-gap: 12px; margin-top: 14px; }
-.kcard { break-inside: avoid; margin-bottom: 12px; padding: 14px 14px 15px; border-radius: 12px; border: 1px solid var(--line); display: grid; gap: 11px;
-  background: var(--panel); }
-.kcard h3 { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: color-mix(in srgb, var(--c) 80%, #fff); }
-.kcard h3 .n { margin-left: auto; font: 12px var(--mono); color: var(--fg-3); }
+/* what they know about you, as a bento: twelve columns, 14px gaps, tiles sized by what they hold (bento() sets --span).
+   Each tile is its kind before it is read: the kind's own icon sits large and faint in its corner, in its colour.
+   "Who you are" is set as type, not chips. A tile's border catches the light near the pointer. */
+.kinds { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+.kcard { grid-column: span var(--span, 4); position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; gap: 14px;
+  padding: 18px 18px 20px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
+.kcard::before { content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none; opacity: 0; transition: opacity .3s var(--ease);
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 0), var(--line-3), transparent 68%) border-box;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+.kinds:hover .kcard::before { opacity: 1; }
+.kcard .wm { position: absolute; right: -16px; bottom: -20px; width: 128px; height: 128px; z-index: -1; pointer-events: none; color: var(--c); opacity: .07; }
+.kcard .wm svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; }
+.kcard.who .chips { display: grid; justify-items: start; gap: 2px; }
+.kcard.who .chip { height: auto; padding: 1px 0; background: none; border: 0; border-radius: 6px; font-size: 16px; font-weight: 500; letter-spacing: -.01em; color: var(--fg-2); text-align: left; }
+.kcard.who .chip:first-child { margin-bottom: 4px; font-size: 24px; font-weight: 600; letter-spacing: -.025em; line-height: 1.15; color: var(--fg); }
+.kcard.who .chip:hover, .kcard.who .chip[aria-pressed="true"] { color: var(--fg); text-decoration: underline; text-decoration-color: var(--line-3); text-underline-offset: 4px; }
+.kcard h3 { margin: 0; display: flex; align-items: center; gap: 9px; font-size: 13.5px; font-weight: 600; color: var(--fg); }  /* the kind's colour lives in its icon */
+.kcard h3 .n { margin-left: auto; font: 12px var(--mono); color: var(--fg-3); font-weight: 400; }
 .ygrid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(300px, 1fr); gap: 20px; align-items: start; }
 .ygrid .card { max-height: none; }
 .picks { display: grid; gap: 10px; }
@@ -650,14 +676,19 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
 .strip span { flex: 1; min-width: 220px; }
 .strip b { color: var(--fg); font-weight: 500; }
 .cbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
-.cbar .segs { margin-left: 0; }
-.cbar .inp { width: 240px; height: 32px; margin-left: auto; font-size: 13px; }
+.cbar .segs:first-child { flex-basis: 100%; }  /* which AI, on its own row; then find on the left, sort on the right */
+.cbar .segs:last-child { margin-left: auto; }
+.cbar .inp { flex: 1; min-width: 180px; max-width: 320px; height: 32px; font-size: 13px; }
 .cgrp-h { padding: 14px 10px 4px; font-size: 12px; font-weight: 500; color: var(--fg-3); }
 .cgrp-h:first-child { padding-top: 6px; }
 .crow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; border-radius: var(--r-sm); transition: background .12s; }
 .crow:hover { background: var(--panel-2); }
 .crow .row.chat:hover { background: none; }
 .crow .btn { margin-right: 8px; }
+@media (hover: hover) {
+  .crow .btn { border-color: transparent; background: none; box-shadow: none; color: var(--fg-3); }
+  .crow:hover .btn, .crow:focus-within .btn { border-color: var(--line-2); background: var(--panel-2); color: var(--fg); }
+}
 /* topics: a grid of cards, then one topic at a time */
 .tgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
 .tcard { position: relative; display: grid; gap: 10px; align-content: start; padding: 16px 16px 14px; border-radius: 12px; border: 1px solid var(--line);
@@ -679,7 +710,7 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
 .t-head .hello { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .t-head .grow-row { display: flex; gap: 8px; }
 .t-rename { flex: 1; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-width: 0; }
-.t-rename .inp { flex: 1; min-width: 200px; height: 44px; font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+.t-rename .inp { flex: 1; min-width: 200px; height: 44px; font-size: 24px; font-weight: 600; letter-spacing: -.02em; }
 .t-rename small { flex-basis: 100%; color: var(--fg-3); font-size: 12px; }
 .t-sum { margin-top: 18px; }
 .t-act { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; padding: 12px 14px; border-radius: var(--r); border: 1px solid var(--line-2); background: var(--panel); }
@@ -709,7 +740,7 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
 .answer svg.i { color: var(--accent-strong); width: 18px; height: 18px; margin-top: 4px; }
 .answer p { margin: 0; font-size: 19px; font-weight: 500; letter-spacing: -.01em; }
 .answer small { display: block; margin-top: 4px; color: var(--fg-2); font-size: 12.5px; }
-.answer small button { color: var(--accent-strong); font: 12px var(--mono); }
+.answer small button { color: var(--accent-strong); font: inherit; text-decoration: underline; text-decoration-color: var(--line-3); text-underline-offset: 3px; }
 .empty { padding: 48px 16px; text-align: center; color: var(--fg-2); }
 .e-art { display: flex; justify-content: center; margin-bottom: 18px; }
 .e-art .e-baton { color: var(--fg-2); transform: rotate(-8deg); }
@@ -735,7 +766,7 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
 .p-entity { display: flex; align-items: center; gap: 12px; }
 .p-entity .lg, .p-entity .letter { width: 36px; height: 36px; border-radius: 9px; }
 .p-entity .letter { font-size: 16px; }
-.p-entity h2 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+.p-entity h2 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -.02em; }
 .p-entity p { margin: 2px 0 0; color: var(--fg-3); font-size: 13px; }
 .props { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 9px 12px; margin: 20px 0 4px; font-size: 13px; }
 .props dt { color: var(--fg-3); }
@@ -791,8 +822,8 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
 .av svg.mb { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; }
 .av > b { font-weight: 650; letter-spacing: -.02em; text-shadow: 0 1px 3px rgba(0, 0, 0, .35); }
 .av.md { width: 32px; height: 32px; font-size: 13px; }
-.av.big { width: 48px; height: 48px; font-size: 18px; }
-.av.xl { width: 76px; height: 76px; font-size: 28px; letter-spacing: -.02em; }
+.av.big { width: 48px; height: 48px; font-size: 19px; }
+.av.xl { width: 76px; height: 76px; font-size: 30px; letter-spacing: -.02em; }
 @property --glow { syntax: "<color>"; inherits: true; initial-value: #f4f4f5; }
 .gate { position: fixed; inset: 0; overflow-y: auto; display: grid; grid-template-rows: 1fr auto; background: var(--bg); z-index: 20;
   --glow: var(--accent); transition: --glow .6s var(--ease); }
@@ -803,7 +834,7 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
 .gate-mark { width: 60px; height: 60px; border-radius: 15px; box-shadow: 0 0 0 1px var(--line-2), 0 10px 30px rgba(0, 0, 0, .5); margin-bottom: 24px; }
 .gate-in > .av { margin-bottom: 20px; }
 .gate h1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -.02em; line-height: 1.2; text-wrap: balance; }
-.gate-sub { margin: 8px 0 0; color: var(--fg-2); font-size: 14.5px; max-width: 38ch; text-wrap: pretty; }
+.gate-sub { margin: 8px 0 0; color: var(--fg-2); font-size: 14px; max-width: 38ch; text-wrap: pretty; }
 .gate-note { display: flex; gap: 8px; align-items: center; margin: 18px 0 0; padding: 8px 12px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line-2);
   font-size: 13px; color: var(--fg-2); text-align: left; }
 .gate-back { justify-self: start; margin: -28px 0 28px -6px; font-size: 13px; }
@@ -881,6 +912,7 @@ select.inp { appearance: none; padding-right: 32px; cursor: pointer;
 .set-tabs { margin: 26px 0 0; }
 .set { display: grid; gap: 16px; margin-top: 18px; max-width: 760px; }
 .set .card { max-height: none; }
+.set .inp { max-width: 440px; }
 .set-b { padding: 16px; display: grid; gap: 16px; }
 .set-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-width: 0; }
 .set-row > .inp + .btn { height: 38px; }
@@ -974,12 +1006,14 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
 .fresh { animation: rise .4s var(--ease) both; }
 @media (prefers-reduced-motion: reduce) { .pl-dot.hot::after, .pl-dot.off, .bl-state i, .brand-baton svg.hop, .fstack.deal > .feat, .fresh, .skel, .sk, .listen i, .sc.pop .tick, .aurora i, .gp i { animation: none; } * { transition: none !important; } }
 
-@media (max-width: 1100px) { .grid, .ygrid { grid-template-columns: 1fr; } .tgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .t-body { grid-template-columns: 1fr; } .wrap { padding: 28px 24px 56px; } }
+@media (max-width: 1100px) { .kcard { grid-column: span 6; } .kcard:last-child:nth-child(odd) { grid-column: span 12; } .grid, .ygrid { grid-template-columns: 1fr; } .tgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .t-body { grid-template-columns: 1fr; } .wrap { padding: 28px 24px 56px; } }
 @media (max-width: 820px) {
+  .kcard, .kcard:last-child:nth-child(odd) { grid-column: span 12; }
   body { overflow: auto; }
   .app { grid-template-columns: minmax(0, 1fr); height: auto; }
   .side { border-right: 0; border-bottom: 1px solid var(--line); -webkit-backdrop-filter: none; backdrop-filter: none; }  /* a filter here would pin the fixed tab bar to the top */
   .app > .side { z-index: 15; }  /* its tab bar floats over the page */
+  .app > .main:has(> .panel.open) { z-index: 16; }  /* ...except under the open detail panel, which is a full screen here */
   .side-scroll, .side-foot, .pl-bars { display: none; }
   .pulse { margin: 0 12px 10px; }
   .pill-live { margin-right: 0; }
@@ -988,7 +1022,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
   .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px;
     padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); background: rgba(20, 20, 19, .9); border-top: 1px solid var(--line-2);
     -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); }
-  .nav button { flex-direction: column; justify-content: center; gap: 3px; min-height: 52px; padding: 4px 0; font-size: 11px; border-radius: 10px; }
+  .nav button { flex-direction: column; justify-content: center; gap: 3px; min-height: 52px; padding: 4px 0; font-size: 11.5px; border-radius: 10px; }
   .nav button svg.i { width: 20px; height: 20px; }
   .nav button[aria-current="page"] { background: var(--panel-3); }
   .nav kbd { display: none; }
@@ -1029,7 +1063,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
   .top { gap: 8px; }
   .fields2 { grid-template-columns: 1fr; }
   .tile { width: 112px; padding: 12px 6px 10px; }
-  .tile .av.xl { width: 68px; height: 68px; font-size: 25px; }
+  .tile .av.xl { width: 68px; height: 68px; font-size: 24px; }
   .gate-in { padding-top: 40px; }
   .item.token { grid-template-columns: 32px minmax(0, 1fr); }
   .item.token .item-act { grid-column: 2; justify-content: flex-start; }
@@ -1039,12 +1073,13 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
   .feat { padding: 18px 16px; }
   .feat-top > .stack { display: none; }
   .brain-stats div { padding: 10px; }
-  .brain-stats b { font-size: 17px; }
+  .brain-stats b { font-size: 16px; }
   .tgrid, .imp-pair, .sk-grid { grid-template-columns: 1fr; }
   .jump { display: none; }
   .stat { padding: 10px 0; margin-right: 18px; }
   .hero-act .btn { flex: 1; justify-content: center; }
-  .cbar .inp { width: 100%; margin-left: 0; }
+  .cbar .inp { max-width: none; flex-basis: 100%; }
+  .cbar .segs:last-child { margin-left: 0; }
   .crow .btn span { display: none; }
   .imp-n { min-height: 0; }
   .t-head .hello { flex-basis: 100%; order: 2; }
@@ -1064,6 +1099,7 @@ FORM: canon (standing exit, chosen by the owner) — Linear + Vercel craft bar. 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 -->
 <div class="app" hidden>
+  <button class="skip" id="skip" type="button">Skip to content</button>
   <div class="aurora" id="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
   <aside class="side" aria-label="Sidebar">
     <div class="brand">
@@ -1143,7 +1179,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
   <div class="pal-list" id="pal-list" role="listbox" aria-label="Results"></div>
   <div class="pal-foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span></div>
 </dialog>
-<dialog class="help" id="help" aria-label="Keyboard shortcuts"><h3>Shortcuts</h3><dl>
+<dialog class="help" id="help" aria-label="Keyboard shortcuts"><h2>Shortcuts</h2><dl>
   <dt><kbd>Ctrl</kbd> <kbd>K</kbd></dt><dd>Jump to anything, or run an action</dd><dt><kbd>/</kbd></dt><dd>Search or ask your memory</dd><dt><kbd>Enter</kbd></dt><dd>Ask the AI to answer from your memory</dd>
   <dt><kbd>1</kbd>–<kbd>5</kbd></dt><dd>You · Topics · Chats · Map · Setup</dd><dt><kbd>Esc</kbd></dt><dd>Close details or clear the search</dd>
   <dt><kbd>?</kbd></dt><dd>This help</dd></dl><form method="dialog" style="margin-top:16px;text-align:right"><button class="btn sm">Close</button></form></dialog>
@@ -1170,7 +1206,7 @@ const ICON = {
 };
 
 let G = { nodes: [], edges: [], topics: [], stats: {}, summary: [] }, byId = new Map(), me = null;
-let view = "overview", selected = null, lastSig = "", recallIds = null, seen = new Set(), online = true, kindFilter = "all", aiFilter = "all";
+let view = "overview", selected = null, lastSig = "", recallIds = null, seen = new Set(), online = true, kindFilter = "all", ownAll = false, aiFilter = "all";
 
 // ---------- brand logos (downloaded once into /assets/icons by fetch_assets.py) ----------
 let LOGO = {};
@@ -1333,8 +1369,10 @@ function entryRow(n, opts = {}) {
 function renderSide() {
   const mems = memories(), loose = mems.filter(m => m.cluster == null).length;
   const topics = [...G.topics].sort((a, b) => (a.id === 0 ? -1 : b.id === 0 ? 1 : b.size - a.size));
-  $("#side-topics").innerHTML = topics.map(t => `<li><button data-topic="${t.id}">${tmark(t.id, 18)}<span class="name">${esc(t.name)}</span><span class="n">${t.size}</span></button></li>`).join("")
-    + (loose ? `<li><button data-topic="loose">${tmark("loose", 18)}<span class="name">Loose ends</span><span class="n">${loose}</span></button></li>` : "")
+  const allTopics = topics.length + (loose ? 1 : 0);
+  $("#side-topics").innerHTML = topics.slice(0, 6).map(t => `<li><button data-topic="${t.id}">${tmark(t.id, 18)}<span class="name">${esc(t.name)}</span><span class="n">${t.size}</span></button></li>`).join("")
+    + (loose && allTopics <= 6 ? `<li><button data-topic="loose">${tmark("loose", 18)}<span class="name">Loose ends</span><span class="n">${loose}</span></button></li>` : "")
+    + (allTopics > 6 ? `<li><button class="more" data-view="topics"><span class="name">All ${allTopics} topics</span></button></li>` : "")
     || `<li class="side-h" style="padding-top:0">Topics appear as you chat.</li>`;
   $("#n-topics").textContent = G.topics.length + (loose ? 1 : 0) || "";
   const ais = Object.entries(G.stats.ais || {}).sort((a, b) => b[1] - a[1]);
@@ -1359,7 +1397,7 @@ function renderPulse() {  // the live pill, and the card it opens
   pill.innerHTML = `<span class="pl-dot ${state}"></span>${label === "Reconnecting…" ? "Offline" : label}`;
   pill.setAttribute("aria-label", `${label}${ai && online ? `, last memory from ${ai} ${ago(last.updated)}` : ""}. Show details`);
   $("#pulse").innerHTML = `<span class="pl-top"><b>${label}</b><span class="pl-src">${src}</span></span>
-    <span class="pl-bars" title="Memories per day, last 14 days">${days.map((n, i) => `<i${i === 13 ? ' class="today"' : ""} style="height:${n ? Math.max(18, n / top * 100) : 10}%"></i>`).join("")}</span>
+    <span class="pl-bars" title="Memories per day, last 14 days">${days.map((n, i) => `<i${i === 13 ? ' class="today"' : ""} style="transform:scaleY(${(n ? Math.max(18, n / top * 100) : 10) / 100})"></i>`).join("")}</span>
     <button class="btn sm pl-go" type="button" data-view="setup">Open Setup</button>`;
 }
 function renderFoot() {
@@ -1522,6 +1560,19 @@ function glowAurora() {  // the heartbeat: the glow comes up for a moment
   a.classList.add("pulse"); clearTimeout(auroraTimer); auroraTimer = setTimeout(() => a.classList.remove("pulse"), 1600);
 }
 function tintAurora(fresh) { if (fresh?.size) glowAurora(); }  // its colours are the gradient you picked (Settings → Appearance); a new memory makes it glow
+// the bento: rows of two or three tiles on twelve columns, each tile as wide as what it holds; a row always fills, so no
+// cell is ever empty (4 kinds make 2+2, 5 make 2+3, 7 make 3+2+2, 8 make 2+3+3)
+function bento(tiles) {
+  const n = tiles.length, rows = [];
+  for (let i = 0; i < n;) { const left = n - i, take = left === 4 || left === 2 || (i === 0 && n % 3 === 2) ? 2 : Math.min(3, left); rows.push(tiles.slice(i, i += take)); }
+  return rows.map(row => {
+    const sum = row.reduce((a, t) => a + t.w, 0), min = row.length === 3 ? 3 : 4, max = 12 - min * (row.length - 1);
+    const spans = row.map(t => Math.max(min, Math.min(max, Math.round(t.w / sum * 12))));
+    for (let d = 12 - spans.reduce((a, b) => a + b, 0); d; d -= Math.sign(d))  // rounding left a column over, or one short
+      spans[d > 0 ? row.indexOf(row.reduce((a, b) => b.w > a.w ? b : a)) : spans.indexOf(Math.max(...spans))] += Math.sign(d);
+    return row.map((t, i) => t.html(spans[i])).join("");
+  }).join("");
+}
 const kpis = list => `<div class="stats">${list.map(([n, label, sub, act, cls]) =>
   `<button class="stat" ${act}><b>${n}</b> ${label}${sub ? `<small class="${cls || ""}">${sub}</small>` : ""}</button>`).join("")}</div>`;
 function pickCard(s, n = 3) {  // a chat you can pick up: open it, or hand it to another AI in one click
@@ -1561,48 +1612,51 @@ function renderOverview(fresh) {
       const mark = logo(o, "sm") || (o.type === "person" || g.key === "people" ? `<span class="letter round" style="--c:${color}">${esc(label.slice(0, 1).toUpperCase())}</span>` : "");
       return `<button class="chip" data-id="${o.id}" aria-pressed="${selected === o.id}">${mark}${pre}${esc(label)}${desc ? `<span class="desc">${esc(byId.get(desc.dst).label)}</span>` : ""}</button>`;
     });
-    return `<section class="kcard" style="--c:${color}"><h3>${kic(g.key, color)}${esc(g.title)}<span class="n">${items.length}</span></h3><div class="chips">${items.join("")}</div></section>`;
+    return { w: (10 + list.reduce((n, { o }) => n + o.label.length + 5, 0)) * (g.key === "who" ? 1.6 : 1),
+      html: span => `<section class="kcard${g.key === "who" ? " who" : ""}" style="--c:${color};--span:${span}"><span class="wm" aria-hidden="true">${KIND_IC[g.key] || KIND_IC.other}</span>
+        <h3>${kic(g.key, color)}${esc(g.title)}<span class="n">${items.length}</span></h3><div class="chips">${items.join("")}</div></section>` };
   });
   const recent = [...mems].sort((a, b) => b.updated - a.updated).slice(0, 6);
   const mine = mems.filter(m => PERSONAL.has(m.type)).sort((a, b) => (b.importance * (1 + .1 * b.count)) - (a.importance * (1 + .1 * a.count)) || b.updated - a.updated);
   const counts = { all: mine.length }; mine.forEach(m => counts[m.type] = (counts[m.type] || 0) + 1);
   const shown = kindFilter === "all" ? mine : mine.filter(m => m.type === kindFilter);
-  const cs = chats(), wk = WEEK(), newMems = mems.filter(m => m.updated > wk).length, newChats = cs.filter(c => c.updated > wk).length;
+  const cs = chats();
   const wl = weekLine(mems), ch = changes().slice(0, 5), ask = asks(buckets);
   el.innerHTML = `<div class="wrap">
     <div class="hero"><div><h1 class="hello">${greeting()}${who || ACCT ? ", " + esc(who || ACCT.display_name) : ""}.</h1>
       <p class="hello-sub"><span class="stack">${ais.slice(0, 6).map(a => aiLogo(a, "")).join("")}</span><span>What ${plural(ais.length, "AI")} know about you</span><span class="sep-dot"></span><span>last capture ${ago(last)}</span></p>
-      ${wl ? `<p class="week">${ICON.spark}<span>${wl}</span></p>` : ""}</div>
-      <div class="hero-act"><button class="btn" data-y="ask">${ICON.spark}Ask your memory</button><button class="btn" data-view="map">${ICON.globe}Explore the map</button></div></div>
-    ${kpis([[mems.length, "memories", newMems ? `+${newMems} this week` : "none new this week", 'data-view="topics"', newMems ? "up" : ""],
-      [G.stats.entities || 0, "things", "people, places, tools…", 'data-view="map"'],
-      [cs.length, "chats", newChats ? `${newChats} active this week` : "", 'data-view="chats"', newChats ? "up" : ""],
-      [ais.length, "AIs", "connect more in Setup", 'data-view="setup"']])}
-    <div class="section-h"><h2>What they know about you</h2><p>click anything to see where it came from</p></div>
-    ${kinds.length ? `<div class="kinds">${kinds.join("")}</div>` : `<div class="card"><div class="empty"><p>Say things like “I use Neovim” or “I live in Pune” in any AI chat and they collect here.</p></div></div>`}
+      ${wl ? `<p class="week">${ICON.spark}<span>${wl}</span></p>` : ""}</div></div>
+    ${kpis([[mems.length, "memories", "", 'data-view="topics"'], [G.stats.entities || 0, "things", "", 'data-view="map"'],
+      [cs.length, "chats", "", 'data-view="chats"'], [ais.length, "AIs", "", 'data-view="setup"']])}
+    <div class="section-h"><h2>What they know about you</h2></div>
+    ${kinds.length ? `<div class="kinds">${bento(kinds)}</div>` : `<div class="card"><div class="empty"><p>Say things like “I use Neovim” or “I live in Pune” in any AI chat and they collect here.</p></div></div>`}
     ${ch.length || ask.length ? `<div class="ygrid" style="margin-top:28px">
-      ${ch.length ? `<section class="card" aria-labelledby="h-chg"><div class="card-h">${kic("change", css("--t2"), "sm")}<h2 id="h-chg">What changed lately</h2><span class="spacer"></span><p>the old stays in history</p></div>
+      ${ch.length ? `<section class="card" aria-labelledby="h-chg"><div class="card-h">${kic("change", css("--t2"), "sm")}<h2 id="h-chg">What changed lately</h2></div>
         <div class="card-b">${ch.map(c => `<button class="chg" data-id="${c.now.id}">${kic("change", css("--t2"), "sm")}<span><span class="was">${esc(c.was.label)}</span><span class="now">${esc(c.now.label)}</span></span><span class="when">${day(c.now.updated)}</span></button>`).join("")}</div></section>` : "<div></div>"}
-      ${ask.length ? `<section class="card" aria-labelledby="h-ask"><div class="card-h">${kic("asked", css("--t5"), "sm")}<h2 id="h-ask">Try asking</h2><span class="spacer"></span><p>answered from your memory</p></div>
+      ${ask.length ? `<section class="card" aria-labelledby="h-ask"><div class="card-h">${kic("asked", css("--t5"), "sm")}<h2 id="h-ask">Try asking</h2></div>
         <div class="asks">${ask.map(q => `<button class="chip ask" data-ask="${esc(q)}">${ICON.spark}${esc(q)}</button>`).join("")}</div></section>` : ""}</div>` : ""}
     <div class="ygrid" style="margin-top:20px">
       <section class="card" aria-labelledby="h-recent"><div class="card-h"><h2 id="h-recent">Recently</h2><span class="spacer"></span><button class="btn sm" data-view="topics">All topics</button></div>
         <div class="card-b rows">${recent.map(m => entryRow(m, { fresh: fresh.has(m.id) })).join("")}</div></section>
       <section aria-labelledby="h-pick"><div class="section-h" style="margin:0 0 10px"><h2 id="h-pick">Pick up where you left off</h2></div>
-        <div class="picks">${cs.slice(0, 3).map(c => pickCard(c)).join("") || `<div class="card"><div class="empty"><p>Chats you have with any AI show up here, ready to continue in another.</p></div></div>`}</div>
+        <div class="picks">${cs.slice(0, 3).map(c => pickCard(c, 1)).join("") || `<div class="card"><div class="empty"><p>Chats you have with any AI show up here, ready to continue in another.</p></div></div>`}</div>
         ${cs.length > 3 ? `<button class="btn sm" data-view="chats" style="margin-top:10px">All ${cs.length} chats</button>` : ""}</section>
     </div>
     <div class="section-h"><h2>In your own words</h2><p>${mine.length} things you've said about yourself</p>
       <div class="segs" role="group" aria-label="Filter">${[["all", "All"], ["fact", "Facts"], ["preference", "Preferences"], ["goal", "Goals"], ["event", "Events"]]
         .filter(([k]) => k === "all" || counts[k]).map(([k, t]) => `<button data-kind="${k}" aria-pressed="${kindFilter === k}">${t}<span class="n">${counts[k] || 0}</span></button>`).join("")}</div></div>
-    <div class="card"><div class="card-b rows">${shown.map(m => entryRow(m, { fresh: fresh.has(m.id) })).join("") || `<div class="empty"><p>Nothing here yet.</p></div>`}</div></div>
-    <div class="strip">${ICON.plug}<span><b>Connect more AIs</b> — the extension for ChatGPT, Claude and Gemini on the web, one command for Claude Code, Codex and Cursor.</span>
-      <button class="btn sm" data-view="setup">Open Setup</button></div>
+    <div class="card"><div class="card-b rows">${shown.slice(0, ownAll ? shown.length : 8).map(m => entryRow(m, { fresh: fresh.has(m.id) })).join("") || `<div class="empty"><p>Nothing here yet.</p></div>`}</div></div>
+    ${!ownAll && shown.length > 8 ? `<button class="btn sm" data-own="all" style="margin-top:12px">Show all ${shown.length}</button>` : ""}
+    ${ais.length < 3 ? `<div class="strip">${ICON.plug}<span><b>Connect more AIs</b> — the extension for ChatGPT, Claude and Gemini on the web, one command for Claude Code, Codex and Cursor.</span>
+      <button class="btn sm" data-view="setup">Open Setup</button></div>` : ""}
   </div>`;
   if (view === "overview") countUp($("#ov"));
 }
+$("#overview").addEventListener("pointermove", ev => {  // the tiles' borders catch the light near the pointer
+  if (ev.pointerType !== "touch") document.querySelectorAll("#ov .kcard").forEach(c => {
+    const r = c.getBoundingClientRect(); c.style.setProperty("--mx", ev.clientX - r.left + "px"); c.style.setProperty("--my", ev.clientY - r.top + "px"); });
+});
 $("#overview").addEventListener("click", ev => {
-  if (ev.target.closest('[data-y="ask"]')) { $("#q").focus(); $("#q").select(); }
   const a = ev.target.closest("[data-ask]");
   if (a) { $("#q").value = a.dataset.ask; recall(a.dataset.ask, true); }
 });
@@ -1653,7 +1707,7 @@ function renderTopics(fresh = new Set()) {
   const n = memories().length, spans = new Set(memories().flatMap(m => m.ais || []));
   el.innerHTML = `<div class="wrap"><h1 class="hello">Topics</h1>
     <p class="hello-sub">${plural(n, "entry").replace("entrys", "entries")} across ${plural(spans.size, "AI")}, sorted into ${plural(all.length, "topic")} — the same subject in different apps is one topic.</p>
-    <div class="section-h" style="margin-top:26px"><h2>All topics</h2><p>open one to see where you are with it</p>
+    <div class="section-h" style="margin-top:26px"><h2>All topics</h2>
       <div class="segs" role="group" aria-label="Sort"><button data-tp="sort:recent" aria-pressed="${topicSort === "recent"}">Recent</button><button data-tp="sort:size" aria-pressed="${topicSort === "size"}">Biggest</button></div></div>
     <div class="tgrid">${order.map(x => `<button class="tcard" data-tp="open:${x.k}" style="--c:${x.color}">
       <span class="tc-h">${tmark(x.k, 30)}<b>${esc(x.name)}</b><span class="n">${x.list.length}</span></span>
@@ -1762,7 +1816,7 @@ function renderChats() {
   if (aiFilter !== "all" && !(aiFilter in byAI)) aiFilter = "all";
   const list = aiFilter === "all" ? all : all.filter(s => chatAI(s) === aiFilter);
   const ais = Object.keys(byAI).sort((a, b) => byAI[b] - byAI[a]);
-  const last = Math.max(0, ...all.map(s => s.updated || 0)), wk = WEEK();
+  const last = Math.max(0, ...all.map(s => s.updated || 0));
   const said = aiFilter === "all" ? [] : mems.filter(m => (m.ais || []).includes(aiFilter)).sort((a, b) => b.updated - a.updated);
   const hot = all.filter(s => s.limit || (s.pct || 0) >= 70), models = new Set(all.flatMap(s => s.models?.length ? s.models : s.model ? [s.model] : []));
   const typing = document.activeElement?.id === "chat-find";
@@ -1770,13 +1824,12 @@ function renderChats() {
     <p class="hello-sub"><span class="stack">${ais.slice(0, 6).map(a => aiLogo(a, "")).join("")}</span>
       <span>Every conversation, which model answered, and how full it is</span>${last ? `<span class="sep-dot"></span><span>last active ${ago(last)}</span>` : ""}</p></div>
       ${all[0] ? `<div class="hero-act"><button class="btn" data-id="${all[0].id}">${aiLogo(chatAI(all[0]))}Open the latest</button></div>` : ""}</div>
-    ${kpis([[all.length, "conversations", `${all.filter(s => s.updated > wk).length} active this week`, 'data-cs="sort:recent"', all.some(s => s.updated > wk) ? "up" : ""],
-      [all.reduce((n, s) => n + (s.turns || 0), 0), "messages", `across ${plural(Object.keys(byAI).filter(a => byAI[a]).length, "AI")}`, 'data-cs="sort:long"'],
-      [models.size, "models", [...models].slice(0, 2).join(", "), 'data-cs="sort:recent"'],
-      [hot.length, "running out of room", hot.length ? "hand them off below" : "none near their limit", 'data-cs="sort:full"', hot.length ? "hot" : ""]])}
-    ${hot.length ? `<div class="section-h"><h2>Running out of room</h2><p>hand these to another AI before they forget how they started</p></div>
+    ${kpis([[all.length, "conversations", "", 'data-cs="sort:recent"'], [all.reduce((n, s) => n + (s.turns || 0), 0), "messages", "", 'data-cs="sort:long"'],
+      [models.size, "models", "", 'data-cs="sort:recent"'],
+      ...(hot.length ? [[hot.length, "running out of room", "hand them off below", 'data-cs="sort:full"', "hot"]] : [])])}
+    ${hot.length ? `<div class="section-h"><h2>Running out of room</h2></div>
       <div class="picks wide">${hot.slice(0, 6).map(s => pickCard(s, 2)).join("")}</div>` : ""}
-    <div class="section-h"><h2>${aiFilter === "all" ? "All chats" : esc(aiFilter)}</h2><p>${plural(list.length, "chat")}</p></div>
+    <div class="section-h"><h2>${aiFilter === "all" ? "All chats" : esc(aiFilter)}</h2></div>
     <div class="cbar"><div class="segs" role="group" aria-label="Filter by AI"><button data-ai="all" aria-pressed="${aiFilter === "all"}">All<span class="n">${all.length}</span></button>${
         ais.map(a => `<button data-ai="${esc(a)}" aria-pressed="${aiFilter === a}">${aiLogo(a)}${esc(a)}<span class="n">${byAI[a]}</span></button>`).join("")}</div>
       <input class="inp" id="chat-find" type="search" placeholder="Find a chat by title or model" aria-label="Find a chat" value="${esc(chatFind)}" autocomplete="off">
@@ -2015,7 +2068,7 @@ function stackApply() {  // which card is in front, how tall the stack is, and w
   fit(); stackRO?.disconnect(); stackRO = new ResizeObserver(fit); stackRO.observe(front);
 }
 const mb = n => n >= 1e9 ? (n / 1e9).toFixed(2) + " GB" : Math.max(0, Math.round(n / 1e6)) + " MB";
-const bar = (done, total) => `<div class="progress" aria-hidden="true"><b style="width:${total ? Math.min(100, Math.round(done / total * 100)) : 0}%"></b></div>`;
+const bar = (done, total) => `<div class="progress" aria-hidden="true"><b style="transform:scaleX(${total ? Math.min(1, done / total) : 0})"></b></div>`;
 function brainPoll(b) {  // while it downloads or reads, only this step refreshes (the rest of Setup, forms included, stays put)
   clearTimeout(brainTimer);
   if (!(b.dl || b.state === "reading" || b.state === "starting" || b.forced && b.left || b.usage)) return;
@@ -2088,10 +2141,10 @@ function brainLive(b) {  // while the model works: what it is, what it's doing, 
   const cell = (k, v, sub, extra = "") => `<div class="bl-cell"><small>${k}</small><b>${v}</b>${sub ? `<span>${sub}</span>` : ""}${extra}</div>`;
   return `<div class="bl" aria-live="polite">
     <div class="bl-head"><span class="bl-state"><i></i>${word}</span><span class="bl-model"><b>${esc(name)}</b> · ${engine}${b.remote ? "" : ` · this computer (${b.memory_gb} GB)`}</span></div>
-    ${b.dl ? `<div class="bl-bar"><i style="width:${b.dl.total ? Math.round(b.dl.done / b.dl.total * 100) : 3}%"></i></div>
+    ${b.dl ? `<div class="bl-bar"><i style="transform:scaleX(${b.dl.total ? b.dl.done / b.dl.total : .03})"></i></div>
       <div class="bl-row">${cell("Downloaded", mb(b.dl.done), b.dl.total ? `of ${mb(b.dl.total)} · ${Math.round(b.dl.done / b.dl.total * 100)}%` : "")}
         ${cell("Speed", BH.speed ? mb(BH.speed) + "/s" : "…", "measured live")}${cell("Time left", left != null ? eta(left) : "working it out…", "until it can start reading")}</div>`
-    : `<div class="bl-bar"><i style="width:${Math.max(pct, 2)}%"></i></div>
+    : `<div class="bl-bar"><i style="transform:scaleX(${Math.max(pct, 2) / 100})"></i></div>
       <div class="bl-row">${cell("Checked", `${b.checked || 0}<em>/${b.messages || 0}</em>`, `${pct}% of your messages`)}
         ${cell("Time left", left != null ? eta(left) : b.state === "reading" ? "almost done" : "—", b.sec ? `${b.sec}s per message` : "")}
         ${cell("Facts found", b.found || 0, "each one checked by the rules")}
@@ -2213,7 +2266,7 @@ async function recall(q, deep) {
   try { r = await api("/recall?k=12&q=" + encodeURIComponent(q)); } catch (e) { return toast("Search failed: " + e.message); }
   lastQ = q;
   recallIds = new Set(r.nodes.map(n => n.id));
-  const ans = r.answer ? `<div class="answer">${ICON.spark}<div><p>${esc(r.answer.text)}</p>${r.answer.sources?.length ? `<small>from ${r.answer.sources.map(i => `<button data-id="${i}" title="${esc(byId.get(i)?.label || "Open memory #" + i)}">#${i}</button>`).join(" ")}</small>` : ""}</div></div>` : "";
+  const ans = r.answer ? `<div class="answer">${ICON.spark}<div><p>${esc(r.answer.text)}</p>${r.answer.sources?.length ? `<small>from ${r.answer.sources.map((i, n, all) => `<button data-id="${i}" title="${esc(byId.get(i)?.label || "Open this memory")}">${all.length > 1 ? "memory " + (n + 1) : "this memory"}</button>`).join(", ")}</small>` : ""}</div></div>` : "";
   $("#recall").innerHTML = `<div class="wrap"><h1 class="hello" style="font-size:24px">“${esc(q)}”</h1>${ans}<div id="ai-answer"></div>
     <p class="hello-sub">${r.memories.length ? `${plural(r.memories.length, "memory").replace("memorys", "memories")}, best match first` : "Nothing remembered about that yet."}</p>
     <div class="card" style="margin-top:14px">${r.memories.length ? `<div class="card-b rows">${r.memories.map((m, i) => entryRow({ ...(byId.get(m.id) || {}), ...m, label: m.text, cluster: byId.get(m.id)?.cluster }, { rank: i + 1, topic: true, fresh: true })).join("")}</div>`
@@ -2257,7 +2310,7 @@ function renderPanel() {
   const edges = edgesOf(n.id);
   const item = (id, k, cls = "") => { const m = byId.get(id); return m ? `<button data-id="${id}"><span class="k">${esc(k)}</span><span class="${cls}">${esc(m.label)}</span></button>` : ""; };
   if (n.kind === "memory") {
-    $("#panel-kind").textContent = `${KIND[n.type] || "Note"} · #${n.id}`;
+    $("#panel-kind").textContent = KIND[n.type] || "Note";
     const things = edges.filter(e => e.src === n.id && e.rel === "mentions").map(e => byId.get(e.dst)).filter(Boolean);
     const see = edges.filter(e => e.rel === "similar").sort((a, b) => b.weight - a.weight).map(e => e.src === n.id ? e.dst : e.src);
     const chain = [n.id];  // older versions before it, newer ones after
@@ -2286,7 +2339,7 @@ function renderPanel() {
       ${forgetBlock(n)}`;
   } else if (n.kind === "session") {
     const ai = chatAI(n), mems = chatMems(n).sort((a, b) => b.updated - a.updated);
-    $("#panel-kind").textContent = `${ai} chat · #${n.sid ?? n.id}`;
+    $("#panel-kind").textContent = `${ai} chat`;
     const talks = (G.out.get(n.id) || []).filter(e => e.rel === "discusses").sort((a, b) => b.weight - a.weight).map(e => byId.get(e.dst)).filter(Boolean).slice(0, 12);
     const parent = (G.out.get(n.id) || []).find(e => e.rel === "continues"), kids = (G.in.get(n.id) || []).filter(e => e.rel === "continues");
     const tset = new Set(talks.map(t => t.id));
@@ -2896,7 +2949,7 @@ const diagram = (() => {
       entity: "Everything connected to this — what it is, how you relate to it, and what you've said about it.",
       topic: "The things this topic is about, and its entries." }[v.type];
     $("#dg-sub").textContent = sub;
-    $("#dg-crumbs").innerHTML = stack.map((s, i) => i === stack.length - 1 ? `<span aria-current="page">${esc(crumbLabel(s))}</span>`
+    $("#dg-crumbs").innerHTML = stack.length < 2 ? "" : stack.map((s, i) => i === stack.length - 1 ? `<span aria-current="page">${esc(crumbLabel(s))}</span>`
       : `<button data-dg-crumb="${i}">${esc(crumbLabel(s))}</button><span class="sep" aria-hidden="true">›</span>`).join("");
     document.querySelectorAll("[data-dg-view]").forEach(b => b.setAttribute("aria-pressed", b.dataset.dgView === (stack[0].type)));
     const legend = $("#dg-legend");
@@ -3332,6 +3385,7 @@ async function signOut(kind, btn) {
 const SET_TABS = ["account", "appearance", "devices", "people"];
 let setTab = "account", pairCode = null, PEOPLE = [];
 const quietFocus = el => { if (el) { el.tabIndex = -1; el.focus({ preventScroll: true }); } };  // a heading as a focus landing spot
+$("#skip").addEventListener("click", () => quietFocus($("#page-title")));
 function openSettings(tab, code) {
   if (tab === "people" && ACCT.role !== "admin") tab = "account";
   setTab = tab; pairCode = code ? code.toUpperCase() : null;
@@ -3649,7 +3703,7 @@ $("#sheet").addEventListener("click", ev => { if (ev.target === ev.currentTarget
 // ---------- events ----------
 document.addEventListener("click", ev => {
   if (!ev.target.closest(".acct")) closeMenu();
-  const t = ev.target.closest("[data-copy],[data-reveal],[data-forget],[data-cancel],[data-handoff],[data-id],[data-topic],[data-view],[data-kind],[data-source],[data-ai],[data-all],#rebuild,#copy-brief,#panel-close,"
+  const t = ev.target.closest("[data-copy],[data-reveal],[data-forget],[data-cancel],[data-handoff],[data-id],[data-topic],[data-view],[data-kind],[data-own],[data-source],[data-ai],[data-all],#rebuild,#copy-brief,#panel-close,"
     + "[data-gate],[data-profile],[data-go],[data-acct],[data-mkkey],[data-pair],[data-revoke],[data-keep],[data-person],[data-close],[data-brain],#acct-btn");
   if (!t || t.disabled) return;
   if (t.dataset.gate) return gate(t.dataset.gate, t.dataset.user ? PROFILES.find(p => p.username === t.dataset.user) || { username: t.dataset.user } : null, t.dataset.user);
@@ -3684,6 +3738,7 @@ document.addEventListener("click", ev => {
     return show(t.dataset.view);
   }
   if (t.dataset.kind) { kindFilter = t.dataset.kind; return renderOverview(new Set()); }
+  if (t.dataset.own) { ownAll = true; return renderOverview(new Set()); }
   if (t.dataset.source) { aiFilter = t.dataset.source; renderChats(); return show("chats"); }
   if (t.dataset.ai) { aiFilter = t.dataset.ai; return renderChats(); }
   if (t.dataset.all !== undefined) { const m = t.closest(".msgs"); m?.querySelectorAll(".msg").forEach(x => x.classList.add("all")); return t.remove(); }
