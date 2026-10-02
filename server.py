@@ -87,7 +87,7 @@ def update_watch():
     threading.Thread(target=check, daemon=True).start()
 LOCK = threading.RLock()  # one request touches the databases at a time; threads only keep idle sockets from blocking others
 # ponytail: one lock for every account's graph; per-account locks if many people use one install at once
-LOGIC_VERSION = "18"  # 18: "I'm Nikhil, a data analyst at Deloitte" works there too (17: the learner reads everyday phrasing (16: meaning vectors, facts that settle older ones, kin/rename merges (15: "the user always runs / was born" -> "I always run / was born" (14: hand-off packs and briefings are marked [mindbaton])
+LOGIC_VERSION = "19"  # 19: an app's /code page is no conversation; topics know projects (18: "I'm Nikhil, a data analyst at Deloitte" works there too (17: the learner reads everyday phrasing (16: meaning vectors, facts that settle older ones, kin/rename merges (15: "the user always runs / was born" -> "I always run / was born" (14: hand-off packs and briefings are marked [mindbaton])))))
 PERSONAL = brain.PERSONAL
 AI_SITE = {}  # "ChatGPT" -> "chatgpt.com"
 LINKISH = ("mentions", "about", "context")
@@ -163,7 +163,7 @@ def conv_key(url, chat):
     """One conversation: the chat URL without query/fragment, else its title."""
     if url:
         u = urlparse(url)
-        if u.path.strip("/") and u.path.rstrip("/") not in ("/new", "/app", "/chat", "/prompts/new_chat", "/search/new"):
+        if u.path.strip("/") and u.path.rstrip("/") not in ("/new", "/app", "/chat", "/code", "/prompts/new_chat", "/search/new"):
             return (u.netloc + u.path)[:200]  # an app's new-chat page is no conversation yet
     return ("chat:" + chat.lower())[:200] if chat else None
 
@@ -920,11 +920,50 @@ class Graph:
     PATH_DIR = re.compile(r"(?:/home/[^/\s]+|~)/([A-Za-z0-9][\w.-]*)")
     CODING = {"Claude Code", "Codex", "Antigravity", "Cursor", "Gemini CLI"}  # sessions run in a project directory
 
+    SHELVES = set("documents desktop downloads projects project code dev src work workspace repos repo git github".split())
+    REPO = re.compile(r"\b(?:github|gitlab)\.com/[\w.-]+/([A-Za-z0-9][\w.-]*)")
+
+    @classmethod
+    def project_of(cls, cwd):
+        """A coding session's folder -> (the project's name, its path under ~), or None outside a project.
+        ~/DoorTalk/backend -> doortalk; ~/Documents/plant log/app -> plant log (Documents is a shelf, not a project)."""
+        home = os.path.expanduser("~")
+        rel = os.path.relpath(cwd, home) if cwd.startswith(home) else ""
+        parts = [x for x in rel.split(os.sep) if x and x != "."] if not rel.startswith("..") else []
+        i = 0
+        while i < len(parts) - 1 and parts[i].lower() in cls.SHELVES:
+            i += 1
+        if not parts or parts[i].startswith(".") or parts[i].lower() in cls.SHELVES:
+            return None
+        return parts[i].lower(), os.sep.join(parts[:i + 1])
+
+    @staticmethod
+    def same_project(a, b):
+        """One project under two names: a second checkout, or a part of it. "plant log" ~ "plant-logger" ~ "plant-log-site"."""
+        s, l = sorted((re.findall(r"[a-z0-9]+", a.lower()), re.findall(r"[a-z0-9]+", b.lower())), key=len)
+        return bool(s) and len("".join(s)) >= 5 and s[:-1] == l[:len(s) - 1] and l[len(s) - 1].startswith(s[-1])
+
+    @staticmethod
+    def names(words, name):
+        """Do these words (a title, a message) name the project? Its words in a row; never a single everyday word ("notes")."""
+        n = re.findall(r"[a-z0-9]+", name.lower())
+        if not n or len("".join(n)) < 5 or len(n) == 1 and brain.is_word(n[0]):
+            return False
+        return any(words[i:i + len(n) - 1] == n[:-1] and words[i + len(n) - 1].startswith(n[-1]) for i in range(len(words) - len(n) + 1))
+
+    @staticmethod
+    def titleish(t):
+        """A title an app wrote for the chat — not its first message cut short, a pasted line or a prompt."""
+        return bool(t) and len(t) <= 48 and not t[:1].islower() and not re.search(r"https?:|www\.|[=\[\]{}<>`]", t)
+
     def cluster(self):
         """1 unit = one conversation (a memory's ctx), else the memory alone. Its vector = its memories' terms + what the
-        whole chat discusses (assistant turns name the project the user only implies). 2 units that ARE a project (an
-        agent's memory file, a coding session run in ~/<dir>) own that name: same name -> pooled, different names -> never
-        merged. 3 average-linkage agglomeration on tf-idf cosine. Every memory takes its conversation's topic."""
+        whole chat discusses (assistant turns name the project the user only implies). 2 projects: a coding session run in
+        a project's folder is that project, and so is whatever points at it — a memory file kept for that folder or naming
+        its path, a chat that links its repo, has it in its title or keeps naming it. One project -> pooled; two different
+        projects -> never merged. A memory file that points at no known project only lends its name. 3 average-linkage
+        agglomeration on tf-idf cosine. Every memory takes its conversation's topic. 4 a short untitled chat that joined
+        nothing is a loose end, not a topic."""
         db = self.db
         rows = db.execute("SELECT id, ctx, terms, importance, count FROM nodes WHERE kind='memory' AND status='active' ORDER BY id").fetchall()
         mems = [r[0] for r in rows]
@@ -938,21 +977,72 @@ class Graph:
             if key in vec:
                 vec[key]["@" + ent] += 1 + math.log(max(w, 1))
         # projects: memory files and coding sessions name them; units sharing a name are one project
-        own, files = defaultdict(set), set()
-        for (url,) in db.execute("SELECT DISTINCT url FROM captures WHERE url LIKE 'memory://%'"):
-            n = url.rstrip("/").rsplit("/", 1)[-1].lower()
-            files.add(n)
-            own[conv_key(url, None)].add(n)
+        seen = defaultdict(Counter)  # the title an app gave each chat: its session's, or what the extension saw on the page
+        for url, chat, ses, n in db.execute("""SELECT url, chat, json_extract(extra, '$.session'), count(*) FROM captures
+                                               WHERE chat IS NOT NULL GROUP BY 1, 2, 3"""):
+            if self.titleish(chat) or (url or "").startswith("memory://"):
+                seen[ses or conv_key(url, chat)][chat] += n
+        titled = {u: c.most_common(1)[0][0] for u, c in seen.items() if u and not u.startswith("chat:")}
+        titled.update((k, c) for k, c in db.execute("SELECT key, chat FROM sessions WHERE chat IS NOT NULL") if self.titleish(c))
+        own, soft, files, imports = defaultdict(set), defaultdict(set), set(), set()
+        folder, slug = {}, {}  # a project's path under ~ -> its name; Claude Code's name for a session's folder -> its project
         for key, site, cwd in db.execute("SELECT key, site, cwd FROM sessions WHERE cwd IS NOT NULL"):
-            rel = os.path.relpath(cwd, os.path.expanduser("~")) if cwd.startswith(os.path.expanduser("~")) else ""
-            top = rel.split(os.sep)[0].lower() if rel and not rel.startswith("..") else ""
-            if top and top != "." and not top.startswith(".") and ai_of(site) in self.CODING:
-                own[key].add(top)
-        dirs = defaultdict(Counter)
+            pr = self.project_of(cwd) if ai_of(site) in self.CODING else None
+            if pr:
+                own[key].add(pr[0])
+                folder[pr[1].lower()] = slug[re.sub(r"[^A-Za-z0-9]", "-", cwd)] = pr[0]
+        known = set(folder.values())
+        one = {n: min([k for k in known if self.same_project(k, n)] or [n], key=lambda k: (len(k), k)) for n in known}  # a second checkout
+        point = defaultdict(Counter)  # unit -> the known projects it points at
+        labels = defaultdict(list)
         for m, lab in db.execute("SELECT id, label FROM nodes WHERE kind='memory' AND status='active'"):
-            dirs[unit[m]].update(d.lower() for d in self.PATH_DIR.findall(lab) if not d.startswith("."))
-        alias = lambda u, ns: {d for d in [dirs[u].most_common(1)[0][0]] if d in ns or d not in files} if dirs[u] else set()
-        own = {u: ns | alias(u, ns) for u, ns in own.items() if u in vec}  # a note naming ~/<another note's project> stays apart
+            labels[unit[m]].append(lab)
+        dirs = defaultdict(Counter)
+        for u, labs in labels.items():
+            low = " ".join(labs).lower()
+            dirs[u].update(d.lower() for lab in labs for d in self.PATH_DIR.findall(lab) if not d.startswith("."))
+            for path, n in folder.items():  # "~/Documents/plant log" said in a note or a chat
+                if re.search(r"(?:~|/home/[^/\s]+)/" + re.escape(path) + r"(?![\w-])", low):
+                    point[u][n] += 2
+            said = Counter(n for lab in labs for n in known if self.names(re.findall(r"[a-z0-9]+", lab.lower()), n))
+            for n, k in said.items():  # it keeps naming the project
+                if k >= 2 and k >= .15 * len(labs):
+                    point[u][n] += 2
+        for text, url, chat, ses in db.execute("""SELECT text, url, chat, json_extract(extra, '$.session') FROM captures
+                                                  WHERE text LIKE '%github.com/%' OR text LIKE '%gitlab.com/%'"""):
+            for repo in self.REPO.findall(text):  # a link to the project's repo
+                for n in known:
+                    if self.same_project(n, re.sub(r"\.git$", "", repo)):
+                        point[ses or conv_key(url, chat)][n] += 2
+        for key, chat in list(titled.items()) + db.execute("SELECT key, chat FROM sessions WHERE chat IS NOT NULL").fetchall():
+            for n in known:  # the chat's title names the project (a title an app wrote, or the first thing said)
+                if self.names(re.findall(r"[a-z0-9]+", chat.lower()), n):
+                    point[key][n] += 2
+        for url, file in db.execute("SELECT url, max(json_extract(extra, '$.file')) FROM captures WHERE url LIKE 'memory://%' GROUP BY url"):
+            u, n = conv_key(url, None), url.rstrip("/").rsplit("/", 1)[-1].lower()
+            if n == "import":  # what another AI remembered: a source, not a project
+                imports.add(u)
+                continue
+            files.add(n)
+            kept = re.search(r"/projects/([^/]+)/", file or "")  # Claude Code keeps a folder's memory under its name
+            if kept and kept[1] in slug:
+                point[u][slug[kept[1]]] += 4
+            soft[u].add(n)
+        for u in list(soft):  # a memory file named after a project, or naming its folder (~/<dir>)
+            d = dirs[u].most_common(1)[0][0] if dirs[u] else None
+            for n in list(soft[u]) + ([d] if d else []):
+                for k in known:
+                    if self.same_project(k, n):
+                        point[u][k] += 2
+            if d and d not in files:
+                soft[u].add(d)
+        for u, c in point.items():
+            c = sum((Counter({one[n]: k}) for n, k in c.items()), Counter())  # two checkouts of one project are one answer
+            (best, k), rest = c.most_common(1)[0], sum(c.values())
+            if u in vec and u not in imports and not own.get(u) and k > rest - k:  # it points at one project, not at two
+                own[u].add(best)
+        own = {u: {one[n] for n in ns} for u, ns in own.items() if u in vec}
+        soft = {u: ns for u, ns in soft.items() if u in vec and u not in own}
         parent = {u: u for u in vec}
         mkeys = dict(db.execute("SELECT id, key FROM nodes WHERE kind='memory' AND status='active'"))
         tok_unit = {ctx or "k:" + mkeys.get(m, ""): unit[m] for m, ctx, *_ in rows}  # how a topic's parts are named in meta
@@ -1020,6 +1110,15 @@ class Graph:
             groups[top[unit[m]]].append(m)
         cid = {m: (min(g) if len(g) > 1 else None) for g in groups.values() for m in g}
         personal = {r[0] for r in db.execute("SELECT id FROM nodes WHERE kind='memory' AND type IN ('fact','preference','goal','event')")}
+        ctx_of = {m: ctx for m, ctx, *_ in rows}
+        for G, g in groups.items():
+            us = {unit_ctx[m] for m in g}
+            u = next(iter(us))
+            if all(ctx_of[m] is None and m in personal for m in g):  # things said about oneself outside any chat: About you
+                cid.update((m, 0) for m in g)
+            elif len(us) == 1 and len(g) < 4 and ctx_of[g[0]] and not u.startswith("chat:") and u not in titled \
+                    and not gown.get(G) and u not in soft:  # a short chat nobody titled, that joined nothing: loose ends
+                cid.update((m, None) for m in g)
         for m in mems:  # facts about the user that fit no topic still belong together
             if cid[m] is None and m in personal:
                 cid[m] = 0
@@ -1064,33 +1163,40 @@ class Graph:
         elabel = dict(db.execute("SELECT key, label FROM nodes WHERE kind='entity'"))
         prefer = {"tech": 1.3, "name": 1.3, "project": 1.4, "concept": 1.2, "person": 1.1, "org": 1.1, "place": 1, "thing": .8}
         medium = {brain.key(v) for v in SITES.values()} | {w for v in SITES.values() for w in brain.key(v).split()}
-        titled = {k: c for k, c in db.execute("SELECT key, chat FROM sessions WHERE chat IS NOT NULL")}
         members = defaultdict(list)
         for m, c in cid.items():
             if c is not None:
                 members[c].append(m)
         weight = {r[0]: (r[3] or 0) + .05 * (r[4] or 1) for r in rows}
-        ctx_of = {m: ctx for m, ctx, *_ in rows}
         named = json.loads(self.meta("topic_names") or "{}")  # AI names, keyed by what the topic is made of
         renamed = json.loads(self.meta("topic_renames") or "{}")  # the user's names, per conversation: they outlive new chats
         self._naming, self._topic_toks = {}, {}
         for c, ms in members.items():
             rep = max(ms, key=lambda m: weight.get(m, 0))
             summ = (db.execute("SELECT label FROM nodes WHERE id=?", (rep,)).fetchone() or [""])[0][:200]
-            owners = sorted(gown.get(top[unit[ms[0]]], ()), key=lambda n: (n not in files, -len(n), n))
+            owners = sorted(gown.get(top[unit[ms[0]]], ()), key=lambda n: (len(n), n)) or \
+                sorted({n for m in ms for n in soft.get(unit_ctx[m], ())}, key=lambda n: (n not in files, -len(n), n))
             convs = Counter(unit_ctx[m] for m in ms if unit_ctx.get(m) in titled)
+            real = lambda w: len(w) >= 3 and brain.is_word(w) and w not in brain.STOP
+            often = 2 if len(ms) >= 4 else 1
             if c == 0:
                 name = "About you"
             elif owners:
                 n = owners[0]
                 name = elabel.get(n) or elabel.get(n.replace("-", " ")) or n
-            elif convs and len(titled[convs.most_common(1)[0][0]]) <= 48:
+            elif convs:
                 name = titled[convs.most_common(1)[0][0]]
             else:
                 ents = Counter()
                 for e, lst in by_ent.items():
                     k = sum(w for m, w in lst if cid.get(m) == c)
-                    if k and e in info and brain.key(info[e][0]) not in medium:
+                    # a name is a thing people know or real words, said more than once: never a typo or a pasted line.
+                    # A made-up word ("DoorTalk") names a topic as its project or its chat's title, not from here
+                    lab = info[e][0].lower() if e in info else ""
+                    words = lab.split() if re.fullmatch(r"[a-z][a-z '-]*", lab) else []  # letters only: no "lib64", no paths
+                    if k and e in info and brain.key(info[e][0]) not in medium and sum(cid.get(m) == c for m, _ in lst) >= often and (
+                            lab in brain.GAZ or words and (all(real(w) for w in words) or info[e][1] in ("person", "org", "place")
+                                                           and not any(brain.misspelt(w) for w in words))):
                         ents[e] = k * math.log(1 + len(live_set) / len(lst)) * prefer.get(info[e][1], 1)
                 nm = []
                 for e, _ in ents.most_common(6):  # two names that don't repeat each other
@@ -1100,13 +1206,17 @@ class Graph:
                     if len(nm) == 2:
                         break
                 if not nm:
-                    tc = Counter()
+                    tc, said = Counter(), Counter()
                     for m in ms:
                         for t, v in self.vec.get(m, {}).items():
-                            if not t.startswith(("@", "#")):
+                            if not t.startswith(("@", "#")) and real(t):
                                 tc[t] += v * self.idf(t)
-                    nm = [t for t, _ in tc.most_common(2)]
-                name = " · ".join(nm) or "misc"
+                                said[t] += 1
+                    nm = [t for t, _ in tc.most_common() if said[t] >= often][:2]
+                    nm = nm if len(nm) == 2 else []  # one everyday word ("web") says less than which chat it was
+                when = datetime.fromtimestamp(max(r[0] for r in db.execute(
+                    "SELECT created FROM nodes WHERE id IN (%s)" % ",".join("?" * len(ms)), ms)))
+                name = " · ".join(nm) or f"{ai_of((ctx_of[ms[0]] or '').split('/')[0].split(':')[0]) or 'A'} chat · {when.day} {when:%b}"
             toks = sorted({ctx_of.get(m) or "k:" + mkeys.get(m, "") for m in ms})
             sig = hashlib.sha1("|".join(toks).encode()).hexdigest()[:16]
             ai_name = named.get(sig) if c != 0 else None
@@ -1955,6 +2065,12 @@ def open_data(path):
     aid = migrate_accounts()
     # data dirs made before 'local_account' was stored: the first admin, pinned now so later role changes can't move it
     AUTH.execute("INSERT OR IGNORE INTO meta SELECT 'local_account', min(id) FROM accounts WHERE role='admin' HAVING count(*)")
+    deep.READER = (AUTH.execute("SELECT v FROM meta WHERE k='reader'").fetchone() or [None])[0]  # the admin's choice in Setup
+    deep.BATTERY = {"1": True, "0": False}.get((AUTH.execute("SELECT v FROM meta WHERE k='battery'").fetchone() or [None])[0])
+    try:  # the admin's AI choices: which provider first, each paid key's model, the monthly limit
+        ai.configure(**{**ai.DEFAULTS, **json.loads((AUTH.execute("SELECT v FROM meta WHERE k='ai_settings'").fetchone() or ["{}"])[0])})
+    except (ValueError, TypeError):
+        ai.configure(**ai.DEFAULTS)  # a model that's no longer offered: back to free first, cheapest model
     return aid
 
 
@@ -2074,6 +2190,20 @@ def fields(b, allowed):
             v = hash_password(v)
         out[k] = int(v) if k == "hidden" else v
     return out
+
+
+def set_battery(allow):
+    """Setup's switch for the whole install: may the model read while a laptop is on battery? Waiting is the default."""
+    r = deep.battery(allow)  # raises on anything but true or false
+    AUTH.execute("INSERT OR REPLACE INTO meta VALUES('battery', ?)", ("1" if allow else "0",))
+    return r
+
+
+def set_reader(reader):
+    """Setup's choice of reader, for the whole install: 'accurate' (the model reads every chat message) or 'light' (rules only)."""
+    r = deep.choose(reader)  # raises on anything else, or when this install can't run the model
+    AUTH.execute("INSERT OR REPLACE INTO meta VALUES('reader', ?)", (reader,))
+    return r
 
 
 def admins():
@@ -2262,31 +2392,54 @@ def setup_status(g, base):
                 "FROM captures WHERE coalesce(url, '') NOT LIKE 'memory://%' AND site IS NOT 'agent' AND length(text) <= 1500"))))}
 
 
-def save_ai_key(provider, key):
-    """A free AI key pasted into the Setup page: tried once, then saved to <data>/ai_keys (600). Never read back."""
-    var = {"gemini": "GEMINI_KEY", "groq": "GROQ_KEY"}.get(str(provider).lower())
+def set_ai(b):
+    """Setup's AI choices for the whole install: {first?: provider | null, models?: {provider: model}, cap?: dollars}.
+    Unless someone changes them: free keys first, each paid key's cheapest model, the limit from MINDBATON_AI_MONTHLY_USD."""
+    if not isinstance(b.get("models", {}), dict):
+        raise ValueError("models is {provider: model}")
+    st = ai.configure(**({"first": b["first"]} if "first" in b else {}), models=b.get("models"), cap=b.get("cap"))
+    AUTH.execute("INSERT OR REPLACE INTO meta VALUES('ai_settings', ?)", (json.dumps({"first": st["first"], "models": st["models"], "cap": st["spend"]["cap"]}),))
+    return {"ai": st}
+
+
+def save_ai_key(provider, key, remove=False):
+    """An AI key pasted into the Setup page: tested with the provider, then saved to <data>/ai_keys (600). Never read
+    back, never logged. remove: take that provider's key out again (to change one, paste the new key over it)."""
+    var, url, head = {
+        "gemini": ("GEMINI_KEY", "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", None),
+        "groq": ("GROQ_KEY", "https://api.groq.com/openai/v1/chat/completions", None),
+        "openai": ("OPENAI_KEY", "https://api.openai.com/v1/models", lambda k: {"Authorization": "Bearer " + k}),
+        "claude": ("ANTHROPIC_KEY", "https://api.anthropic.com/v1/models", lambda k: {"x-api-key": k, "anthropic-version": "2023-06-01"}),
+    }.get(str(provider).lower(), (None, None, None))
     key = str(key or "").strip()
-    if not var or not re.fullmatch(r"[A-Za-z0-9._\-]{20,200}", key):
-        raise ValueError("that doesn't look like a Gemini or Groq key")
-    import urllib.request, urllib.error
-    url, model = ("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "gemini-flash-lite-latest") if var == "GEMINI_KEY" \
-        else ("https://api.groq.com/openai/v1/chat/completions", "openai/gpt-oss-20b")
-    req = urllib.request.Request(url, json.dumps({"model": model, "messages": [{"role": "user", "content": "ok"}], "max_tokens": 5}).encode(),
-                                 {"Content-Type": "application/json", "Authorization": "Bearer " + key, "User-Agent": "mindbaton/1.0"})
-    try:
-        urllib.request.urlopen(req, timeout=20).read()
-    except urllib.error.HTTPError as e:
-        if e.code in (400, 401, 403):
-            raise ValueError("the provider refused that key — copy it again from their site")
-    except OSError:
-        raise ValueError("couldn't reach the provider to test the key — check the internet connection")
+    if not var or not remove and not re.fullmatch(r"[A-Za-z0-9._\-]{20,300}", key):
+        raise ValueError("that doesn't look like a Gemini, Groq, OpenAI or Claude key")
+    if not remove:
+        import urllib.request, urllib.error
+        if head:  # the paid ones: listing their models proves the key and costs nothing
+            req = urllib.request.Request(url, headers=dict(head(key), **{"User-Agent": "mindbaton/1.0"}))
+        else:
+            model = "gemini-flash-lite-latest" if var == "GEMINI_KEY" else "openai/gpt-oss-20b"
+            req = urllib.request.Request(url, json.dumps({"model": model, "messages": [{"role": "user", "content": "ok"}], "max_tokens": 5}).encode(),
+                                         {"Content-Type": "application/json", "Authorization": "Bearer " + key, "User-Agent": "mindbaton/1.0"})
+        try:
+            urllib.request.urlopen(req, timeout=20).read()
+        except urllib.error.HTTPError as e:
+            if e.code in (400, 401, 403):
+                raise ValueError("the provider refused that key — copy it again from their site")
+        except OSError:
+            raise ValueError("couldn't reach the provider to test the key — check the internet connection")
     path = ai.KEYS
     lines = [l for l in (open(path).read().splitlines() if os.path.exists(path) else []) if not l.startswith(var + "=")]
     fd = os.open(path + ".tmp", os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f:
-        f.write("\n".join(lines + [f"{var}={key}"]) + "\n")
+        f.write("\n".join(lines + ([] if remove else [f"{var}={key}"])) + ("\n" if lines or not remove else ""))
     os.replace(path + ".tmp", path)
-    return {"saved": var.split("_")[0].title(), "ai": ai.status()}
+    name = next(n for n, v, *_ in ai.PROVIDERS if v == var)
+    if remove and ai.FIRST == name:  # the key that answered first is gone: back to free first, not to it again later
+        with LOCK:
+            set_ai({"first": None})
+    return {"removed" if remove else "saved": name, "ai": ai.status()}
 
 
 FILES = {"/", "/index.html", "/manifest.webmanifest", "/sw.js", "/share.html", "/mcp_stdio.py", "/mindbaton.py"}  # public, served as files
@@ -2814,9 +2967,9 @@ class Handler(SimpleHTTPRequestHandler):
             turns = [{"role": t["role"], "text": t["text"]} for t in m["messages"]]
             got = ai.cached(self.g, sid, turns)
             if not got:
-                if ai.enabled() and len(turns) >= 2:
+                if ai.free() and len(turns) >= 2:  # looking at a chat is not asking for its summary: free providers only
                     ai.warm(self.g, LOCK, sid)
-                return self.reply(200, {"pending": ai.enabled() and len(turns) >= 2, "enabled": ai.enabled()})
+                return self.reply(200, {"pending": ai.free() and len(turns) >= 2, "enabled": ai.enabled()})
             sec = ai.sections(got["text"])
             return self.reply(200, {"summary": sec.get("Summary"), "next": sec.get("Next step"), "by": got["by"], "sections": sec})
         routes = {
@@ -2880,14 +3033,22 @@ class Handler(SimpleHTTPRequestHandler):
                   "/topic/undo": self.g.undo_merge}
         if p == "/import":  # takes the lock per fact itself
             return self.api(lambda: import_memory(self.g, b), lock=False)
-        if p in ("/brain/reread", "/brain/pause"):  # the model runs on this computer for everyone: admins only
+        if p in ("/brain/reread", "/brain/pause", "/brain/reader", "/brain/battery"):  # the model runs on this computer for everyone: admins only
             if self.me["role"] != "admin":
                 return self.reply(403, {"error": "only an admin can run the model"})
+            if p == "/brain/reader":
+                return self.api(lambda: set_reader(b.get("reader")))
+            if p == "/brain/battery":
+                return self.api(lambda: set_battery(b.get("allow")))
             return self.api(lambda: deep.force(self.g) if p == "/brain/reread" else deep.pause(b.get("paused", True)))
+        if p == "/settings/ai":  # which provider first, which model, the monthly limit: install-wide, so admins only
+            if self.me["role"] != "admin":
+                return self.reply(403, {"error": "only an admin can change the AI settings"})
+            return self.api(lambda: set_ai(b))
         if p == "/settings/ai-key":  # install-wide, so admins only; tests the key with the provider: never under the lock
             if self.me["role"] != "admin":
                 return self.reply(403, {"error": "only an admin can set the AI key"})
-            return self.api(lambda: save_ai_key(b.get("provider"), b.get("key")), lock=False)
+            return self.api(lambda: save_ai_key(b.get("provider"), b.get("key"), b.get("remove") is True), lock=False)
         if p not in routes:
             return self.reply(404, {"error": "not found"})
         self.api(routes[p])
@@ -3347,12 +3508,35 @@ def authcheck():
     assert "quillbeam" not in txt("GET", "/export", token=paired)
     assert st("POST", "/capture", {"text": "I bought a unicycle called Wobblefin"}, token=paired) == 200
     assert "wobblefin" not in txt("GET", "/export", cookie=a) and "wobblefin" in txt("GET", "/export", cookie=b)
-    # admins only: people, roles and the install-wide AI key
+    # admins only: people, roles, the install-wide AI key and who reads (the model or the rules alone)
     for m, path, body in (("GET", "/api/accounts", None), ("POST", "/api/accounts", {"username": "eve", "password": "12345678"}),
                           ("PATCH", f"/api/accounts/{maya}", {"role": "member"}), ("PATCH", f"/api/accounts/{sam['id']}", {"role": "admin"}),
-                          ("DELETE", f"/api/accounts/{maya}?confirm=maya", None), ("POST", "/settings/ai-key", {"provider": "groq", "key": "x"})):
+                          ("DELETE", f"/api/accounts/{maya}?confirm=maya", None), ("POST", "/settings/ai-key", {"provider": "groq", "key": "x"}),
+                          ("POST", "/brain/reader", {"reader": "light"}), ("POST", "/brain/battery", {"allow": True}),
+                          ("POST", "/settings/ai", {"first": "Claude"})):
         assert call(m, path, body, cookie=b)[0] == 403, path
     assert st("POST", "/settings/ai-key", {"provider": "groq", "key": "x"}, cookie=a) == 400
+    assert st("POST", "/settings/ai-key", {"provider": "claude", "key": "x"}, cookie=a) == 400  # a paid provider: same checks
+    with open(ai.KEYS, "w") as f:
+        f.write("ANTHROPIC_KEY=sk-ant-" + "t" * 30 + "\nGROQ_KEY=gsk_" + "t" * 30 + "\n")
+    s, _, d = call("POST", "/settings/ai-key", {"provider": "claude", "remove": True}, cookie=a)
+    assert s == 200 and d["removed"] == "Claude" and "sk-ant-" not in json.dumps(d) and open(ai.KEYS).read().startswith("GROQ_KEY="), d
+    assert "gsk_" not in json.dumps(call("GET", "/status", cookie=a)[2]) and "gsk_" not in json.dumps(call("GET", "/ai", cookie=b)[2]), "a key is never sent back"
+    os.remove(ai.KEYS)
+    assert call("GET", "/ai", cookie=a)[2]["first"] is None, "unless an admin says otherwise: free keys first"
+    assert all(st("POST", "/settings/ai", x, cookie=a) == 400 for x in ({"first": "Bard"}, {"models": {"Claude": "x"}}, {"cap": -3}, {"models": 1}))
+    d = call("POST", "/settings/ai", {"first": "Claude", "models": {"Claude": "claude-sonnet-5-5"}, "cap": 5}, cookie=a)[2]["ai"]
+    assert d["first"] == "Claude" and d["models"]["Claude"] == "claude-sonnet-5-5" and d["spend"]["cap"] == 5, d
+    assert json.loads(AUTH.execute("SELECT v FROM meta WHERE k='ai_settings'").fetchone()[0])["first"] == "Claude", "kept for the next start"
+    assert call("POST", "/settings/ai", {"first": None}, cookie=a)[2]["ai"]["first"] is None
+    ai.configure(**ai.DEFAULTS)
+    assert st("POST", "/brain/reader", {"reader": "fast"}, cookie=a) == 400 and call("GET", "/status", cookie=a)[2]["brain"]["reader"] is None
+    assert call("POST", "/brain/reader", {"reader": "light"}, cookie=a)[2] == {"reader": "light", "enabled": False}
+    assert call("GET", "/status", cookie=b)[2]["brain"]["reader"] == "light", "one choice for everyone on the install"
+    assert st("POST", "/brain/battery", {"allow": "yes"}, cookie=a) == 400 and call("GET", "/status", cookie=a)[2]["brain"]["battery"] is False
+    assert call("POST", "/brain/battery", {"allow": True}, cookie=a)[2] == {"battery": True}
+    assert call("GET", "/status", cookie=b)[2]["brain"]["battery"] is True, "waiting for the charger is the default; an admin lifts it"
+    deep.READER = deep.BATTERY = None
     listed = call("GET", "/api/accounts", cookie=a)[2]
     assert [x["username"] for x in listed] == ["maya", "sam"] and set(listed[0]) == set(ACCOUNT), listed
     # everyone edits their own name and colour (nothing else); admins hide, promote, reset
@@ -3474,6 +3658,7 @@ if __name__ == "__main__":
         sense.selfcheck()
         learn.selfcheck()
         deep.selfcheck()
+        ai.selfcheck()
         handoff.selfcheck()
         selfcheck()
         authcheck()

@@ -51,8 +51,10 @@ can run `python3 server.py --reset-password`, and they can read the data folder 
   encryption and keep backups private.
 - **The AIs you connect.** An AI with a token can read what it recalls, and a full token can change and forget memories.
   Give each app its own token and revoke the ones you stop using.
-- **The optional AI provider.** If you add a Gemini or Groq key, the text needed for a summary, topic name or search
-  answer is sent to that provider.
+- **The optional AI provider.** If you add a Gemini, Groq, OpenAI or Claude key, the text needed for a summary, topic
+  name or search answer is sent to that provider. The key itself is stored in `ai_keys` (`0600`), is never returned by
+  any endpoint or written to a log, and only an admin can add or remove one. Paid keys stop at a monthly limit
+  (see [Configuration](docs/configuration.md#paid-keys-only-when-needed)); set a limit on the provider's site as well.
 - **What you type into AI sites.** The browser extension reads what you send on supported AI chat sites — that's its
   job. Install it only from your own Mindbaton.
 - **Prompt injection.** Memories are text that AIs read. A web page or document you paste into a chat could contain

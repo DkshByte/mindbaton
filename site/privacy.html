@@ -15,7 +15,7 @@
 <main>
 <h1>Privacy</h1>
 <p class="lede">Your memory lives on a computer you own. We never see it.</p>
-<p class="date">Last updated: 25 September 2026</p>
+<p class="date">Last updated: 2 October 2026</p>
 
 <div class="box"><p><b>In short:</b> Mindbaton is software you run yourself. The Mindbaton project runs no servers that
 receive your memories, chats, keys or usage. There are no accounts with us, no analytics, no ads and no tracking.</p></div>
@@ -54,9 +54,26 @@ consent banner is needed for it.</p>
 memories is sent. Turn it off with <code>MINDBATON_UPDATE_CHECK=0</code>.</p>
 
 <h2>Optional AI features</h2>
-<p>Mindbaton works fully offline. If you choose to add a free <b>Google Gemini</b> or <b>Groq</b> API key, your server sends
-the text needed for summaries, topic names and search answers to that provider, under their terms and privacy policy.
-Remove the key and this stops. Without a key, nothing leaves your computer.</p>
+<p>Mindbaton works fully offline. If you choose to add an API key for <b>Google Gemini</b>, <b>Groq</b>, <b>OpenAI</b> or
+<b>Anthropic's Claude</b>, this is what happens:</p>
+<ul>
+<li><b>What is sent.</b> Your server sends the text needed for one hand-off summary, set of topic names or search answer
+(the chat or the memories it is about) to the provider that answers, and nothing else. It goes straight from your server
+to that provider, never through the Mindbaton project.</li>
+<li><b>Who receives it.</b> Only the providers you added a key for. By default free keys are tried first and a paid key
+only when they can't answer; you can choose which one answers first in Setup. Each provider handles what it receives
+under its own terms and privacy policy, which may include keeping it for a time:
+<a href="https://policies.google.com/privacy">Google</a>, <a href="https://groq.com/privacy-policy/">Groq</a>,
+<a href="https://openai.com/policies/privacy-policy/">OpenAI</a>,
+<a href="https://www.anthropic.com/legal/privacy">Anthropic</a>.</li>
+<li><b>Your keys.</b> A key is stored in a file on your own server that only the server's user can read. It is used only
+to call its own provider. It is never shown again in the app, never written to a log and never sent to the Mindbaton
+project.</li>
+<li><b>What it costs.</b> The running total Mindbaton shows for paid keys is counted and kept on your own computer. The
+project never sees it, and has no access to your account or bill with any provider.</li>
+<li><b>Stopping it.</b> Remove a key in Setup and nothing more is sent to that provider. Without any key, nothing leaves
+your computer.</li>
+</ul>
 
 <h2>The browser extension</h2>
 <ul>

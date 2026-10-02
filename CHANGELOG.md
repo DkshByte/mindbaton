@@ -2,6 +2,34 @@
 
 ## Unreleased
 
+- **OpenAI and Claude keys.** Setup → AI keys now takes paid keys next to the free Gemini and Groq ones, and each key
+  can be removed again. A paid key is used only when it's needed: after the free providers, with the provider's cheapest
+  model, never to prepare a summary nobody asked for, at most once an hour for topic names, and only until the month's
+  estimated cost reaches `MINDBATON_AI_MONTHLY_USD` (2 US dollars by default). Setup shows the month's total. Keys are
+  tested before they're saved, stored readable only by you, never sent back to a browser, and Setup warns when you're
+  about to paste one over plain HTTP.
+- **You choose which key answers.** The same card lets an admin put any key first, pick the model each paid key runs
+  (with its price) and set the monthly limit. Left alone it stays as above: free first, cheapest model. The card, the
+  Terms and the Privacy page now say plainly that what a provider charges is between you and them, that Mindbaton's
+  limit is an estimate, and that the project is not responsible for any charges.
+- **Topics with common sense.** A project is its folder, wherever it lives (`~/Documents/plant log` is "plant log", not
+  "documents"), and everything that points at it lands in its topic: memory files kept for it or naming its path, a second
+  checkout, a chat that links its repo, a chat whose title names it. A short untitled chat that fits nothing goes to
+  Loose ends instead of becoming a topic. Topics are never named after a typo or a pasted line any more: a name is the
+  project, the title the app gave the chat, or real words; failing that, "Claude chat · 2 Oct". An import is called
+  "Memory from ChatGPT", not "import". The titles the browser extension sees now count as titles. Memory is re-read
+  once after the update.
+- **Accurate or Light: you choose who reads.** Setup → Mindbaton's own model now asks who reads what you type.
+  *Accurate* makes the model the main reader: it reads every message typed in a chat (not only the ones the rules found
+  nothing in) and the rules still check each fact. *Light* is the rules alone: nothing downloaded, nothing in the
+  background. Unseen everyday sentences: 56/60 facts with Accurate, 50/60 with the model as a fallback (how it worked
+  before, and still does until you choose), 33/60 with the rules alone. One choice for the whole install, admins only;
+  `MINDBATON_BRAIN=off` still turns the model off for good.
+- **Only read while plugged in.** A switch under that choice, on by default: on a laptop the model waits for the
+  charger. Turning it off warns first (it drains the battery faster and the laptop can get warm); turning it back on
+  asks nothing. Admins only, one setting for the install.
+- A click on empty space no longer redraws the page you're on (on Setup it dropped the keyboard focus), and the model's
+  status light is no longer green while it waits for the charger.
 - **A welcome on your first sign-in.** Instead of landing on Setup, a new person gets a few full-screen steps: what
   stays private and the Terms to agree to, a look to pick, the model that runs on this computer, an optional free AI
   key (admins), and connecting a first AI. That last step finishes by itself the moment the first memory arrives.

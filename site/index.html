@@ -390,7 +390,7 @@ That's where we stopped. My last message is the final "Me:" line above — carry
     <div><dt>Cloud</dt><dd><b>None.</b> It runs on your hardware and keeps everything in your <code>data</code> folder.</dd></div>
     <div><dt>Account with us</dt><dd><b>None.</b> Accounts are local: everyone in your home can have one, each with a private memory.</dd></div>
     <div><dt>Telemetry</dt><dd><b>None.</b> Nothing phones home.</dd></div>
-    <div><dt>What leaves</dt><dd><b>Nothing by default.</b> Add a free Gemini or Groq key and only the text for a summary, a topic name or an answer goes to that provider.</dd></div>
+    <div><dt>What leaves</dt><dd><b>Nothing by default.</b> Add an AI key (free Gemini or Groq, or your own paid OpenAI or Claude key) and only the text for a summary, a topic name or an answer goes to that provider.</dd></div>
     <div><dt>Secrets</dt><dd>API keys and passwords you paste into a chat are blanked out before anything is saved.</dd></div>
     <div><dt>Forgetting</dt><dd>One click on any memory, or ask an AI to forget over MCP. It stays forgotten, even after a full rebuild.</dd></div>
     <div><dt>Lock-in</dt><dd>Export everything as JSON, Neo4j Cypher or GraphML whenever you like.</dd></div>
@@ -413,7 +413,7 @@ That's where we stopped. My last message is the final "Me:" line above — carry
     <ol class="steps" role="tabpanel" id="p-script" aria-labelledby="t-script">
       <li><p>Run this in a terminal on the computer that stays on.</p>
         <div class="cmd sm"><code id="c1">git clone https://github.com/DkshByte/mindbaton &amp;&amp; cd mindbaton &amp;&amp; ./install.sh</code><button class="btn sm" type="button" data-copy="#c1"><span data-label>Copy</span></button></div></li>
-      <li><p>The installer checks Python, asks for your name and a password, offers free AI keys (skip them if you like) and connects the AI tools it finds.</p></li>
+      <li><p>The installer checks Python, asks for your name and a password, offers free AI keys (skip them if you like; paid OpenAI and Claude keys can be added later in Setup) and connects the AI tools it finds.</p></li>
       <li><p>Open the link it prints, or scan its QR code with your phone, and sign in.</p></li>
     </ol>
     <ol class="steps" role="tabpanel" id="p-docker" aria-labelledby="t-docker" hidden>
@@ -436,7 +436,7 @@ That's where we stopped. My last message is the final "Me:" line above — carry
     <h2 id="faq-h">Questions</h2>
   </div>
   <div class="card qa">
-    <details><summary>Do I need an AI key or a graphics card?</summary><p>No. Understanding is plain rules and a built-in table of word meanings, so it works offline on any computer. With 12 GB of memory or more, Mindbaton's own small model (1.3 GB, trained only on made-up examples) also reads what the rules miss, on that computer. A free Gemini or Groq key is optional and only makes summaries and topic names nicer.</p></details>
+    <details><summary>Do I need an AI key or a graphics card?</summary><p>No. Understanding is plain rules and a built-in table of word meanings, so it works offline on any computer. With 12 GB of memory or more, Mindbaton's own small model (1.3 GB, trained only on made-up examples) also reads what the rules miss, on that computer. An AI key is optional and only makes summaries and topic names nicer: a free Gemini or Groq key, or for the best results your own paid OpenAI or Claude key, which stops at a monthly limit you set.</p></details>
     <details><summary>Does anything I say leave my computer?</summary><p>Not by default. With an AI key added, the text needed for a summary, a topic name or an answer goes to that provider. Leave the key out and nothing does.</p></details>
     <details><summary>What happens when a chat hits its limit?</summary><p>Mindbaton turns the chat into a hand-off pack: the goal, decisions, open questions, exact names and code, and the latest messages word for word. Give it to another AI and it carries on from the last message.</p></details>
     <details><summary>Can I bring what ChatGPT already remembers?</summary><p>Yes. Setup gives you one prompt to paste into ChatGPT, Claude, Gemini and the others. Paste the answer back, check each fact, and import. Coding agents' memory files come in when you connect them.</p></details>

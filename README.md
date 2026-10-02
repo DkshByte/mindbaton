@@ -47,6 +47,8 @@ No cloud, no account, no subscription. It's a small Python program and one datab
 - **Reads the way you actually type** — "switched jobs, I'm at Stripe now", "not a coffee person tbh", "bought the
   e-bike yesterday!": a small learner reads what no rule covers, only when it's sure. It learned from made-up examples,
   never from your messages.
+- **Accurate or Light, your choice** — in Setup, pick who reads what you type: Mindbaton's own model with the rules
+  checking every fact (Accurate), or the rules alone with nothing to download (Light).
 - **Its own model, on your computer** — on a laptop with 12 GB or more, Mindbaton's own small model (1.3 GB, trained
   only on made-up examples) reads in the background what the rules couldn't, and the rules check every fact before
   it's saved. On a test of sentences it never saw it caught 28 of 30 facts, with no made-up ones.
@@ -57,7 +59,8 @@ No cloud, no account, no subscription. It's a small Python program and one datab
 - **Forget in one click** — and it stays forgotten, even after a rebuild.
 - **Secrets stay out** — API keys and passwords you paste into a chat are blanked out before anything is saved.
 - **Works offline** — understanding is plain rules, no AI needed. Add a free Gemini or Groq key if you'd like nicer
-  hand-off summaries and topic names.
+  hand-off summaries and topic names. OpenAI and Claude keys work too: they're used only when the free ones can't
+  answer, and stop at a monthly limit you set.
 - **Phone app** — install it on your phone; on Android, share things into it from any app.
 - **Bring your old memory** — paste what ChatGPT, Claude, Gemini and others remember about you (one ready-made prompt),
   check every fact, import. Coding agents' memory files (Claude Code, Codex, Gemini CLI, OpenCode…) come in when you connect them.
@@ -129,8 +132,9 @@ Each device gets its own token, which you can see and revoke any time under **Se
 
 - Mindbaton runs on your hardware and keeps everything in one SQLite file in `data/`. Nothing is sent anywhere —
   no telemetry, no account, no cloud.
-- The only time it talks to the internet is if **you** add a free AI key: then the text needed for a hand-off summary,
-  a topic name or a search answer goes to that provider (Gemini or Groq). Leave the key out and it never does.
+- The only time it talks to the internet is if **you** add an AI key: then the text needed for a hand-off summary,
+  a topic name or a search answer goes to that provider (Gemini, Groq, OpenAI or Claude). Leave the key out and it
+  never does.
 - Everything is behind your password, and every app or device uses its own revocable token.
 - Want to reach it away from home? Use HTTPS (Tailscale or Cloudflare Tunnel) — never open the port on your router.
   See [docs/remote-access.md](docs/remote-access.md).

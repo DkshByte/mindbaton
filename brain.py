@@ -12,7 +12,7 @@ The query side (`query`) expands synonyms and categories and works out which rel
 The system dictionary (/usr/share/dict) tells real words from names: "jellyfin" and "razorpay" are not English, so
 they are names even when typed in lower case. Without the file everything still works, just less sharp.
 """
-import calendar, gzip, math, os, re, time
+import calendar, difflib, functools, gzip, math, os, re, time
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 
@@ -320,6 +320,26 @@ def typo(w):
         return True
     m = re.fullmatch(r"(\w{4,})(able|ible)", w)
     return bool(m and m[1] not in DICT and near_word(m[1]))  # "scrll"+able is a typo; "stream"+able is a word
+
+
+@functools.lru_cache(maxsize=4096)
+def misspelt(w):
+    """An unknown word that is a real one typed badly, further off than one typo: "betifull", "userser". Close (4 letters
+    in 5) to a dictionary word that starts the same and is about as long. Names that look like nothing ("mindbaton") pass."""
+    w = w.lower()
+    if not DICT or not w.isalpha() or len(w) < 5 or w in DICT or w in GAZ:
+        return False
+    return typo(w) or bool(difflib.get_close_matches(w, _by_start(w[0]).get(len(w), ()), 1, .8))
+
+
+@functools.lru_cache(maxsize=32)
+def _by_start(c):
+    out = {}
+    for d in DICT:
+        if d[:1] == c:
+            for n in range(max(len(d) - 2, 5), len(d) + 3):
+                out.setdefault(n, []).append(d)
+    return out
 
 
 JARGON = set("""config configs repo repos auth env envs cli ui ux db dev devs prod admin app apps docs doc spec specs todo todos

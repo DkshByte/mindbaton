@@ -15,6 +15,14 @@ left from its real speed, facts found (each checked by the rules), read this ses
 and memory — over the last two minutes. Downloading shows MB, measured speed and time left. Idle, it goes back to one
 line of status. Graphs here are data, not decoration.
 
+Above the stats, **Who reads what you type**: two option tiles that are real radios (arrows and Space work) — Accurate
+(the model reads every message) and Light (the rules alone). Each says what it does, what it catches and what it
+costs (the cost line in Geist Mono). The chosen tile is `--panel-2` with an `--accent-line` border and a filled check;
+nothing is coloured. Until someone chooses, the one that fits this computer carries a "Recommended here" pill. Light
+hides Re-read everything. Under the tiles, one checkbox, **Only read while plugged in** (on by default): unticking it
+opens a sheet that says what reading on battery costs, with the safe answer as the primary button; ticking it back asks
+nothing.
+
 ## The live card (sidebar)
 A pill beside the wordmark (state dot + word) opens a card under it — one card instead of a "Live" dot: an honest state — **Live** (a radiating ring only while memories
 arrive, the last 10 minutes; still otherwise), **Quiet** (amber, nothing for 2 days), **Reconnecting…** (a spinner) —
