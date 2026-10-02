@@ -47,6 +47,8 @@ No cloud, no account, no subscription. It's a small Python program and one datab
 - **Reads the way you actually type** — "switched jobs, I'm at Stripe now", "not a coffee person tbh", "bought the
   e-bike yesterday!": a small learner reads what no rule covers, only when it's sure. It learned from made-up examples,
   never from your messages.
+- **Accurate or Light, your choice** — in Setup, pick who reads what you type: Mindbaton's own model with the rules
+  checking every fact (Accurate), or the rules alone with nothing to download (Light).
 - **Its own model, on your computer** — on a laptop with 12 GB or more, Mindbaton's own small model (1.3 GB, trained
   only on made-up examples) reads in the background what the rules couldn't, and the rules check every fact before
   it's saved. On a test of sentences it never saw it caught 28 of 30 facts, with no made-up ones.

@@ -19,7 +19,7 @@ restart Mindbaton. Real environment variables win over the file. With Docker, us
 | `MINDBATON_GEMINI_MODEL` | `gemini-3.6-flash` | Gemini model for hand-off summaries. |
 | `MINDBATON_GROQ_MODEL` | `openai/gpt-oss-120b` | Groq model, used when Gemini isn't available. |
 | `GEMINI_KEY`, `GROQ_KEY` | *(none)* | Keys for the optional AI. Easier: paste them on the Setup page, which tests and saves them to `ai_keys` in your data folder. |
-| `MINDBATON_BRAIN` | `auto` | Mindbaton's own model reads, in the background, what the rules couldn't (see below). `auto` = on when this computer has 12 GB of memory or more; `on`; `off`. |
+| `MINDBATON_BRAIN` | `auto` | Mindbaton's own model (see below). Who reads is chosen on the Setup page (Accurate or Light); until someone chooses, `auto` = the model reads what the rules couldn't when this computer has 12 GB of memory or more; `on` = the same on any computer; `off` = never, whatever Setup says. |
 | `MINDBATON_BRAIN_URL` | *(none)* | Use a model server elsewhere instead (a `llama-server` or LM Studio on your laptop, e.g. `http://192.168.1.20:8080`): nothing is downloaded here. |
 | `MINDBATON_BRAIN_MODEL` | `1972521116s/mindbaton-brain-2b` | The Hugging Face repo the model comes from. |
 | `MINDBATON_BRAIN_BATTERY` | `0` | `1` lets the model read while a laptop runs on battery. |
@@ -50,11 +50,18 @@ short answers on the search page (with the memories they came from). It tries Ge
 Rules read most of what you tell your AIs. For the rest (the way people really type: "5-a-side football every thursday",
 "zero caffeine since march") Mindbaton has its own small model: Qwen3.5-2B fine-tuned on made-up examples only, 1.3 GB.
 
-- On a computer with 12 GB of memory or more it turns on by itself. The first time, it downloads the model and the
-  llama.cpp engine (about 1.3 GB, once) into `brain/` in your data folder.
-- It only reads messages the rules found nothing in, one at a time, at low priority on half the processor, and shuts the
-  engine down after 5 idle minutes. On a laptop it waits while you're on battery. It uses about 1.5 GB of memory while
-  reading.
+- An admin chooses who reads on the Setup page, for everyone on the install:
+  - **Accurate**: the model is the main reader. It reads every message typed in a chat, and the rules check each fact.
+    On sentences it never saw, with wording no rule was written for, this caught 56 of 60 facts.
+  - **Light**: the rules read alone. Nothing is downloaded and nothing runs in the background. On the same sentences
+    the rules caught 33 of 60.
+  - Until someone chooses, it works as before: on a computer with 12 GB of memory or more the model turns on by itself
+    and reads only the messages the rules found nothing in.
+- Choosing Accurate covers new messages from then on. **Re-read everything** on the same page has the model read the
+  older ones too.
+- The first time, it downloads the model and the llama.cpp engine (about 1.3 GB, once) into `brain/` in your data folder.
+- It reads one message at a time, at low priority on half the processor, and shuts the engine down after 5 idle
+  minutes. On a laptop it waits while you're on battery. It uses about 1.5 GB of memory while reading.
 - Everything stays on your computer. The rules check every fact it reads (the words must be in your message, never from
   a question or a "maybe") before it's saved, and what it read is kept, so it never reads the same message twice.
 - Mindbaton on a small server, but a laptop with memory to spare? Run `llama-server` on the laptop and set

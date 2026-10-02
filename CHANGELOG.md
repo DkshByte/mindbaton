@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Accurate or Light: you choose who reads.** Setup → Mindbaton's own model now asks who reads what you type.
+  *Accurate* makes the model the main reader: it reads every message typed in a chat (not only the ones the rules found
+  nothing in) and the rules still check each fact. *Light* is the rules alone: nothing downloaded, nothing in the
+  background. Unseen everyday sentences: 56/60 facts with Accurate, 50/60 with the model as a fallback (how it worked
+  before, and still does until you choose), 33/60 with the rules alone. One choice for the whole install, admins only;
+  `MINDBATON_BRAIN=off` still turns the model off for good.
+- A click on empty space no longer redraws the page you're on (on Setup it dropped the keyboard focus), and the model's
+  status light is no longer green while it waits for the charger.
 - **Pick your gradient.** Settings → Appearance (also Gradient in the account menu and the command palette) shows the
   theme and the glow behind the app as cards with live previews: 17 presets (most from uiGradients), Auto, which
   follows the time of day (Dawn, Day, Golden hour, Dusk, Night), and None. The new gradient spreads out from the card

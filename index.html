@@ -386,6 +386,28 @@ code { font: 12px var(--mono); color: var(--fg); background: var(--panel-3); bor
 .brain-stats b { font: 500 22px/1.25 var(--mono); letter-spacing: -.02em; }
 .brain-stats span { color: var(--fg-3); font-size: 12.5px; }
 .brain-now { margin: 0; font-size: 13.5px; }
+/* who reads what you type: the model (accurate) or the rules alone (light) — real radios, so arrows and Space work */
+.reader { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.reader h3 { grid-column: 1 / -1; margin: 2px 0 0; font-size: 13.5px; font-weight: 600; }
+.rd { position: relative; display: grid; gap: 6px; align-content: start; padding: 13px 14px 12px; border-radius: var(--r); border: 1px solid var(--line-2);
+  cursor: pointer; transition: border-color .15s, background-color .15s; }
+.rd:hover { border-color: var(--line-3); }
+.rd:has(input:checked) { border-color: var(--accent-line); background: var(--panel-2); }
+.rd:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rd:has(input:disabled) { cursor: not-allowed; }
+.rd:has(input:disabled:not(:checked)) > :not(input) { opacity: .55; }
+.rd:has(input:disabled):hover { border-color: var(--line-2); }
+.rd:has(input:disabled:checked):hover { border-color: var(--accent-line); }
+.rd input { position: absolute; opacity: 0; pointer-events: none; }
+.rd-h { display: flex; align-items: center; gap: 8px; min-height: 20px; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+.rd-mark { margin-left: auto; width: 18px; height: 18px; flex: none; border-radius: 50%; border: 1.5px solid var(--line-3); display: grid; place-items: center;
+  color: var(--brand-ink); transition: background-color .15s, border-color .15s; }
+.rd-mark svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 21; stroke-dashoffset: 21; transition: stroke-dashoffset .3s var(--ease) .05s; }
+.rd:has(input:checked) .rd-mark { background: var(--brand); border-color: var(--brand); }
+.rd:has(input:checked) .rd-mark svg { stroke-dashoffset: 0; }
+.rd p { margin: 0; color: var(--fg-2); font-size: 13.5px; text-wrap: pretty; }
+.rd small { color: var(--fg-3); font: 500 12px/1.45 var(--mono); }
 /* the model, live: what it is, what it's doing, how far, how long, what it costs */
 .bl { display: grid; gap: 12px; padding: 14px; border-radius: var(--r); border: 1px solid var(--line-2); background: var(--bg); }
 .bl-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--fg-2); }
@@ -1040,6 +1062,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
   .feat-top > .stack { display: none; }
   .brain-stats div { padding: 10px; }
   .brain-stats b { font-size: 17px; }
+  .reader { grid-template-columns: 1fr; }
   .tgrid, .imp-pair, .sk-grid { grid-template-columns: 1fr; }
   .jump { display: none; }
   .stat { padding: 10px 0; margin-right: 18px; }
@@ -1260,6 +1283,7 @@ function copyText(text) {  // plain http: no async clipboard API
 const aboutPref = () => { try { return localStorage.getItem("mb-handoff-about") === "1"; } catch { return false; } };
 document.addEventListener("change", e => {
   if (e.target.id === "ho-about") try { localStorage.setItem("mb-handoff-about", e.target.checked ? "1" : "0"); } catch {}
+  if (e.target.name === "reader") setReader(e.target);
 });
 async function handoff(sid, to, btn) {  // the pack (with the AI summary) waits in that AI's new chat; the extension puts it in the box
   const w = to ? window.open("about:blank", "_blank") : null;  // opened now, on the click, so the browser allows it
@@ -2021,11 +2045,35 @@ function brainPoll(b) {  // while it downloads or reads, only this step refreshe
   if (!(b.dl || b.state === "reading" || b.state === "starting" || b.forced && b.left || b.usage)) return;
   brainTimer = setTimeout(async () => {
     if (view !== "setup" || !$("#brain-step")) return;
-    let st;
-    try { st = await api("/status"); } catch { return brainPoll(b); }
-    const el = $("#brain-step");
-    if (el && view === "setup") { el.outerHTML = brainStep(st); stackApply(); }
+    try { await brainRefresh(); } catch { brainPoll(b); }
   }, 3000);
+}
+async function brainRefresh() {  // redraw only this step; a focused choice keeps the keyboard
+  const st = await api("/status"), el = $("#brain-step"), at = document.activeElement;
+  if (!el || view !== "setup") return;
+  const held = el.contains(at) && at.name === "reader" && at.value;
+  el.outerHTML = brainStep(st); stackApply();
+  if (held) $(`#brain-step input[name="reader"][value="${held}"]`)?.focus();
+}
+function readerChoice(b) {  // accurate: the model reads every message · light: the rules alone. One choice for the install
+  const admin = ACCT.role === "admin", low = b.memory_gb < 12 && !b.remote, best = b.can && b.mode !== "off" && !low ? "accurate" : "light";
+  const opt = (v, name, text, cost, off) => `<label class="rd"><input type="radio" name="reader" value="${v}"${b.reader === v ? " checked" : ""}${off ? " disabled" : ""}>
+    <span class="rd-h">${name}${best === v && !b.reader ? `<span class="pill">Recommended here</span>` : ""}<span class="rd-mark" aria-hidden="true">${TICK}</span></span>
+    <p>${text}</p><small>${cost}</small></label>`;
+  return `<div class="reader" role="radiogroup" aria-labelledby="reader-h"><h3 id="reader-h">Who reads what you type</h3>
+    ${opt("accurate", "Accurate", "Mindbaton's model reads every message, then the rules check each fact. Catches about 9 in 10 loosely worded facts.",
+      b.remote ? "runs on your other computer · nothing here" : `${b.downloaded ? "1.3 GB, already here" : "1.3 GB download"} · ~1.5 GB memory while it reads`,
+      !admin || !b.can || b.mode === "off")}
+    ${opt("light", "Light", "The rules read alone: instant, and nothing to download. Catches about 5 in 10 loosely worded facts.",
+      "0 MB · nothing in the background", !admin || b.mode === "off")}</div>`
+    + (b.reader === "accurate" && low ? `<p class="set-note">This computer has <b>${b.memory_gb} GB</b> of memory. The model runs best with 12 GB or more, so other apps may slow down while it reads.</p>` : "");
+}
+async function setReader(inp) {
+  try { await send("/brain/reader", { reader: inp.value });
+    toast(inp.value === "accurate" ? "The model reads every message from now on" : "Rules only. The model is off"); }
+  catch (e) { toast(e.message); }
+  try { await brainRefresh(); } catch { return; }
+  if (inp.value === "accurate") bloom($("#brain-step .rd:has(input:checked)"), $("#brain-step"));
 }
 function brainStep(st) {  // Mindbaton's own model: what it's doing, and (admins) re-reading everything with it
   const b = st.brain || {}, busy = b.forced && b.left;
@@ -2035,13 +2083,17 @@ function brainStep(st) {  // Mindbaton's own model: what it's doing, and (admins
     : b.paused ? "Paused. Resume it below."
     : b.state === "reading" ? `Reading · ${b.left} left · about ${eta(b.left * (b.sec || 4))}${b.forced ? " · then one quick rebuild" : ""}`
     : (b.state || "").startsWith("paused") ? "Waiting for the charger — it doesn't read on battery."
-    : b.enabled ? `On · ${plural(b.read || 0, "message")} read since Mindbaton started. It reads new messages the rules find nothing in.`
+    : b.reader === "light" ? "Rules only. The model is off, so nothing runs in the background."
+    : b.enabled ? `On · ${plural(b.read || 0, "message")} read since Mindbaton started. It reads ${b.reader === "accurate"
+      ? "every message you type in a chat" : "new messages the rules find nothing in"}.`
     : b.mode === "off" ? "Turned off in this install (MINDBATON_BRAIN=off)."
     : !b.can ? "This computer can't run it. Set MINDBATON_BRAIN_URL to a model server on another computer."
     : `Off — it turns on by itself with 12 GB of memory or more; this computer has ${b.memory_gb} GB.`;
-  const body = ACCT.role !== "admin" ? `<p class="set-note">It runs on this computer for everyone here, so only an admin can start it.</p>`
+  const body = ACCT.role !== "admin" ? `<p class="set-note">It runs on this computer for everyone here, so only an admin can start it or change who reads.</p>`
+    : b.reader === "light" ? ""
     : `<div class="keybar"><div><b>${busy ? "Re-reading everything" : "Re-read everything with the model"}</b><p>${busy
       ? "Pause it any time; it picks up where it left off."
+      : b.reader === "accurate" ? "It reads new messages from now on. This has it read your older ones too. You'll see what it costs before it starts."
       : "Reads all your messages again, not only the ones the rules found nothing in. You'll see what it costs before it starts."}</p></div>
       ${busy ? `<button class="btn sm" data-brain="${b.paused ? "resume" : "pause"}">${b.paused ? "Resume" : "Pause"}</button>`
         : `<button class="btn sm" data-brain="ask"${b.can && b.mode !== "off" ? "" : " disabled"}>Re-read everything…</button>`}</div>`;
@@ -2054,7 +2106,7 @@ function brainStep(st) {  // Mindbaton's own model: what it's doing, and (admins
       : b.disk ? `<p class="set-note">On disk: <b>${mb(b.disk)}</b> (the model and its engine). The engine is off right now, so it uses no memory or processor.</p>` : "");
   const live = brainLive(b);
   brainPoll(b);
-  const on = b.enabled && !b.paused && b.state !== "waiting";
+  const on = b.enabled && !b.paused && b.state !== "waiting" && !(b.state || "").startsWith("paused");  // waiting for the charger isn't green
   const word = b.dl ? "Downloading" : b.state === "reading" ? "Reading" : b.paused || (b.state || "").startsWith("paused") ? "Paused" : on ? "On" : "Off";
   return `<section class="feat" id="brain-step" aria-labelledby="brain-h">
     <div class="feat-top"><span class="feat-ic">${IC_BRAIN}</span>
@@ -2063,6 +2115,7 @@ function brainStep(st) {  // Mindbaton's own model: what it's doing, and (admins
     <p class="feat-lead">A small AI model that runs on this computer. It reads the everyday way people type — “switched jobs, I'm at Stripe now”,
       “not a coffee person tbh” — and the rules check every fact before it's saved. It learned only from made-up examples, never from anyone's
       messages, and what you say never leaves this computer.</p>
+    ${readerChoice(b)}
     <div class="brain-stats"><div><b>28/30</b><span>facts caught in sentences it never saw</span></div>
       <div><b>0</b><span>made-up facts in that test</span></div><div><b>1.3 GB</b><span>offline, at low priority</span></div></div>
     ${live || `<p class="brain-now">${sub}</p>${info}`}${body}</section>`;
@@ -3649,7 +3702,7 @@ $("#sheet").addEventListener("click", ev => { if (ev.target === ev.currentTarget
 // ---------- events ----------
 document.addEventListener("click", ev => {
   if (!ev.target.closest(".acct")) closeMenu();
-  const t = ev.target.closest("[data-copy],[data-reveal],[data-forget],[data-cancel],[data-handoff],[data-id],[data-topic],[data-view],[data-kind],[data-source],[data-ai],[data-all],#rebuild,#copy-brief,#panel-close,"
+  const t = ev.target.closest("[data-copy],[data-reveal],[data-forget],[data-cancel],[data-handoff],[data-id],[data-topic],[data-view]:not(.app),[data-kind],[data-source],[data-ai],[data-all],#rebuild,#copy-brief,#panel-close,"
     + "[data-gate],[data-profile],[data-go],[data-acct],[data-mkkey],[data-pair],[data-revoke],[data-keep],[data-person],[data-close],[data-brain],#acct-btn");
   if (!t || t.disabled) return;
   if (t.dataset.gate) return gate(t.dataset.gate, t.dataset.user ? PROFILES.find(p => p.username === t.dataset.user) || { username: t.dataset.user } : null, t.dataset.user);

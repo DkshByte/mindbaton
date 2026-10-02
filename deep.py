@@ -1,16 +1,17 @@
-"""deep — Mindbaton's own model reads, in the background, the messages the rules couldn't. Optional: without it
-everything works as before.
+"""deep — Mindbaton's own model reads, in the background, what you type. Optional: without it the rules read alone.
 
 - The model: a Qwen3.5-2B fine-tuned on made-up examples only (train/brain-2b.ipynb), 1.3 GB, from the Hugging Face repo
   in MINDBATON_BRAIN_MODEL. On a test it never saw it read 28 of 30 everyday facts, against 14 for the rules alone.
 - The engine: llama.cpp's llama-server (MIT), one pinned build, downloaded once into <data>/brain with the model, run at
   low priority on half the cores, stopped after a few idle minutes and paused on battery. Or any OpenAI-compatible
   server in MINDBATON_BRAIN_URL (a llama-server or LM Studio on another computer): then nothing is downloaded here.
-- It is asked only about messages in which the rules found nothing firm, one at a time, newest first. The rules check
-  every answer (check): its words must be in the message, the relation one Mindbaton knows, and a new fact must sit in a
-  statement, not a question or a maybe. What it read is kept with the capture, so a rebuild replays it without asking.
+- How much it reads is the admin's choice in Setup (READER, kept in auth.db): "accurate" = the main reader, asked about
+  every statement typed in a chat; "light" = never, the rules alone; not chosen = as before, only the messages in which
+  the rules found nothing firm. One at a time, newest first. The rules check every answer (check): its words must be in
+  the message, the relation one Mindbaton knows, and a new fact must sit in a statement, not a question or a maybe. What
+  it read is kept with the capture, so a rebuild replays it without asking.
 
-MINDBATON_BRAIN = auto (on with 12 GB of memory or more) | on | off.
+MINDBATON_BRAIN = auto (not chosen in Setup: on with 12 GB of memory or more) | on | off (off wins over Setup).
     python3 deep.py                 # self-check against a stand-in server (no model needed)
     python3 deep.py --try "text"    # download what's missing, start the engine, read one message
 """
@@ -27,6 +28,8 @@ RELS = {"works at", "lives in", "from", "is", "has", "uses", "likes", "dislikes"
         "wants", "studies", "allergic to", "built", "wants to visit", "wants to try", "plans to move to"} | brain.KIN
 STATE = {"state": "off", "read": 0, "left": None, "progress": None, "error": None, "sec": None, "dl": None}
 FORCED = PAUSED = False  # an admin asked to re-read everything (Setup, with warnings) / paused it
+READER = None  # the admin's choice in Setup: "accurate" (the model reads every chat statement) | "light" (rules only) | None
+WAKE = threading.Event()  # a choice in Setup ends the reader's nap, so the page shows it at once
 RUN = {"graphs": None, "lock": None, "thread": None, "engine": None}
 
 
@@ -62,7 +65,8 @@ def asset():
 
 
 def enabled():
-    return MODE != "off" and bool(URL or asset()) and (MODE == "on" or bool(URL) or FORCED or memory_gb() >= 12)
+    return MODE != "off" and READER != "light" and bool(URL or asset()) and \
+        (READER == "accurate" or MODE == "on" or bool(URL) or FORCED or memory_gb() >= 12)
 
 
 def on_battery():
@@ -264,8 +268,9 @@ def step(graphs, lock, eng):
         return False
     g, forced, cid, text, url, site = job
     facts = None
-    if forced and chat(text, url, site) and any(brain.mood(c) == "statement" for c in brain.sentences(brain.clean(text))) \
-            or need(text, url, site):  # forced: every statement, not only where the rules found nothing; never a question
+    if (forced or READER == "accurate") and chat(text, url, site) and \
+            any(brain.mood(c) == "statement" for c in brain.sentences(brain.clean(text))) \
+            or need(text, url, site):  # the main reader: every statement, not only where the rules found nothing; never a question
         STATE["state"], t0 = "reading", time.time()
         facts = check(text, ask(eng.up(), text))
         dt = time.time() - t0
@@ -278,6 +283,11 @@ def step(graphs, lock, eng):
     return True
 
 
+def nap(s):
+    WAKE.wait(s)
+    WAKE.clear()
+
+
 def work(graphs, lock, stop=None):
     """The background reader: reads while there is something to read and the laptop is plugged in; idle -> engine off."""
     eng, last = Engine(), time.time()
@@ -286,12 +296,12 @@ def work(graphs, lock, stop=None):
         if PAUSED:
             STATE["state"] = "paused"
             eng.down()
-            time.sleep(5)
+            nap(5)
             continue
         if not enabled() or on_battery():
             STATE["state"] = "paused: on battery" if enabled() else "off"
             eng.down()
-            time.sleep(60)
+            nap(60)
             continue
         try:
             if step(graphs, lock, eng):
@@ -304,7 +314,7 @@ def work(graphs, lock, stop=None):
             time.sleep(300)
         if time.time() - last > IDLE_S:
             eng.down()
-        time.sleep(15)
+        nap(15)
     eng.down()
 
 
@@ -322,6 +332,8 @@ def force(g):
     global FORCED, PAUSED
     if MODE == "off":
         raise ValueError("the model is turned off in this install (MINDBATON_BRAIN=off)")
+    if READER == "light":
+        raise ValueError("Mindbaton reads with the rules only: choose Accurate in Setup first")
     if not (URL or asset()):
         raise ValueError("this computer can't run the model: set MINDBATON_BRAIN_URL to a model server on another computer")
     g.db.execute("UPDATE captures SET extra=json_remove(extra, '$.deep') WHERE json_extract(extra, '$.deep') IS NOT NULL")
@@ -335,13 +347,32 @@ def force(g):
 def pause(paused):
     global PAUSED
     PAUSED = bool(paused)
+    WAKE.set()
     return {"paused": PAUSED}
+
+
+def choose(reader):
+    """The admin's choice in Setup, for everyone on this install: the model as the main reader, or the rules alone."""
+    global READER, FORCED, PAUSED
+    if reader not in ("accurate", "light"):
+        raise ValueError("reader is 'accurate' or 'light'")
+    if reader == "accurate" and MODE == "off":
+        raise ValueError("the model is turned off in this install (MINDBATON_BRAIN=off)")
+    if reader == "accurate" and not (URL or asset()):
+        raise ValueError("this computer can't run the model: set MINDBATON_BRAIN_URL to a model server on another computer")
+    READER, PAUSED = reader, False
+    if reader == "light":
+        FORCED = False
+    if RUN["graphs"]:
+        start(RUN["graphs"], RUN["lock"])
+    WAKE.set()
+    return {"reader": READER, "enabled": enabled()}
 
 
 def status():
     d = home()
     disk = sum(os.path.getsize(os.path.join(r, f)) for r, _, fs in os.walk(d) for f in fs) if os.path.isdir(d) else 0
-    return dict(STATE, enabled=enabled(), paused=PAUSED, model=MODEL, engine=URL or BUILD, mode=MODE, can=bool(URL or asset()),
+    return dict(STATE, enabled=enabled(), paused=PAUSED, reader=READER, model=MODEL, engine=URL or BUILD, mode=MODE, can=bool(URL or asset()),
                 memory_gb=round(memory_gb(), 1), downloaded=bool(URL or glob.glob(os.path.join(d, "*.gguf"))), remote=bool(URL),
                 disk=disk, usage=RUN["engine"].usage() if RUN["engine"] else None)
 
@@ -389,6 +420,20 @@ def selfcheck():
         assert not g.meta("deep_force") and STATE["read"] == 5, STATE  # forced: "I live in Pune" asked too; the question never
         assert {("me", "plays", "football"), ("me", "avoids", "caffeine")} <= rels()
         FORCED = False
+        global READER
+        n, firm = STATE["read"], lambda t: (g.ingest(t, "chatgpt.com", ts=time.time()), step(lambda: [g], lock, eng))
+        firm("I work at Stripe")
+        assert STATE["read"] == n, "not chosen: the rules found a firm fact, so the model isn't asked"
+        assert choose("accurate") == {"reader": "accurate", "enabled": True}
+        firm("I use neovim")
+        assert STATE["read"] == n + 1, "accurate: the model is asked about every statement"
+        assert choose("light") == {"reader": "light", "enabled": False}
+        try:
+            force(g)
+            raise AssertionError("light: nothing may start the model")
+        except ValueError:
+            pass
+        READER = None
         srv.shutdown()
         g.rebuild()  # the stand-in is gone: a rebuild replays what was read
         assert {("me", "plays", "football"), ("me", "avoids", "caffeine")} <= rels(), "kept with the capture"

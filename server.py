@@ -1947,6 +1947,7 @@ def open_data(path):
     aid = migrate_accounts()
     # data dirs made before 'local_account' was stored: the first admin, pinned now so later role changes can't move it
     AUTH.execute("INSERT OR IGNORE INTO meta SELECT 'local_account', min(id) FROM accounts WHERE role='admin' HAVING count(*)")
+    deep.READER = (AUTH.execute("SELECT v FROM meta WHERE k='reader'").fetchone() or [None])[0]  # the admin's choice in Setup
     return aid
 
 
@@ -2066,6 +2067,13 @@ def fields(b, allowed):
             v = hash_password(v)
         out[k] = int(v) if k == "hidden" else v
     return out
+
+
+def set_reader(reader):
+    """Setup's choice of reader, for the whole install: 'accurate' (the model reads every chat message) or 'light' (rules only)."""
+    r = deep.choose(reader)  # raises on anything else, or when this install can't run the model
+    AUTH.execute("INSERT OR REPLACE INTO meta VALUES('reader', ?)", (reader,))
+    return r
 
 
 def admins():
@@ -2869,9 +2877,11 @@ class Handler(SimpleHTTPRequestHandler):
                   "/topic/undo": self.g.undo_merge}
         if p == "/import":  # takes the lock per fact itself
             return self.api(lambda: import_memory(self.g, b), lock=False)
-        if p in ("/brain/reread", "/brain/pause"):  # the model runs on this computer for everyone: admins only
+        if p in ("/brain/reread", "/brain/pause", "/brain/reader"):  # the model runs on this computer for everyone: admins only
             if self.me["role"] != "admin":
                 return self.reply(403, {"error": "only an admin can run the model"})
+            if p == "/brain/reader":
+                return self.api(lambda: set_reader(b.get("reader")))
             return self.api(lambda: deep.force(self.g) if p == "/brain/reread" else deep.pause(b.get("paused", True)))
         if p == "/settings/ai-key":  # install-wide, so admins only; tests the key with the provider: never under the lock
             if self.me["role"] != "admin":
@@ -3336,12 +3346,17 @@ def authcheck():
     assert "quillbeam" not in txt("GET", "/export", token=paired)
     assert st("POST", "/capture", {"text": "I bought a unicycle called Wobblefin"}, token=paired) == 200
     assert "wobblefin" not in txt("GET", "/export", cookie=a) and "wobblefin" in txt("GET", "/export", cookie=b)
-    # admins only: people, roles and the install-wide AI key
+    # admins only: people, roles, the install-wide AI key and who reads (the model or the rules alone)
     for m, path, body in (("GET", "/api/accounts", None), ("POST", "/api/accounts", {"username": "eve", "password": "12345678"}),
                           ("PATCH", f"/api/accounts/{maya}", {"role": "member"}), ("PATCH", f"/api/accounts/{sam['id']}", {"role": "admin"}),
-                          ("DELETE", f"/api/accounts/{maya}?confirm=maya", None), ("POST", "/settings/ai-key", {"provider": "groq", "key": "x"})):
+                          ("DELETE", f"/api/accounts/{maya}?confirm=maya", None), ("POST", "/settings/ai-key", {"provider": "groq", "key": "x"}),
+                          ("POST", "/brain/reader", {"reader": "light"})):
         assert call(m, path, body, cookie=b)[0] == 403, path
     assert st("POST", "/settings/ai-key", {"provider": "groq", "key": "x"}, cookie=a) == 400
+    assert st("POST", "/brain/reader", {"reader": "fast"}, cookie=a) == 400 and call("GET", "/status", cookie=a)[2]["brain"]["reader"] is None
+    assert call("POST", "/brain/reader", {"reader": "light"}, cookie=a)[2] == {"reader": "light", "enabled": False}
+    assert call("GET", "/status", cookie=b)[2]["brain"]["reader"] == "light", "one choice for everyone on the install"
+    deep.READER = None
     listed = call("GET", "/api/accounts", cookie=a)[2]
     assert [x["username"] for x in listed] == ["maya", "sam"] and set(listed[0]) == set(ACCOUNT), listed
     # everyone edits their own name and colour (nothing else); admins hide, promote, reset

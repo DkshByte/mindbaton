@@ -40,8 +40,10 @@ The app's visual system: `DESIGN.md`. How to contribute: `CONTRIBUTING.md`. What
   terms bar training models that compete with it, so keep its examples out of anything bigger than these patterns.
 - **Mindbaton's own model reads what the rules and the learner can't** (`deep.py`): Qwen3.5-2B fine-tuned on made-up
   examples (`train/brain-2b.ipynb` on Kaggle, `learn.py --dataset`), served by a pinned llama.cpp build it downloads
-  into `<data>/brain`, or any OpenAI-compatible server in `MINDBATON_BRAIN_URL`. One background thread (`deep.work`)
-  asks it about messages `deep.need` picks (no firm fact from the rules), the rules veto its answer (`deep.check`), and
+  into `<data>/brain`, or any OpenAI-compatible server in `MINDBATON_BRAIN_URL`. Who reads is the admin's choice in Setup
+  (`deep.READER`, kept in `auth.db`, set by `POST /brain/reader`): `accurate` = the model is the main reader, asked about
+  every statement typed in a chat; `light` = never; not chosen = only the messages `deep.need` picks (no firm fact from
+  the rules). One background thread (`deep.work`) asks it, the rules veto its answer (`deep.check`), and
   the capture keeps it (`extra.deep`), so `Graph.deep_read` applies it now and `rebuild` replays it without the model.
   Facts reach the graph through `add()`'s own steps (`_assert`, `_more`), so they settle, merge and link like any other.
   Never let the model write without `check`; never ask it in tests (the self-check uses a stand-in server).
