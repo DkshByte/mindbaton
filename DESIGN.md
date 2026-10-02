@@ -137,6 +137,18 @@ A pick card on You offers one other AI and Copy hand-off (Chats has the full set
 that matter most, then "Show all N". The dashed "Connect more AIs" strip appears only with fewer than three AIs. The
 sidebar lists the six biggest topics, then "All N topics". Content column padding is 44/48/80px; sections sit 52px apart.
 
+### Welcome: the first run (2026-10-02)
+A new account with nothing remembered gets the welcome instead of the Setup page: four full-screen moments in a modal
+dialog over the app, the aurora behind them as on the sign-in screen. **Hello** (one sentence, an honest "about two
+minutes", Get started) → **Pick a look** (the three theme cards) → **Connect your first AI** (browser or coding agent;
+the chosen path's two or three steps open in place) → **done**. One decision per screen; three slim bars at the top say
+where you are; Skip setup and Esc always leave to Setup; it never shows twice (per account, on this device) and
+Setup's "Guided setup" starts it again. The connect step ends by itself: typing the code the extension shows is the
+approval, then "Listening for your first memory…", and the moment one arrives the last screen says "It remembered."
+and shows it, with the bloom. Its one container per screen is a double bezel (a hairline tray, `--panel` inside with a
+smaller concentric radius) and its primary button carries its arrow in a circle: the welcome is staged, the app stays
+flat. Steps enter on `cubic-bezier(.32, .72, 0, 1)`, staggered; nothing moves under reduced motion.
+
 ### The other screens, quieter (2026-10-02)
 Chats follows You: its numbers are one line with no notes (only "running out of room" keeps its red note, and only
 when there is one), section headings carry no instructions, and the filter bar is two rows: which AI, then find on the
