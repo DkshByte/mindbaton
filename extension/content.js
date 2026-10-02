@@ -61,8 +61,12 @@
   chrome.runtime.onMessage.addListener((m, _s, reply) => {
     if (!current()) return;
     if (m.insert) insertMemory();
-    if (m.meter) { reply(meter); }
-    if (m.syncNow) { lastSig = ""; sync().then(() => reply(meter)); return true; }
+    if (m.meter) { reply(meter || { wait }); }
+    if (m.syncNow) {  // the popup asks: always answer, with the meter or why there isn't one yet (never leave it hanging)
+      lastSig = "";
+      Promise.race([sync(), new Promise(ok => setTimeout(ok, 6000))]).catch(() => {}).then(() => reply(meter || { wait }));
+      return true;
+    }
   });
 
   function insertText(el, text) {
@@ -85,14 +89,14 @@
     const r = await send({ context: draft(el) || document.title });
     if (!r || !r.text) return toast(r && r.error ? r.error : "Can't reach Mindbaton");
     insertText(el, r.text);
-    toast(`Added what memgraph knows · ${r.text.split("\n").length - 2} lines`);
+    toast(`Added what Mindbaton knows · ${r.text.split("\n").length - 2} lines`);
   }
 
   function toast(msg) {
     const t = document.createElement("div");
     t.textContent = msg;
-    t.style.cssText = "position:fixed;z-index:2147483647;right:20px;bottom:20px;padding:9px 14px;background:#ededef;color:#0b0b0d;" +
-      "font:500 13px system-ui,sans-serif;border-radius:9px;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:opacity .3s";
+    t.style.cssText = "position:fixed;z-index:2147483647;right:20px;bottom:20px;padding:10px 14px;background:#eeeeec;color:#111110;" +
+      "font:500 13px/1.3 system-ui,-apple-system,sans-serif;border-radius:10px;box-shadow:0 1px 0 rgba(255,255,255,.4) inset,0 12px 32px rgba(0,0,0,.4);transition:opacity .3s";
     document.body.append(t);
     setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.remove(), 300); }, 3200);
   }
@@ -186,12 +190,14 @@
     return turns;
   }
 
-  let meter = null, lastSig = "", limitText = null, timer = 0, firstChange = 0, added = [], dismissed = "";
+  let meter = null, lastSig = "", limitText = null, timer = 0, firstChange = 0, added = [], dismissed = "", retry = 0;
+  let wait = "loading";  // why there's no meter yet: loading | off | empty | reply | offline
   const live = async () => (await chrome.storage.local.get({ live: true, enabled: true, warnAt: 80 }));
 
   async function sync() {
     const s = await live();
-    if (!s.live || !s.enabled || !current() || !alive()) return;
+    if (!s.live || !s.enabled) { wait = "off"; return; }
+    if (!current() || !alive()) return;
     for (const n of added.splice(0)) {  // limit banners appear outside the message list
       if (!n.isConnected || !n.closest || n.closest("[contenteditable='true'], textarea, #memgraph-live") || (ANY && n.closest(ANY))) continue;
       const t = (n.innerText || n.textContent || "").slice(0, 600);
@@ -199,13 +205,17 @@
       if (m) limitText = t.trim().split("\n").find(l => LIMIT.test(l)) || m[0];
     }
     const turns = readTurns();
-    if (turns.length < 2 && !limitText) return;  // a new, empty chat: nothing to keep yet
+    if (turns.length < 2 && !limitText) { wait = turns.length ? "reply" : "empty"; return; }  // a new, empty chat: nothing to keep yet
     const sig = turns.length + "|" + turns.map(t => t.text.length).join(",") + "|" + (limitText || "");
     if (sig === lastSig) return;
     lastSig = sig;
     const r = await send({ live: { url: location.href, site: location.hostname, title: document.title, turns, limit: limitText,
                                    model: pickerModel() } });
-    if (r && r.id) { meter = r; banner(s.warnAt); }
+    if (r && r.id) { meter = r; retry = 0; banner(s.warnAt); return; }
+    // the server didn't answer (asleep, restarting, off the network): the chat hasn't changed, so nothing else would
+    // send it again. Forget that it was sent and try again, a little later each time.
+    wait = "offline"; lastSig = "";
+    clearTimeout(timer); timer = setTimeout(sync, Math.min(60000, 4000 * 2 ** retry++));
   }
   function schedule() {  // quiet for 2.5s (a reply finished streaming), or at most every 15s while it streams
     clearTimeout(timer);
@@ -238,24 +248,26 @@
     const LOGO = { "chatgpt.com": "chatgpt", "claude.ai": "claude", "gemini.google.com": "gemini", "www.perplexity.ai": "perplexity",
                    "chat.deepseek.com": "deepseek", "grok.com": "grok" };
     root.innerHTML = `<style>
-      .bar { position: fixed; z-index: 2147483647; left: 50%; bottom: 100px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px;
-        padding: 6px 6px 6px 12px; background: rgba(17,17,19,.92); backdrop-filter: blur(14px); color: #ededef; border: 1px solid rgba(255,255,255,.1);
-        border-radius: 14px; box-shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 18px 44px rgba(0,0,0,.5); font: 500 13px/1 system-ui, -apple-system, sans-serif;
-        max-width: calc(100vw - 32px); flex-wrap: wrap; animation: in .3s cubic-bezier(.2,.8,.2,1) }
-      @keyframes in { from { opacity: 0; transform: translate(-50%, 10px) } }
-      .mark { width: 20px; height: 20px; border-radius: 6px; background: #0a0a0b; border: 1px solid rgba(255,255,255,.35);
+      .bar { position: fixed; z-index: 2147483647; left: 0; right: 0; bottom: 100px; width: fit-content; margin: 0 auto; display: flex; align-items: center; gap: 6px;
+        padding: 6px 6px 6px 12px; background: rgba(25,25,24,.94); backdrop-filter: blur(14px); color: #eeeeec; border: 1px solid rgba(255,253,243,.11);
+        border-radius: 14px; box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 18px 44px rgba(0,0,0,.5); font: 500 13px/1 system-ui, -apple-system, sans-serif;
+        max-width: calc(100vw - 32px); flex-wrap: wrap; animation: in .5s cubic-bezier(.32,.72,0,1) }
+      @keyframes in { from { opacity: 0; transform: translateY(10px) } }
+      .mark { width: 20px; height: 20px; border-radius: 6px; background: #0b0b0a; box-shadow: 0 0 0 1px rgba(255,253,243,.19);
         display: grid; place-items: center; flex: none }
-      .mark svg { width: 15px; height: 15px; color: #fff; fill: currentColor }
-      .why { font-weight: 600 } .sub { color: #a1a1aa; margin: 0 4px 0 2px }
-      button { height: 32px; padding: 0 11px 0 8px; display: inline-flex; align-items: center; gap: 7px; border-radius: 9px; border: 1px solid rgba(255,255,255,.08);
-        background: #1c1c1f; color: #ededef; font: inherit; cursor: pointer; transition: background .15s, transform .1s }
-      button img { width: 16px; height: 16px } button:hover { background: #27272a } button:active { transform: scale(.96) }
-      button.copy { color: #fff; padding: 0 11px } button.x { border: 0; background: none; color: #71717a; padding: 0 8px } button.x:hover { color: #ededef }
-      button:focus-visible { outline: 2px solid #fff; outline-offset: 1px }
+      .mark svg { width: 14px; height: 14px; color: #eeeeec; fill: currentColor }
+      .why { font-weight: 600 } .sub { color: #b5b3ad; margin: 0 4px 0 2px }
+      button { height: 32px; padding: 0 11px 0 8px; display: inline-flex; align-items: center; gap: 7px; border-radius: 9px; border: 1px solid transparent;
+        background: #222221; color: #eeeeec; font: inherit; cursor: pointer; transition: background .15s, border-color .15s, transform .2s cubic-bezier(.32,.72,0,1) }
+      button img { width: 16px; height: 16px } button:hover { background: #2a2a28; border-color: rgba(255,253,243,.11) } button:active { transform: scale(.97) }
+      button.copy { padding: 0 11px; background: #eeeeec; color: #111110 } button.copy:hover { background: #fff }
+      button.x { border: 0; background: none; color: #908e87; padding: 0 8px } button.x:hover { background: none; color: #eeeeec }
+      button.x svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round }
+      button:focus-visible { outline: 2px solid #eeeeec; outline-offset: 1px }
       @media (prefers-reduced-motion: reduce) { .bar { animation: none } } </style>
       <div class="bar" role="status"><span class="mark"><svg viewBox="0 0 96 96" fill="currentColor"><path fill-rule="evenodd" d="M38.83 19.27A23 23 0 0 1 77.84 43.65L57.17 76.73A23 23 0 0 1 18.16 52.35ZM53.63 39.08A4.3 4.3 0 0 1 46.34 34.52L50 28.67A4.3 4.3 0 0 1 57.29 33.23ZM67.63 47.82A4.3 4.3 0 0 1 60.33 43.27L63.99 37.41A4.3 4.3 0 0 1 71.28 41.97Z"/></svg></span>
         <span class="why"></span><span class="sub">· continue in</span>${TARGETS.filter(([h]) => h !== here)
-        .map(([h, n]) => `<button data-to="${h}" title="Continue in ${n}">${L(LOGO[h])}${n}</button>`).join("")}<button class="copy">Copy pack</button><button class="x" aria-label="Dismiss">✕</button></div>`;
+        .map(([h, n]) => `<button data-to="${h}" title="Continue in ${n}">${L(LOGO[h])}${n}</button>`).join("")}<button class="copy">Copy pack</button><button class="x" aria-label="Dismiss"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>`;
     root.querySelector(".why").textContent = why;
     root.addEventListener("click", async e => {
       const b = e.target.closest("button");
@@ -285,5 +297,5 @@
   setTimeout(pickUp, 1200);
   let href = location.href;
   setInterval(() => { if (location.href !== href) { href = location.href; lastSig = ""; limitText = null; meter = null;
-    document.getElementById("memgraph-live")?.remove(); setTimeout(pickUp, 800); schedule(); } }, 1000);  // SPA navigation
+    wait = "loading"; retry = 0; document.getElementById("memgraph-live")?.remove(); setTimeout(pickUp, 800); schedule(); } }, 1000);  // SPA navigation
 })();

@@ -1,0 +1,79 @@
+# Mindbaton
+
+> One private memory for ChatGPT, Claude, Gemini, Claude Code, Cursor and every other AI you use — running on your own computer. Free and open source (AGPL-3.0).
+
+Mindbaton is a local-first memory daemon and MCP server that connects all AI chat interfaces, coding agents, and IDEs to a single private context store. When you talk to one AI, Mindbaton extracts facts, preferences, and decisions. When another AI needs context, it accesses the same memory over MCP or browser shortcuts. When a chat hits its context limit, Mindbaton packages the session into a compact handoff pack (sized to a token budget you set, from 200 to 12,000) so another model carries on from your last message.
+
+## Quick Links
+- Website: https://mindbaton.com
+- GitHub Repository: https://github.com/DkshByte/mindbaton
+- Documentation: https://mindbaton.com/docs/
+- API Reference: https://mindbaton.com/docs/api.html
+- Connect your AIs: https://mindbaton.com/docs/connect.html
+- Security Policy: https://mindbaton.com/docs/security.html
+- Chrome Web Store Extension: https://chromewebstore.google.com/detail/mindbaton/nfadphcjimkchbapapbcphnbpajmfmih
+
+## Core Architecture
+- **Zero Cloud / Local-First**: Runs on Python (stdlib only) and SQLite. No cloud accounts, external databases, or subscriptions.
+- **Embedded Natural Language Understanding**: 256-dimensional semantic embeddings and rules-based entity extraction run locally with zero API keys or GPU requirements.
+- **Multi-Client Sync**: Captures context from browser chats via a lightweight browser extension and from IDEs/coding agents via MCP.
+- **Baton Handoff Protocol**: Converts long conversations into structured continuation packs containing goals, decisions, open questions, code symbols, and verbatim recent turns.
+- **Privacy & Security**: Automated redaction of API keys, tokens, and passwords prior to disk write. Data never leaves your network unless explicitly forwarded to an optional inference provider.
+
+## Installation
+
+### Shell Script (Linux, macOS, WSL2)
+```bash
+git clone https://github.com/DkshByte/mindbaton && cd mindbaton && ./install.sh
+```
+
+### Docker (Windows, NAS, Unraid)
+```bash
+git clone https://github.com/DkshByte/mindbaton && cd mindbaton && docker compose up -d
+```
+
+## Model Context Protocol (MCP) Tools
+
+Mindbaton exposes an MCP server for coding agents (Claude Code, Cursor, Windsurf, Zed, OpenCode, Antigravity, Claude Desktop) and custom connectors:
+
+- `context`: Retrieve briefing about the user, preferences, and topic-specific background.
+- `recall`: Natural-language semantic search across all memories across all AIs.
+- `remember`: Save a lasting fact or preference directly into memory.
+- `profile`: Structured summary of user identity, active projects, and preferences.
+- `handoff`: Generate a continuation pack for the active or specified chat session.
+- `sessions`: List recent conversations across all connected AI tools.
+- `save_conversation`: Persist chat turns to enable cross-model continuation.
+- `forget`: Delete a specific memory by ID.
+
+### MCP Configuration Example
+
+Add to your MCP settings file:
+```json
+{
+  "mcpServers": {
+    "mindbaton": {
+      "command": "python3",
+      "args": ["/path/to/mindbaton/mcp_stdio.py"],
+      "env": {
+        "MINDBATON_URL": "http://localhost:3004",
+        "MINDBATON_TOKEN": "mb_xxxxxxxx"
+      }
+    }
+  }
+}
+```
+
+Or connect directly over streamable HTTP: `POST http://localhost:3004/mcp` with `Authorization: Bearer mb_xxxxxxxx`. Responses are JSON; there is no SSE stream.
+
+## HTTP API Reference
+
+- `GET /health` - System health, version, and auth status (unauthenticated)
+- `GET /recall?q={query}&k={count}` - Semantic search across memories
+- `GET /context?q={topic}&budget={tokens}` - Formatted LLM prompt context injection
+- `GET /profile` - Full user profile grouped by category
+- `GET /sessions` - Recent conversation sessions with token fullness metrics
+- `GET /handoff?session={id}&budget={tokens}` - Structured handoff continuation pack
+- `POST /mcp` - Standard Model Context Protocol endpoint
+- `POST /capture` - Ingest message from browser extension (auto-redacts secrets)
+- `POST /remember` - Save explicit memory fact
+- `DELETE /node/{id}` - Permanently erase memory item

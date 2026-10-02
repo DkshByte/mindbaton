@@ -41,6 +41,20 @@ document.querySelectorAll('[role="tablist"]').forEach((list) => {
   });
 });
 
+// For agents / For humans: the switch is links and CSS (#agent:target), so it works without this, survives a reload and
+// follows the back button. This keeps the skip link in step, honours ?mode=agent, and where the browser can, wipes the
+// page into its other reading instead of cutting to it.
+const skip = document.querySelector(".skip");
+const syncView = () => { skip.hash = location.hash === "#agent" ? "#agent" : "#main"; };
+addEventListener("hashchange", syncView); syncView();
+if (!location.hash && new URLSearchParams(location.search).get("mode") === "agent") location.replace("#agent");
+document.querySelectorAll(".view-sw").forEach((a) => a.addEventListener("click", (e) => {
+  if (still || !document.startViewTransition || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+  e.preventDefault();
+  const root = document.documentElement; root.dataset.vt = a.hash === "#agent" ? "agent" : "human";
+  document.startViewTransition(() => { location.hash = a.hash; }).finished.finally(() => delete root.dataset.vt);
+}));
+
 // ── Motion: the product doing its job. Plays only on screen; reduced motion keeps each demo's finished state. ──
 const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -51,6 +65,8 @@ const onScreen = (el, fn, once = true) => new IntersectionObserver((es, o) => es
 const type = async (el, text, ms) => { el.classList.add("caret"); el.textContent = ""; for (const ch of text) { el.textContent += ch; await wait(ms); } el.classList.remove("caret"); };
 const rise = (el) => { el.classList.remove("gone", "rise"); void el.offsetWidth; el.classList.add("rise"); };
 const aurora = document.querySelector(".aurora");
+const rest = new IntersectionObserver((es) => es.forEach((e) => e.target.classList.toggle("off", !e.isIntersecting)));  // the drift rests off screen
+document.querySelectorAll(".aurora").forEach((a) => rest.observe(a));
 const pulse = () => { aurora.classList.add("pulse"); setTimeout(() => aurora.classList.remove("pulse"), 1400); };
 
 if (!still) {
@@ -133,9 +149,9 @@ if (!still) {
   // pass the baton: the meter fills to red, then the baton hops to the next AI
   const pick = document.querySelector(".pick"), meter = pick.querySelector(".meter"), bar = meter.querySelector("b"), pct = meter.querySelector("[data-pct]");
   const hot = pick.querySelector(".meta .hot"), passed = pick.querySelector(".passed"), hop = pick.querySelector(".hop"), chip = pick.querySelector("[data-to]");
-  meter.classList.add("cool"); bar.style.width = "58%"; pct.textContent = "58%"; hot.classList.add("gone"); passed.classList.add("gone");
+  meter.classList.add("cool"); bar.style.transform = "scaleX(.58)"; pct.textContent = "58%"; hot.classList.add("gone"); passed.classList.add("gone");
   onScreen(pick, async () => {
-    await wait(400); bar.style.width = "100%";
+    await wait(400); bar.style.transform = "scaleX(1)";
     const t0 = performance.now();
     while (performance.now() - t0 < 1600) {
       const p = Math.round(58 + 42 * Math.min(1, (performance.now() - t0) / 1600));

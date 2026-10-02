@@ -30,6 +30,24 @@
   asks nothing. Admins only, one setting for the install.
 - A click on empty space no longer redraws the page you're on (on Setup it dropped the keyboard focus), and the model's
   status light is no longer green while it waits for the charger.
+- **A welcome on your first sign-in.** Instead of landing on Setup, a new person gets a few full-screen steps: what
+  stays private and the Terms to agree to, a look to pick, the model that runs on this computer, an optional free AI
+  key (admins), and connecting a first AI. That last step finishes by itself the moment the first memory arrives.
+  Everything after the Terms can be skipped; it shows once per person, and Setup's "Guided setup" starts it again.
+  People who had signed in before this update are not asked.
+- **A calmer You page.** "What they know about you" is a bento of tiles sized by what they hold; the numbers are one
+  quiet line; long lists show the top eight with "Show all"; the sidebar lists six topics, then "All topics".
+- **Chats, tidier.** One-line numbers, a two-row filter bar, and a row's Hand off stays quiet until you point at it.
+- **One gradient everywhere.** The app's glow is built like the website's (one light, a drift that never repeats, text
+  that stays readable over it) and Mindbaton's own preset uses the website's colours.
+- **The extension, redesigned (5.2.1).** The popup, the Connect tab and the bar on chat pages follow the app's look.
+  Fixed: the popup's chat panel could stay empty while messages were still being saved; it now updates itself, says
+  why when there is no meter yet, and a chat the server missed is sent again.
+- **Fixes.** On a phone the detail panel no longer opens under the top strip; a "Skip to content" link; buttons have a
+  pressed state; no text under 11.5px; logos in a row all get the same disc; search answers and the detail panel no
+  longer show internal row numbers.
+- **The website.** New gradient, a "For agents" view that is `llms.txt` itself, real phone screenshots, a closing
+  section and a 404 page.
 - **Pick your gradient.** Settings → Appearance (also Gradient in the account menu and the command palette) shows the
   theme and the glow behind the app as cards with live previews: 17 presets (most from uiGradients), Auto, which
   follows the time of day (Dawn, Day, Golden hour, Dusk, Night), and None. The new gradient spreads out from the card

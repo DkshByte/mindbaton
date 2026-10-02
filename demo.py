@@ -288,6 +288,7 @@ def main():
         sys.exit(f"{user} already exists in {server.DATA} — demo.py only adds a new account (or use an empty folder)")
     role = "member" if server.AUTH.execute("SELECT 1 FROM accounts").fetchone() else "admin"
     aid = server.create_account(user, pw and server.hash_password(pw), opt("--display") or PERSONAS[user][0], role=role)
+    server.AUTH.execute("UPDATE accounts SET welcomed=?, terms=? WHERE id=?", (NOW, NOW, aid))  # a demo opens on the app, not on the welcome
     g = server.graph(aid)
     g.meta("demo", "1")  # the server never feeds this machine's Claude Code transcripts into a demo memory
     PERSONAS[user][1](g)

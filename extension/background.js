@@ -8,10 +8,10 @@ const conf = async () => {
   const s = await chrome.storage.local.get({ server: "", token: "" });
   return { base: s.server.replace(/\/$/, ""), token: s.token };
 };
-async function api(path, init = {}) {  // every call to your server carries this browser's token
+async function api(path, init = {}, ms = 10000) {  // every call to your server carries this browser's token, and gives up after a while
   const { base, token } = await conf();
   if (!base) throw new Error(NOT_PAIRED);
-  const r = await fetch(base + path, { ...init, headers: { ...init.headers, ...(token && { Authorization: "Bearer " + token }) } });
+  const r = await fetch(base + path, { ...init, signal: AbortSignal.timeout(ms), headers: { ...init.headers, ...(token && { Authorization: "Bearer " + token }) } });
   if (r.status === 401) { await chrome.storage.local.set({ error: "This browser isn't connected any more — press Connect again" }); throw new Error("401"); }
   return r;
 }
@@ -37,7 +37,7 @@ chrome.runtime.onMessage.addListener((m, _sender, reply) => {
   if (m.handoff) {  // pack the conversation; with a target AI, it waits for that AI's new chat, which opens now
     const h = m.handoff;
     api(`/handoff?budget=${h.budget || 2500}&session=${encodeURIComponent(h.session || "")}` +
-        (h.to ? "&to=" + encodeURIComponent(h.to) : "") + (h.about ? "&about=1" : ""))
+        (h.to ? "&to=" + encodeURIComponent(h.to) : "") + (h.about ? "&about=1" : ""), {}, 45000)  // a summary can take a while
       .then(r => r.json()).then(r => {
         if (r.open && h.open) chrome.tabs.create({ url: r.open });
         reply(r);

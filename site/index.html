@@ -2,26 +2,91 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mindbaton · tell one AI, every AI knows</title>
-<meta name="description" content="Mindbaton is one private memory for ChatGPT, Claude, Gemini, Claude Code, Cursor and every other AI you use. It runs on a computer you already own. When a chat fills up, pass the baton and keep going. Free and open source (AGPL-3.0).">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+<!-- Title: 55 chars — fits Google's ~600px cap with no ellipsis. Primary keyword first. -->
+<title>Mindbaton – Tell One AI, Every AI Knows</title>
+
+<!-- Description: 153 chars — front-loads the value prop within 110 chars, full text under the 160 cutoff. -->
+<meta name="description" content="One private memory for ChatGPT, Claude, Gemini, Cursor and every AI you use. Runs locally, no cloud. Free and open source. Pass the baton when a chat fills up.">
+
+<!-- Crawl directives -->
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 <meta name="theme-color" content="#111110">
 <meta name="color-scheme" content="dark">
-<link rel="canonical" href="https://dkshbyte.github.io/mindbaton/">
+<link rel="canonical" href="https://mindbaton.com">
+
+<!-- Open Graph: complete set for LinkedIn, Discord, Telegram, Facebook -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Mindbaton">
-<meta property="og:title" content="Mindbaton · tell one AI, every AI knows">
-<meta property="og:description" content="One private memory for every AI you use, on a computer you already own. Pass the baton when a chat fills up.">
-<meta property="og:url" content="https://dkshbyte.github.io/mindbaton/">
-<meta property="og:image" content="https://dkshbyte.github.io/mindbaton/og.png">
+<meta property="og:title" content="Mindbaton – Tell One AI, Every AI Knows">
+<meta property="og:description" content="One private memory for every AI you use, running on your own computer. Free, open source, no cloud. Pass the baton when a chat fills up.">
+<meta property="og:url" content="https://mindbaton.com">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://mindbaton.com/og.png">
+<meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Tell one AI. Every AI knows. Mindbaton's headline and its one-line install command.">
+
+<!-- Twitter / X: explicit tags for full control over large image cards -->
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Mindbaton – Tell One AI, Every AI Knows">
+<meta name="twitter:description" content="One private memory for every AI you use. Runs locally, free and open source.">
+<meta name="twitter:image" content="https://mindbaton.com/og.png">
+<meta name="twitter:image:alt" content="Tell one AI. Every AI knows. Mindbaton's headline and its one-line install command.">
+
+<!-- Structured Data: SoftwareApplication (JSON-LD) — gives Google rich results and knowledge panel eligibility -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "@id": "https://mindbaton.com/#software",
+  "name": "Mindbaton",
+  "url": "https://mindbaton.com",
+  "description": "One private memory for ChatGPT, Claude, Gemini, Cursor and every other AI you use. It runs on a computer you already own. When a chat fills up, pass the baton and keep going.",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": ["Linux", "macOS", "Windows"],
+  "license": "https://github.com/DkshByte/mindbaton/blob/main/LICENSE",
+  "isAccessibleForFree": true,
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "installUrl": "https://github.com/DkshByte/mindbaton",
+  "downloadUrl": "https://github.com/DkshByte/mindbaton",
+  "screenshot": "https://mindbaton.com/shots/app-you.png",
+  "image": "https://mindbaton.com/og.png",
+  "sameAs": [
+    "https://github.com/DkshByte/mindbaton",
+    "https://chromewebstore.google.com/detail/mindbaton/nfadphcjimkchbapapbcphnbpajmfmih"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "Mindbaton",
+    "url": "https://mindbaton.com"
+  },
+  "sourceOrganization": {
+    "@type": "Organization",
+    "name": "Mindbaton",
+    "url": "https://mindbaton.com"
+  }
+}
+</script>
+
+<!-- Favicons -->
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+<!-- Performance: preconnect to GitHub (clone links), preload the critical font -->
+<link rel="preconnect" href="https://github.com" crossorigin>
+<link rel="dns-prefetch" href="https://github.com">
 <link rel="preload" href="fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="alternate" type="text/markdown" href="llms.txt" title="Mindbaton for AI agents (llms.txt)">
+
+<!-- Styles and scripts -->
 <link rel="stylesheet" href="style.css">
 <script src="site.js" defer></script>
 <noscript><style>[role="tabpanel"][hidden] { display: block !important; } [role="tablist"] { display: none; }</style></noscript>
@@ -38,12 +103,23 @@ No costume, no eyebrows, no metric tiles, no gradients inside boxes. Motion: the
 
 <header class="top">
   <div class="top-in">
-    <a class="brand" href="#top" aria-label="Mindbaton, back to the top"><span class="wordmark" aria-hidden="true"></span></a>
+    <a class="brand" href="#top" aria-label="Mindbaton, back to the top">
+      <span class="brand-baton" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 96 96" fill="currentColor">
+          <path fill-rule="evenodd" d="M38.83 19.27A23 23 0 0 1 77.84 43.65L57.17 76.73A23 23 0 0 1 18.16 52.35ZM53.63 39.08A4.3 4.3 0 0 1 46.34 34.52L50 28.67A4.3 4.3 0 0 1 57.29 33.23ZM67.63 47.82A4.3 4.3 0 0 1 60.33 43.27L63.99 37.41A4.3 4.3 0 0 1 71.28 41.97Z"/>
+        </svg>
+      </span>
+      <svg class="wordmark-letters" height="20" viewBox="21.6 4 88.9 16" fill="currentColor" aria-hidden="true">
+        <path d="M25.64 18.30L22.90 18.30L22.90 5.52L26.55 5.52L29.81 14.83L33.05 5.52L36.71 5.52L36.71 18.30L33.97 18.30L33.97 10.02L30.96 18.26L28.62 18.26L25.64 10.02M41.13 18.30L38.43 18.30L38.43 8.65L41.13 8.65L41.13 18.30M41.17 7.46L38.38 7.46L38.38 5.30L41.17 5.30M45.76 18.30L43.06 18.30L43.06 8.65L45.49 8.65L45.54 10.25Q45.94 9.26 46.70 8.85Q47.45 8.44 48.41 8.44Q49.97 8.44 50.83 9.43Q51.68 10.42 51.68 12.09L51.68 18.30L48.98 18.30L48.98 12.99Q48.98 11.84 48.67 11.21Q48.35 10.58 47.51 10.58Q46.66 10.58 46.21 11.21Q45.76 11.84 45.76 12.99M56.72 18.52Q55.50 18.52 54.61 17.90Q53.72 17.29 53.24 16.16Q52.76 15.02 52.76 13.48Q52.76 11.93 53.25 10.80Q53.73 9.68 54.63 9.06Q55.52 8.44 56.72 8.44Q57.75 8.44 58.50 8.86Q59.24 9.28 59.62 10.02L59.62 5.52L62.32 5.52L62.32 18.30L59.75 18.30L59.69 16.88Q59.28 17.65 58.50 18.08Q57.71 18.52 56.72 18.52M57.60 16.45Q58.58 16.45 59.10 15.69Q59.62 14.93 59.62 13.48Q59.62 12 59.10 11.25Q58.58 10.51 57.60 10.51Q56.65 10.51 56.09 11.30Q55.53 12.09 55.53 13.48Q55.53 14.83 56.10 15.64Q56.67 16.45 57.60 16.45M69.45 18.52Q68.44 18.52 67.69 18.08Q66.95 17.65 66.53 16.88L66.48 18.30L63.90 18.30L63.90 5.52L66.60 5.52L66.60 10.02Q66.98 9.35 67.72 8.89Q68.46 8.44 69.45 8.44Q70.67 8.44 71.57 9.06Q72.47 9.68 72.97 10.81Q73.46 11.95 73.46 13.48Q73.46 15.01 72.97 16.14Q72.47 17.27 71.57 17.89Q70.67 18.52 69.45 18.52M68.69 16.45Q69.59 16.45 70.14 15.66Q70.69 14.88 70.69 13.48Q70.69 12.07 70.15 11.29Q69.61 10.51 68.71 10.51Q67.70 10.51 67.15 11.29Q66.60 12.07 66.60 13.48Q66.60 14.86 67.15 15.65Q67.70 16.45 68.69 16.45M77.57 18.52Q76.05 18.52 75.12 17.82Q74.18 17.13 74.18 15.89Q74.18 14.61 74.98 13.92Q75.78 13.22 77.35 12.90L80.46 12.29Q80.46 10.40 78.83 10.40Q77.33 10.40 77.06 11.78L74.34 11.66Q74.61 10.07 75.78 9.25Q76.94 8.44 78.83 8.44Q80.99 8.44 82.08 9.47Q83.16 10.51 83.16 12.47L83.16 15.76Q83.16 16.18 83.30 16.31Q83.43 16.45 83.70 16.45L83.97 16.45L83.97 18.30Q83.85 18.34 83.57 18.37Q83.29 18.41 83.02 18.41Q82.28 18.41 81.70 18.09Q81.11 17.78 80.93 16.91L80.90 16.82Q80.54 17.60 79.67 18.06Q78.81 18.52 77.57 18.52M78.21 16.66Q79.22 16.66 79.84 16.07Q80.46 15.47 80.46 14.45L80.46 13.98L78.27 14.45Q76.95 14.70 76.95 15.64Q76.95 16.66 78.21 16.66M90.40 18.30L88.06 18.30Q86.57 18.30 85.86 17.61Q85.16 16.91 85.16 15.40L85.16 10.67L83.61 10.67L83.61 8.65L85.16 8.65L85.16 6.38L87.86 6.38L87.86 8.65L90.40 8.65L90.40 10.67L87.86 10.67L87.86 15.08Q87.86 15.78 88.16 16.03Q88.46 16.28 89.05 16.28L90.40 16.28M95.66 18.52Q94.18 18.52 93.08 17.89Q91.98 17.27 91.37 16.14Q90.76 15.01 90.76 13.48Q90.76 11.95 91.37 10.82Q91.98 9.70 93.08 9.07Q94.18 8.44 95.66 8.44Q97.13 8.44 98.24 9.07Q99.35 9.70 99.95 10.82Q100.55 11.95 100.55 13.48Q100.55 15.01 99.95 16.14Q99.35 17.27 98.24 17.89Q97.13 18.52 95.66 18.52M95.66 16.45Q96.66 16.45 97.22 15.66Q97.78 14.88 97.78 13.48Q97.78 12.07 97.22 11.29Q96.66 10.51 95.66 10.51Q94.65 10.51 94.09 11.29Q93.53 12.07 93.53 13.48Q93.53 14.88 94.09 15.66Q94.65 16.45 95.66 16.45M104.39 18.30L101.69 18.30L101.69 8.65L104.12 8.65L104.17 10.25Q104.57 9.26 105.32 8.85Q106.08 8.44 107.03 8.44Q108.60 8.44 109.45 9.43Q110.31 10.42 110.31 12.09L110.31 18.30L107.61 18.30L107.61 12.99Q107.61 11.84 107.29 11.21Q106.98 10.58 106.13 10.58Q105.29 10.58 104.84 11.21Q104.39 11.84 104.39 12.99"/>
+      </svg>
+    </a>
     <nav class="nav" aria-label="Page">
       <a href="#how">How it works</a><a href="#app">The app</a><a href="#privacy">Privacy</a><a href="#faq">Questions</a><a href="docs/">Docs</a>
     </nav>
     <div class="top-act">
-      <a class="btn ghost" href="https://github.com/DkshByte/mindbaton"><span class="lg m" style="--i:url(icons/github.svg)" aria-hidden="true"></span><span class="gh-t">GitHub</span></a>
+      <a class="btn ghost view-sw to-agent" href="#agent" title="This page as plain text, for AI agents"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 8 4 4-4 4"/><path d="M12 16h7"/></svg>For agents</a>
+      <a class="btn ghost view-sw to-human" href="#top" title="Back to the page for people"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>For humans</a>
+      <a class="btn ghost" href="https://github.com/DkshByte/mindbaton" aria-label="GitHub"><span class="lg m" style="--i:url(icons/github.svg)" aria-hidden="true"></span><span class="gh-t">GitHub</span></a>
       <a class="btn primary" href="#install">Install</a>
     </div>
   </div>
@@ -61,6 +137,17 @@ No costume, no eyebrows, no metric tiles, no gradients inside boxes. Motion: the
     <button class="btn primary" type="button" data-copy="#cmd-hero"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span data-label>Copy</span></button>
   </div>
   <p class="hero-meta">Linux, macOS and WSL2. <a href="#install">Docker</a> for Windows and NAS boxes. Free, open source, no account.</p>
+  <p class="hero-with"><span>Works with</span>
+    <span class="lg m" style="--i:url(icons/openai.svg)" role="img" aria-label="ChatGPT" title="ChatGPT"></span>
+    <img class="lg" src="icons/claude-color.svg" alt="Claude" title="Claude">
+    <img class="lg" src="icons/gemini-color.svg" alt="Gemini" title="Gemini">
+    <img class="lg" src="icons/perplexity-color.svg" alt="Perplexity" title="Perplexity">
+    <span class="lg m" style="--i:url(icons/cursor.svg)" role="img" aria-label="Cursor" title="Cursor"></span>
+    <img class="lg" src="icons/claudecode-color.svg" alt="Claude Code" title="Claude Code">
+    <img class="lg x" src="icons/codex-color.svg" alt="Codex" title="Codex">
+    <img class="lg x" src="icons/vscode.svg" alt="VS Code" title="VS Code">
+    <a href="#works">and more</a>
+  </p>
  </div>
   <div class="relay" role="img" aria-label="Demo: Maya tells ChatGPT she's vegetarian. Mindbaton saves it on her computer. Later, Claude plans vegetarian dinners without being told.">
     <div class="rl-card rl-from" aria-hidden="true">
@@ -82,7 +169,7 @@ No costume, no eyebrows, no metric tiles, no gradients inside boxes. Motion: the
   </div>
  </div>
   <figure class="shot hero-shot">
-    <img src="shots/app-you.png" width="2160" height="1350" fetchpriority="high" alt="Mindbaton's You page: a greeting, what six AIs know about the demo person sorted by kind (who she is, where, what she uses, likes, people), and what changed lately.">
+    <picture><source media="(max-width: 640px)" srcset="shots/app-you-m.webp" width="780" height="1688"><img src="shots/app-you.png" width="2160" height="1350" fetchpriority="high" alt="Mindbaton's You page: a greeting, what six AIs know about the demo person sorted by kind (who she is, where, what she uses, likes, people), and what changed lately."></picture>
   </figure>
   <p class="note">Every screen on this page is the real app, filled with Maya, the made-up person in Mindbaton's demo.</p>
 </section>
@@ -224,23 +311,23 @@ That's where we stopped. My last message is the final "Me:" line above — carry
   </div>
   <div class="tabs">
     <figure class="tab" role="tabpanel" id="p-topics" aria-labelledby="t-topics">
-      <div class="shot"><img src="shots/app-topics.png" width="2160" height="1350" loading="lazy" decoding="async" alt="Topics: one card per topic with its lead line, the AIs it came from and when it was last active."></div>
+      <div class="shot"><picture><source media="(max-width: 640px)" srcset="shots/app-topics-m.webp" width="780" height="1688"><img src="shots/app-topics.png" width="2160" height="1350" loading="lazy" decoding="async" alt="Topics: one card per topic with its lead line, the AIs it came from and when it was last active."></picture></div>
       <figcaption>Topics sort themselves. The same subject talked about in two apps is one topic.</figcaption>
     </figure>
     <figure class="tab" role="tabpanel" id="p-chats" aria-labelledby="t-chats" hidden>
-      <div class="shot"><img src="shots/app-chats.png" width="2160" height="1350" loading="lazy" decoding="async" alt="Chats: every conversation from every AI, which model answered, and how full each one is."></div>
+      <div class="shot"><picture><source media="(max-width: 640px)" srcset="shots/app-chats-m.webp" width="780" height="1688"><img src="shots/app-chats.png" width="2160" height="1350" loading="lazy" decoding="async" alt="Chats: every conversation from every AI, which model answered, and how full each one is."></picture></div>
       <figcaption>Every chat from every AI, which model answered, and how full it is.</figcaption>
     </figure>
     <figure class="tab" role="tabpanel" id="p-handoff" aria-labelledby="t-handoff" hidden>
-      <div class="shot"><img src="shots/app-handoff.png" width="2160" height="1350" loading="lazy" decoding="async" alt="A chat that hit its limit, open in a side panel with buttons to continue it in ChatGPT, Gemini, Perplexity, DeepSeek or Grok."></div>
+      <div class="shot"><picture><source media="(max-width: 640px)" srcset="shots/app-handoff-m.webp" width="780" height="1688"><img src="shots/app-handoff.png" width="2160" height="1350" loading="lazy" decoding="async" alt="A chat that hit its limit, open in a side panel with buttons to continue it in ChatGPT, Gemini, Perplexity, DeepSeek or Grok."></picture></div>
       <figcaption>Continue a full chat in another AI, with or without what Mindbaton knows about you.</figcaption>
     </figure>
     <figure class="tab" role="tabpanel" id="p-map" aria-labelledby="t-map" hidden>
-      <div class="shot"><img src="shots/app-graph.png" width="2160" height="1350" loading="lazy" decoding="async" alt="The map: the demo person in the middle, the kinds of fact around her, and the people, places and tools under each."></div>
+      <div class="shot"><picture><source media="(max-width: 640px)" srcset="shots/app-graph-m.webp" width="780" height="1688"><img src="shots/app-graph.png" width="2160" height="1350" loading="lazy" decoding="async" alt="The map: the demo person in the middle, the kinds of fact around her, and the people, places and tools under each."></picture></div>
       <figcaption>How it all connects. Click anything to see which AI and which chat it came from.</figcaption>
     </figure>
     <figure class="tab" role="tabpanel" id="p-setup" aria-labelledby="t-setup" hidden>
-      <div class="shot"><img src="shots/app-setup.png" width="2160" height="1350" loading="lazy" decoding="async" alt="Setup: a green tick and a green track under each piece that works, and optional extras below."></div>
+      <div class="shot"><picture><source media="(max-width: 640px)" srcset="shots/app-setup-m.webp" width="780" height="1688"><img src="shots/app-setup.png" width="2160" height="1350" loading="lazy" decoding="async" alt="Setup: a green tick and a green track under each piece that works, and optional extras below."></picture></div>
       <figcaption>A green tick for everything Mindbaton has seen working, and the exact step for the rest.</figcaption>
     </figure>
   </div>
@@ -300,14 +387,14 @@ That's where we stopped. My last message is the final "Me:" line above — carry
     <p>Open source under the AGPL-3.0, so every line below can be checked in the code.</p>
   </div>
   <dl class="facts">
-    <div><dt>Cloud</dt><dd>None. It runs on your hardware and keeps everything in your <code>data</code> folder.</dd></div>
-    <div><dt>Account with us</dt><dd>None. Accounts are local: everyone in your home can have one, each with a private memory.</dd></div>
-    <div><dt>Telemetry</dt><dd>None. Nothing phones home.</dd></div>
-    <div><dt>What leaves</dt><dd>Nothing by default. Add an AI key (free Gemini or Groq, or your own paid OpenAI or Claude key) and only the text for a summary, a topic name or an answer goes to that provider.</dd></div>
+    <div><dt>Cloud</dt><dd><b>None.</b> It runs on your hardware and keeps everything in your <code>data</code> folder.</dd></div>
+    <div><dt>Account with us</dt><dd><b>None.</b> Accounts are local: everyone in your home can have one, each with a private memory.</dd></div>
+    <div><dt>Telemetry</dt><dd><b>None.</b> Nothing phones home.</dd></div>
+    <div><dt>What leaves</dt><dd><b>Nothing by default.</b> Add an AI key (free Gemini or Groq, or your own paid OpenAI or Claude key) and only the text for a summary, a topic name or an answer goes to that provider.</dd></div>
     <div><dt>Secrets</dt><dd>API keys and passwords you paste into a chat are blanked out before anything is saved.</dd></div>
     <div><dt>Forgetting</dt><dd>One click on any memory, or ask an AI to forget over MCP. It stays forgotten, even after a full rebuild.</dd></div>
     <div><dt>Lock-in</dt><dd>Export everything as JSON, Neo4j Cypher or GraphML whenever you like.</dd></div>
-    <div><dt>Open ports</dt><dd>Not needed. Away from home, use Tailscale or Cloudflare Tunnel, never your router.</dd></div>
+    <div><dt>Open ports</dt><dd><b>Not needed.</b> Away from home, use Tailscale or Cloudflare Tunnel, never your router.</dd></div>
   </dl>
 </section>
 
@@ -359,9 +446,117 @@ That's where we stopped. My last message is the final "Me:" line above — carry
   </div>
 </section>
 
+<section class="end" aria-labelledby="end-h">
+  <div class="aurora aurora-end" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="wrap end-in">
+    <h2 id="end-h">Give every AI the same memory</h2>
+    <p>One command on a computer you already own. Free, open source, no account.</p>
+    <div class="cmd">
+      <code id="cmd-end">git clone https://github.com/DkshByte/mindbaton &amp;&amp; cd mindbaton &amp;&amp; ./install.sh</code>
+      <button class="btn primary" type="button" data-copy="#cmd-end"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span data-label>Copy</span></button>
+    </div>
+    <p class="hero-meta">Then <a href="https://chromewebstore.google.com/detail/mindbaton/nfadphcjimkchbapapbcphnbpajmfmih">add the browser extension</a>, or read <a href="docs/getting-started.html">getting started</a> first.</p>
+  </div>
+</section>
+
+<section class="agent-view wrap" id="agent" aria-labelledby="agent-h">
+  <h1 class="vh" id="agent-h">Mindbaton for AI agents</h1>
+  <div class="agent-pane">
+    <div class="agent-bar">
+      <div class="agent-meta">
+        <code>llms.txt</code>
+        <span>Machine-readable interface for AI agents, LLMs, and scrapers</span>
+      </div>
+      <div class="agent-actions">
+        <button class="btn sm" type="button" data-copy="#agent-raw"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span data-label>Copy llms.txt</span></button>
+        <a class="btn sm ghost" href="llms.txt" target="_blank" rel="noopener"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="m15 3 6 6"/><path d="M10 14 21 3"/></svg>Raw</a>
+      </div>
+    </div>
+    <pre class="agent-code" id="agent-raw"># Mindbaton
+
+&gt; One private memory for ChatGPT, Claude, Gemini, Claude Code, Cursor and every other AI you use — running on your own computer. Free and open source (AGPL-3.0).
+
+Mindbaton is a local-first memory daemon and MCP server that connects all AI chat interfaces, coding agents, and IDEs to a single private context store. When you talk to one AI, Mindbaton extracts facts, preferences, and decisions. When another AI needs context, it accesses the same memory over MCP or browser shortcuts. When a chat hits its context limit, Mindbaton packages the session into a compact handoff pack (sized to a token budget you set, from 200 to 12,000) so another model carries on from your last message.
+
+## Quick Links
+- Website: https://mindbaton.com
+- GitHub Repository: https://github.com/DkshByte/mindbaton
+- Documentation: https://mindbaton.com/docs/
+- API Reference: https://mindbaton.com/docs/api.html
+- Connect your AIs: https://mindbaton.com/docs/connect.html
+- Security Policy: https://mindbaton.com/docs/security.html
+- Chrome Web Store Extension: https://chromewebstore.google.com/detail/mindbaton/nfadphcjimkchbapapbcphnbpajmfmih
+
+## Core Architecture
+- **Zero Cloud / Local-First**: Runs on Python (stdlib only) and SQLite. No cloud accounts, external databases, or subscriptions.
+- **Embedded Natural Language Understanding**: 256-dimensional semantic embeddings and rules-based entity extraction run locally with zero API keys or GPU requirements.
+- **Multi-Client Sync**: Captures context from browser chats via a lightweight browser extension and from IDEs/coding agents via MCP.
+- **Baton Handoff Protocol**: Converts long conversations into structured continuation packs containing goals, decisions, open questions, code symbols, and verbatim recent turns.
+- **Privacy &amp; Security**: Automated redaction of API keys, tokens, and passwords prior to disk write. Data never leaves your network unless explicitly forwarded to an optional inference provider.
+
+## Installation
+
+### Shell Script (Linux, macOS, WSL2)
+```bash
+git clone https://github.com/DkshByte/mindbaton &amp;&amp; cd mindbaton &amp;&amp; ./install.sh
+```
+
+### Docker (Windows, NAS, Unraid)
+```bash
+git clone https://github.com/DkshByte/mindbaton &amp;&amp; cd mindbaton &amp;&amp; docker compose up -d
+```
+
+## Model Context Protocol (MCP) Tools
+
+Mindbaton exposes an MCP server for coding agents (Claude Code, Cursor, Windsurf, Zed, OpenCode, Antigravity, Claude Desktop) and custom connectors:
+
+- `context`: Retrieve briefing about the user, preferences, and topic-specific background.
+- `recall`: Natural-language semantic search across all memories across all AIs.
+- `remember`: Save a lasting fact or preference directly into memory.
+- `profile`: Structured summary of user identity, active projects, and preferences.
+- `handoff`: Generate a continuation pack for the active or specified chat session.
+- `sessions`: List recent conversations across all connected AI tools.
+- `save_conversation`: Persist chat turns to enable cross-model continuation.
+- `forget`: Delete a specific memory by ID.
+
+### MCP Configuration Example
+
+Add to your MCP settings file:
+```json
+{
+  "mcpServers": {
+    "mindbaton": {
+      "command": "python3",
+      "args": ["/path/to/mindbaton/mcp_stdio.py"],
+      "env": {
+        "MINDBATON_URL": "http://localhost:3004",
+        "MINDBATON_TOKEN": "mb_xxxxxxxx"
+      }
+    }
+  }
+}
+```
+
+Or connect directly over streamable HTTP: `POST http://localhost:3004/mcp` with `Authorization: Bearer mb_xxxxxxxx`. Responses are JSON; there is no SSE stream.
+
+## HTTP API Reference
+
+- `GET /health` - System health, version, and auth status (unauthenticated)
+- `GET /recall?q={query}&amp;k={count}` - Semantic search across memories
+- `GET /context?q={topic}&amp;budget={tokens}` - Formatted LLM prompt context injection
+- `GET /profile` - Full user profile grouped by category
+- `GET /sessions` - Recent conversation sessions with token fullness metrics
+- `GET /handoff?session={id}&amp;budget={tokens}` - Structured handoff continuation pack
+- `POST /mcp` - Standard Model Context Protocol endpoint
+- `POST /capture` - Ingest message from browser extension (auto-redacts secrets)
+- `POST /remember` - Save explicit memory fact
+- `DELETE /node/{id}` - Permanently erase memory item</pre>
+  </div>
+</section>
+
 </main>
 
-<footer class="foot">
+<footer class="foot foot-flush">
   <div class="wrap foot-in">
     <div class="foot-a">
       <span class="wordmark" role="img" aria-label="Mindbaton"></span>
@@ -379,6 +574,7 @@ That's where we stopped. My last message is the final "Me:" line above — carry
     <p class="fine">Maya Haddad and all her chats are made up; they come from the project's <code>demo.py</code>. Product names and logos are trademarks of their owners. Mindbaton is not affiliated with or endorsed by them.</p>
   </div>
 </footer>
+
 <p class="vh" id="status" role="status" aria-live="polite"></p>
 </body>
 </html>

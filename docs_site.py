@@ -3,8 +3,8 @@
 The Markdown files stay the one source: they read on GitHub as they are, and this turns them into pages in the site's
 design (sidebar, "on this page", search, copy buttons). The output is committed, because GitHub Pages serves site/ as is.
 
-  python3 docs_site.py           write site/docs/
-  python3 docs_site.py --check   exit 1 if site/docs/ is out of date, a link or anchor is broken, or an MCP tool is
+  python3 docs_site.py           write site/docs/, and site/llms.txt into the Agent view of site/index.html
+  python3 docs_site.py --check   exit 1 if either is out of date, a link or anchor is broken, or an MCP tool is
                                  missing from docs/api.md (CI runs this)
 """
 import html, json, os, re, sys
@@ -269,12 +269,12 @@ def page_html(n, slug, label, p, body):
 <meta name="description" content="{attr(desc)}">
 <meta name="theme-color" content="#111110">
 <meta name="color-scheme" content="dark">
-<link rel="canonical" href="https://dkshbyte.github.io/mindbaton/docs/{'' if slug == 'index' else slug + '.html'}">
+<link rel="canonical" href="https://mindbaton.com/docs/{'' if slug == 'index' else slug + '.html'}">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Mindbaton">
 <meta property="og:title" content="{attr(title)}">
 <meta property="og:description" content="{attr(desc)}">
-<meta property="og:image" content="https://dkshbyte.github.io/mindbaton/og.png">
+<meta property="og:image" content="https://mindbaton.com/og.png">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
@@ -343,6 +343,10 @@ def build():
     for src, target, frag in links:
         if frag and frag not in ids[target]:
             problems.append(f"{src}: no heading #{frag} in {target}")
+    # the site's Agent view shows site/llms.txt itself, so "Copy llms.txt" and the file can't drift apart
+    page = open(os.path.join(HERE, "site", "index.html"), encoding="utf-8").read()
+    llms = open(os.path.join(HERE, "site", "llms.txt"), encoding="utf-8").read().strip()
+    files["../index.html"] = re.sub(r'(<pre class="agent-code"[^>]*>).*?(</pre>)', lambda m: m[1] + esc(llms) + m[2], page, count=1, flags=re.S)
     api = open(os.path.join(HERE, "docs", "api.md"), encoding="utf-8").read()
     problems += [f"docs/api.md: the MCP tool `{t}` isn't documented" for t in mcp_tools() if f"`{t}`" not in api]
     return files, problems
@@ -356,7 +360,7 @@ def main():
         old = open(path, encoding="utf-8").read() if os.path.exists(path) else None
         if old != text:
             if check:
-                problems.append(f"site/docs/{name} is out of date: run python3 docs_site.py")
+                problems.append(f"{os.path.relpath(path, HERE)} is out of date: run python3 docs_site.py")
             else:
                 os.makedirs(OUT, exist_ok=True)
                 open(path, "w", encoding="utf-8").write(text)
