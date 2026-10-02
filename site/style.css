@@ -10,8 +10,9 @@
   --brand: #eeeeec; --brand-hi: #fff; --brand-ink: #111110;
   --glass: rgba(255, 253, 243, .06); --glass-hi: rgba(255, 253, 243, .11); --glass-rim: rgba(255, 253, 243, .14);
   --ok: #3dd68c; --danger: #ff8fa3; --danger-soft: rgba(233, 61, 130, .14);
-  /* the aurora is a warm dusk: ember, apricot, rose, and a deep wine underneath (one family, so overlaps never go muddy) */
-  --a1: #ff5a36; --a2: #ffae6b; --a3: #ee5f86; --a4: #ff8f3f; --a5: #6e1f33;
+  /* the aurora is one light behind the top edge that cools as it spreads: a coral core, crimson, rose, wine underneath,
+     and a cold night glow on the far side. Reds, not oranges: dimmed over the dark, red stays wine where orange turns brown. */
+  --a1: #ff5a3c; --a2: #f5325e; --a3: #d93a74; --a4: #1c4a6e; --a5: #5c1436;
   --sans: "Geist", ui-sans-serif, system-ui, sans-serif; --mono: "Geist Mono", ui-monospace, monospace;
   --r: 10px; --r-sm: 7px; --gut: clamp(16px, 4vw, 40px);
   color-scheme: dark;
@@ -19,7 +20,7 @@
 * { box-sizing: border-box; }
 html { background: var(--bg); scroll-behavior: smooth; scroll-padding-top: 72px; -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 400 15px/1.55 var(--sans); -webkit-font-smoothing: antialiased;
-  position: relative; overflow-x: hidden; font-feature-settings: "ss01"; }
+  position: relative; overflow-x: clip; font-feature-settings: "ss01"; }
 a { color: inherit; }
 p { margin: 0; }
 img { display: block; max-width: 100%; height: auto; }
@@ -42,31 +43,48 @@ svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor;
 .wordmark { display: block; width: 110px; height: 24px; background: var(--fg);
   -webkit-mask: url(brand/wordmark.svg) left center / contain no-repeat; mask: url(brand/wordmark.svg) left center / contain no-repeat; }
 
-/* the aurora: four soft warm glows rise from the top edge, drift, and fade out over ~700px (a stepped mask) */
-.aurora { position: absolute; left: 0; right: 0; top: 0; height: 760px; overflow: hidden; pointer-events: none; z-index: 0; opacity: .72;
-  -webkit-mask: linear-gradient(#000 0%, rgba(0, 0, 0, .72) 22%, rgba(0, 0, 0, .34) 52%, rgba(0, 0, 0, .1) 78%, transparent 100%);
-  mask: linear-gradient(#000 0%, rgba(0, 0, 0, .72) 22%, rgba(0, 0, 0, .34) 52%, rgba(0, 0, 0, .1) 78%, transparent 100%); }
-.aurora::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; opacity: .85;
-  background: linear-gradient(90deg, transparent, var(--a1) 18%, var(--a2) 40%, var(--a3) 62%, var(--a4) 84%, transparent); }
-.aurora i { position: absolute; top: -250px; width: 50%; height: 600px; border-radius: 50%; mix-blend-mode: screen; will-change: transform;
-  background: radial-gradient(closest-side in oklab, var(--c), color-mix(in oklab, var(--c) 0%, transparent)); animation: 24s ease-in-out infinite alternate; }
-/* a wide wine glow under the others gives the dusk its depth; grain on top stops banding on 8-bit screens */
-.aurora i:nth-child(5) { --c: var(--a5); left: -10%; top: -420px; width: 120%; height: 720px; opacity: .45; animation-name: aur5; animation-duration: 40s; }
-@keyframes aur5 { to { transform: translate(4%, 30px) scale(1.06); } }
+/* the aurora: five glows behind the top edge, read as one light. Each fades on an eased curve that reaches zero flat (no
+   disc, no rim), and drifts on four sine waves of unrelated lengths (across, down, size, strength), so it never stops,
+   never ping-pongs and never repeats. It is dimmest at the very top and brightest just under the top bar, then fades out
+   flat, so the small grey text in the bar and the hero keeps 4.5:1 wherever it sits. Transform and opacity only; paused
+   off screen (.off, site.js). */
+.aurora { position: absolute; left: 0; right: 0; top: 0; height: 820px; overflow: hidden; pointer-events: none; z-index: 0; opacity: .88;
+  -webkit-mask: linear-gradient(rgba(0, 0, 0, .5) 0%, rgba(0, 0, 0, .62) 5%, rgba(0, 0, 0, .86) 10%, #000 16%, rgba(0, 0, 0, .9) 26%, rgba(0, 0, 0, .7) 39%, rgba(0, 0, 0, .46) 53%, rgba(0, 0, 0, .25) 67%, rgba(0, 0, 0, .1) 81%, rgba(0, 0, 0, .02) 93%, transparent 100%);
+  mask: linear-gradient(rgba(0, 0, 0, .5) 0%, rgba(0, 0, 0, .62) 5%, rgba(0, 0, 0, .86) 10%, #000 16%, rgba(0, 0, 0, .9) 26%, rgba(0, 0, 0, .7) 39%, rgba(0, 0, 0, .46) 53%, rgba(0, 0, 0, .25) 67%, rgba(0, 0, 0, .1) 81%, rgba(0, 0, 0, .02) 93%, transparent 100%);
+  animation: dawn 2.2s cubic-bezier(.16, 1, .3, 1); }
+@keyframes dawn { from { opacity: 0; transform: translateY(-10%); } }  /* once, on load: the light comes up from behind the edge */
+/* the edge itself: a hairline of the same light, brightest over the core */
+.aurora::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; opacity: .7;
+  background: linear-gradient(90deg in oklab, transparent, var(--a1) 16%, var(--a2) 34%, var(--a3) 64%, transparent 94%); }
+.aurora i { position: absolute; left: calc(var(--x) - var(--w) / 2); top: calc(var(--y) - var(--h) / 2); width: var(--w); height: var(--h);
+  border-radius: 50%; mix-blend-mode: screen; opacity: var(--o); will-change: transform, opacity;
+  background: radial-gradient(closest-side in oklab, var(--c), color-mix(in oklab, var(--c) 93%, transparent) 14%, color-mix(in oklab, var(--c) 76%, transparent) 28%,
+    color-mix(in oklab, var(--c) 54%, transparent) 42%, color-mix(in oklab, var(--c) 33%, transparent) 56%, color-mix(in oklab, var(--c) 16%, transparent) 70%,
+    color-mix(in oklab, var(--c) 5%, transparent) 84%, color-mix(in oklab, var(--c) 0%, transparent));
+  animation: aur-x, aur-y, aur-s, aur-o; animation-timing-function: cubic-bezier(.37, 0, .63, 1); animation-iteration-count: infinite; animation-direction: alternate;
+  animation-duration: var(--t), calc(var(--t) * 1.37), calc(var(--t) * .81), calc(var(--t) * .63); animation-delay: calc(var(--t) * -.3), calc(var(--t) * -.9), calc(var(--t) * -.5), calc(var(--t) * -.2); }
+@keyframes aur-x { from { translate: calc(var(--dx) * -1) 0; } to { translate: var(--dx) 0; } }
+@keyframes aur-y { from { transform: translateY(-18px) rotate(-5deg); } to { transform: translateY(26px) rotate(6deg); } }
+@keyframes aur-s { from { scale: .9; } to { scale: 1.14; } }
+@keyframes aur-o { from { opacity: calc(var(--o) * .66); } to { opacity: var(--o); } }
+.aurora i:nth-child(1) { --c: var(--a5); --x: 42%; --y: -80px; --w: max(160vw, 1100px); --h: 1200px; --o: .8; --t: 37s; --dx: 4%; }
+.aurora i:nth-child(2) { --c: var(--a4); --x: 104%; --y: -40px; --w: max(70vw, 520px); --h: 760px; --o: .5; --t: 31s; --dx: 8%; }
+.aurora i:nth-child(3) { --c: var(--a3); --x: 66%; --y: -70px; --w: max(88vw, 640px); --h: 900px; --o: .42; --t: 27s; --dx: 9%; }
+.aurora i:nth-child(4) { --c: var(--a2); --x: 30%; --y: -50px; --w: max(76vw, 600px); --h: 800px; --o: .44; --t: 23s; --dx: 10%; }
+.aurora i:nth-child(5) { --c: var(--a1); --x: 18%; --y: -30px; --w: max(46vw, 420px); --h: 460px; --o: .38; --t: 17s; --dx: 14%; }
+.aurora.off i { animation-play-state: paused; }
+/* grain on top stops banding on 8-bit screens */
 .aurora::after { content: ""; position: absolute; inset: 0; opacity: .14; mix-blend-mode: overlay; pointer-events: none;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-.aurora i:nth-child(1) { --c: var(--a1); left: -14%; animation-name: aur1; z-index: 1; }
-.aurora i:nth-child(2) { --c: var(--a2); left: 16%; top: -340px; animation-name: aur2; animation-duration: 29s; }
-.aurora i:nth-child(3) { --c: var(--a3); left: 44%; animation-name: aur3; animation-duration: 21s; }
-.aurora i:nth-child(4) { --c: var(--a4); left: 66%; top: -330px; animation-name: aur4; animation-duration: 33s; }
-@keyframes aur1 { to { transform: translate(22%, 50px) scale(1.18); } }
-@keyframes aur2 { to { transform: translate(-16%, 70px) scale(.9); } }
-@keyframes aur3 { to { transform: translate(18%, 30px) scale(1.2); } }
-@keyframes aur4 { to { transform: translate(-24%, 60px) scale(1.05); } }
 
-/* top bar: frosted glass over the aurora, like the app's */
-.top { position: sticky; top: 0; z-index: 10; background: rgba(17, 17, 16, .55); border-bottom: 1px solid var(--line);
-  -webkit-backdrop-filter: blur(24px) saturate(150%); backdrop-filter: blur(24px) saturate(150%); }
+/* top bar, like the app's: clear at the top of the page, so the glow runs unbroken behind it; frosted glass with its
+   hairline once the page scrolls under it. Where the scroll timeline isn't supported it is frosted all the time. */
+.top { position: sticky; top: 0; z-index: 10; background: rgba(17, 17, 16, .62); border-bottom: 1px solid var(--line);
+  -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); }
+@supports (animation-timeline: scroll()) {
+  .top { animation: top-clear linear both; animation-timeline: scroll(); animation-range: 0 96px; }
+  @keyframes top-clear { from { background-color: rgba(17, 17, 16, 0); border-bottom-color: transparent; -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0); } }
+}
 .top-in { max-width: 1200px; margin: 0 auto; padding: 0 var(--gut); height: 60px; display: flex; align-items: center; gap: 28px; }
 .brand { display: flex; align-items: center; gap: 8px; padding: 6px 0; color: var(--fg); text-decoration: none; }
 .brand-baton { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
@@ -77,13 +95,26 @@ svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor;
 .nav { display: flex; gap: 4px; }
 .nav a { text-decoration: none; color: var(--fg-2); font-size: 13.5px; padding: 6px 10px; border-radius: 7px; transition: color .15s, background .15s; }
 .nav a:hover { color: var(--fg); background: var(--glass); }
-.top-act { margin-left: auto; display: flex; gap: 8px; }
+.top-act { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+/* For agents / For humans: one quiet button that always names the other reading of the page. Two links, one shown;
+   #agent in the address shows the Agent view, so it works without the script. */
+.view-sw { position: relative; }
+.view-sw::after { content: ""; position: absolute; inset: -8px 0; }  /* a taller target than the 28px it is on phones */
+.view-sw.to-human, :root:has(#agent:target) .view-sw.to-agent { display: none; }
+:root:has(#agent:target) .view-sw.to-human { display: inline-flex; }
+/* handing the page over (site.js starts it): the other reading wipes down over this one; coming back, it wipes up */
+:root[data-vt]::view-transition-old(root) { animation: none; }
+:root[data-vt]::view-transition-new(root) { animation: wipe-down .6s cubic-bezier(.16, 1, .3, 1) both; }
+:root[data-vt="human"]::view-transition-new(root) { animation-name: wipe-up; }
+@keyframes wipe-down { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
+@keyframes wipe-up { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0); } }
 
 /* buttons: the app's .btn, glass over the aurora; primary is warm white */
 .btn { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 13px; border-radius: 8px; font-weight: 500; font-size: 13px;
   border: 1px solid var(--glass-rim); background: var(--glass); color: var(--fg); text-decoration: none; white-space: nowrap;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 1px 2px rgba(0, 0, 0, .35); transition: background .15s, border-color .15s; }
 .btn:hover { background: var(--glass-hi); border-color: var(--line-3); }
+.btn:active { transform: translateY(1px); }
 .btn.primary { background: var(--brand); color: var(--brand-ink); border-color: var(--brand);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 1px 3px rgba(0, 0, 0, .35); }
 .btn.primary:hover { background: var(--brand-hi); border-color: var(--brand-hi); }
@@ -110,6 +141,10 @@ h1 { margin: 0; font-size: clamp(44px, 7.4vw, 84px); line-height: 1; font-weight
 .hero-meta { margin-top: 14px; font-size: 13.5px; color: var(--fg-3); }
 .hero-meta a { color: var(--fg-2); text-decoration: underline; text-decoration-color: var(--line-3); text-underline-offset: 3px; }
 .hero-meta a:hover { color: var(--fg); }
+.hero-with { margin-top: 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 13px; font-size: 13.5px; color: var(--fg-3); }
+.hero-with .lg { width: 18px; height: 18px; }
+.hero-with a { color: var(--fg-2); text-decoration: underline; text-decoration-color: var(--line-3); text-underline-offset: 3px; }
+.hero-with a:hover { color: var(--fg); }
 .shot { margin: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line-2); background: var(--panel);
   box-shadow: 0 1px 0 rgba(255, 255, 255, .06) inset, 0 40px 80px -32px rgba(0, 0, 0, .8), 0 12px 24px -12px rgba(0, 0, 0, .5); }
 .hero-shot { margin-top: clamp(48px, 7vw, 80px); }
@@ -215,6 +250,7 @@ h4 { margin: 0; font-size: 13.5px; font-weight: 600; }
 .facts div { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line); }
 .facts dt { font-weight: 500; }
 .facts dd { margin: 0; color: var(--fg-2); max-width: 62ch; }
+.facts dd b { color: var(--fg); font-weight: 500; }
 
 /* install */
 .inst-h { padding: 12px; border-bottom: 1px solid var(--line); }
@@ -242,6 +278,32 @@ h4 { margin: 0; font-size: 13.5px; font-weight: 600; }
 .qa details:last-child:not([open]) summary { border-radius: 0 0 var(--r) var(--r); }
 .qa details p { padding: 0 20px 18px; color: var(--fg-2); max-width: 70ch; }
 
+/* the Agent view: site/llms.txt itself, in a flat panel like the hand-off pack. #agent in the address shows it in place
+   of the page's sections; the bar with Copy stays under the top bar while the text scrolls with the page. */
+#agent { display: none; }
+#agent:target { display: block; }
+main:has(#agent:target) > :not(#agent) { display: none; }
+.agent-view { padding-top: clamp(32px, 5vw, 56px); }
+.agent-pane { border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); overflow: clip; }
+.agent-bar { position: sticky; top: 61px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px;
+  padding: 10px 12px 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.agent-meta { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 13px; color: var(--fg-2); }
+.agent-meta code { flex: none; }
+.agent-actions { display: flex; gap: 8px; }
+.agent-code { margin: 0; padding: clamp(20px, 3vw, 32px); font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 2; }
+
+/* the close: the same light again, rising from behind the footer's line, and the install command once more. The one
+   centred moment on the page. The text sits above the bright band, where it keeps its contrast. */
+.end { position: relative; z-index: 1; overflow: hidden; margin-top: clamp(88px, 11vw, 144px); padding: clamp(64px, 9vw, 112px) 0 clamp(190px, 22vw, 280px); text-align: center; }
+.aurora-end { top: auto; bottom: 0; height: 620px; scale: 1 -1; opacity: .8; animation: none; }
+.end-in { position: relative; z-index: 1; }
+.end h2 { font-size: clamp(32px, 4.6vw, 56px); letter-spacing: -.04em; }
+.end p { margin: 14px auto 0; max-width: 46ch; color: var(--fg-2); font-size: 16px; text-wrap: pretty; }
+.end .cmd { margin-inline: auto; max-width: 640px; text-align: left; }
+.end .hero-meta { font-size: 13.5px; }  /* --fg-2, like the line above it: it sits nearer the light than the hero's does */
+.foot.foot-flush { margin-top: 0; }
+#agent { padding-bottom: clamp(96px, 12vw, 160px); }
+
 /* footer */
 .foot { margin-top: clamp(96px, 12vw, 160px); border-top: 1px solid var(--line); }
 .foot-in { display: grid; grid-template-columns: auto 1fr; gap: 20px 40px; padding-top: 36px; padding-bottom: 48px; }
@@ -258,6 +320,10 @@ h4 { margin: 0; font-size: 13.5px; font-weight: 600; }
 }
 @media (max-width: 640px) {
   body { font-size: 15px; }
+  .aurora { height: 560px; opacity: .78; }  /* a touch dimmer: the bar's small labels sit straight on it here */
+  .shot { width: min(292px, 80%); margin-inline: auto; border-radius: 30px; }
+  .hero-with .x { display: none; }  /* six marks and the link fit one line */
+  .hero-shot + .note, .tab figcaption { text-align: center; }
 
   /* Safe area & compact top bar for mobile */
   .top-in {
@@ -271,8 +337,7 @@ h4 { margin: 0; font-size: 13.5px; font-weight: 600; }
   .brand-baton svg { width: 24px; height: 24px; }
   .wordmark-letters { height: 18px; }
   .top-act { gap: 6px; align-items: center; flex-shrink: 0; }
-  .segs-view { height: 28px; padding: 2px; gap: 2px; }
-  .segs-view button { height: 22px; padding: 0 8px; font-size: 11.5px; }
+  .view-sw { font-size: 12px; }
   .gh-t { display: none; }
   .top-act .btn.ghost { height: 28px; padding: 0 7px; }
   .top-act .btn.primary { height: 28px; padding: 0 11px; font-size: 12px; }
@@ -328,12 +393,12 @@ h4 { margin: 0; font-size: 13.5px; font-weight: 600; }
   .pack pre { padding: 12px 14px; font-size: 11.5px; }
 
   /* Agent view on phones */
-  .agent-view { padding-top: clamp(20px, 4vw, 36px); padding-bottom: 48px; }
-  .agent-bar { padding: 12px 14px; gap: 10px; }
+  .agent-view { padding-top: 20px; }
+  .agent-bar { position: static; padding: 12px 14px; }
   .agent-meta { font-size: 12.5px; line-height: 1.4; }
-  .agent-actions { width: 100%; display: flex; gap: 8px; }
-  .agent-actions .btn { flex: 1; justify-content: center; }
-  .agent-code { padding: 14px 16px; font-size: 12px; line-height: 1.6; max-height: 65vh; }
+  .agent-actions { width: 100%; }
+  .agent-actions .btn { flex: 1; justify-content: center; height: 36px; }
+  .agent-code { padding: 14px 16px; font-size: 12px; line-height: 1.6; }
 
   /* Footer */
   .foot { margin-top: clamp(64px, 10vw, 112px); }
@@ -348,7 +413,6 @@ h4 { margin: 0; font-size: 13.5px; font-weight: 600; }
   .top-in { padding-inline: max(10px, env(safe-area-inset-left)); gap: 6px; }
   .wordmark-letters { max-width: 80px; height: 16px; }
   .top-act { gap: 4px; }
-  .segs-view button { padding: 0 6px; font-size: 10.5px; }
   .top-act .btn.primary { padding: 0 8px; font-size: 11.5px; }
 }
 
@@ -357,7 +421,7 @@ h4 { margin: 0; font-size: 13.5px; font-weight: 600; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .aurora i, .search span::after { animation: none; }
+  .aurora, .aurora i, .search span::after { animation: none; }
   * { transition-duration: 0s !important; }
 }
 
@@ -406,7 +470,8 @@ h4 { margin: 0; font-size: 13.5px; font-weight: 600; }
 .gone { opacity: 0 !important; }
 .fadeable { transition: opacity .35s ease; }
 .aurora { transition: opacity 1.2s ease; }
-.aurora.pulse { opacity: .85; transition-duration: .35s; }
+.aurora.pulse { opacity: 1; transition-duration: .35s; }
+@media (max-width: 640px) { .aurora.pulse { opacity: .88; } }
 
 /* every AI knows: the old fact is struck as it's replaced */
 .row.old s { text-decoration: none; background: linear-gradient(rgba(233, 61, 130, .7), rgba(233, 61, 130, .7)) 0 55% / 100% 1.5px no-repeat; }
@@ -415,7 +480,7 @@ h4 { margin: 0; font-size: 13.5px; font-weight: 600; }
 
 /* pass the baton: the meter fills, the baton hops to the next AI */
 .pick { position: relative; }
-.meter b { transition: width 1.6s cubic-bezier(.4, 0, .2, 1), background-color .3s; }
+.meter b { transform-origin: 0 50%; transition: transform 1.6s cubic-bezier(.4, 0, .2, 1), background-color .3s; }
 .meter.cool { color: var(--fg-3); }
 .meter.cool b { background: var(--fg-2); }
 .passed { display: flex; align-items: center; gap: 8px; padding: 10px 0 0 34px; margin-top: 2px; border-top: 1px solid var(--line); font-size: 13px; color: var(--fg-2); }
@@ -433,7 +498,7 @@ h4 { margin: 0; font-size: 13.5px; font-weight: 600; }
   .motion .hero-shot { animation: settle linear both; animation-timeline: view(); animation-range: entry 10% cover 45%; transform-origin: 50% 0; }
   @keyframes settle { from { transform: perspective(1600px) rotateX(16deg) scale(.94); opacity: .55; } }
 }
-.tab:not([hidden]) { animation: fadein .3s ease; }
+.tab:not([hidden]), #agent:target { animation: fadein .3s ease; }
 @keyframes fadein { from { opacity: 0; } }
 
 @media (max-width: 1099px) {
@@ -441,108 +506,5 @@ h4 { margin: 0; font-size: 13.5px; font-weight: 600; }
   .relay { max-width: 520px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .caret::after, .dots i, .rl-link.go .bt, .rise, .tab:not([hidden]), .row.old.strike s { animation: none !important; }
+  .caret::after, .dots i, .rl-link.go .bt, .rise, .tab:not([hidden]), #agent:target, .row.old.strike s { animation: none !important; }
 }
-
-/* ── Human / Agent Perspective Switcher: clean, solid, in top-act ── */
-.segs-view {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: nowrap;
-  flex-shrink: 0;
-  gap: 2px;
-  height: 32px;
-  padding: 3px;
-  background: var(--panel);
-  border: 1px solid var(--line-2);
-  border-radius: 7px;
-}
-.segs-view button {
-  height: 24px;
-  padding: 0 11px;
-  font-size: 12px;
-  font-weight: 500;
-  border-radius: 5px;
-  color: var(--fg-3);
-  background: transparent;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-  letter-spacing: -.01em;
-  transition: color .15s ease, background-color .15s ease;
-}
-.segs-view button:hover {
-  color: var(--fg);
-}
-.segs-view button[aria-selected="true"] {
-  background: var(--panel-3);
-  color: var(--fg);
-  font-weight: 500;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, .25);
-}
-
-/* ── Agent View (Machine-Readable llms.txt perspective) ── */
-.agent-view {
-  padding-top: clamp(36px, 5vw, 64px);
-  padding-bottom: 80px;
-}
-.agent-pane {
-  background: var(--panel);
-  border: 1px solid var(--line-2);
-  border-radius: var(--r);
-  overflow: hidden;
-  box-shadow: 0 1px 0 rgba(255, 255, 253, .06) inset, 0 32px 64px -24px rgba(0, 0, 0, .8);
-}
-.agent-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 18px;
-  border-bottom: 1px solid var(--line);
-  background: var(--panel-2);
-}
-.agent-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  color: var(--fg-2);
-}
-.agent-meta .badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 11.5px;
-  font-family: var(--mono);
-  background: var(--panel-3);
-  color: var(--fg-2);
-  border: 1px solid var(--line-2);
-}
-.agent-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.agent-code {
-  margin: 0;
-  padding: clamp(20px, 3vw, 36px);
-  max-height: 75vh;
-  overflow: auto;
-  font-family: var(--mono);
-  font-size: 13.5px;
-  line-height: 1.7;
-  color: var(--fg);
-  background: var(--bg);
-  white-space: pre-wrap;
-  word-break: break-word;
-  user-select: text;
-  tab-size: 2;
-}
-.agent-code::selection {
-  background: rgba(255, 90, 54, .25);
-}
-

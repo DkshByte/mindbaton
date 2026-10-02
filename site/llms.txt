@@ -2,7 +2,7 @@
 
 > One private memory for ChatGPT, Claude, Gemini, Claude Code, Cursor and every other AI you use — running on your own computer. Free and open source (AGPL-3.0).
 
-Mindbaton is a local-first memory daemon and MCP server that connects all AI chat interfaces, coding agents, and IDEs to a single private context store. When you talk to one AI, Mindbaton extracts facts, preferences, and decisions. When another AI needs context, it accesses the same memory over MCP or browser shortcuts. When a chat hits its context limit, Mindbaton packages the session into an ultra-dense handoff briefing (< 800 tokens) so another model continues seamlessly.
+Mindbaton is a local-first memory daemon and MCP server that connects all AI chat interfaces, coding agents, and IDEs to a single private context store. When you talk to one AI, Mindbaton extracts facts, preferences, and decisions. When another AI needs context, it accesses the same memory over MCP or browser shortcuts. When a chat hits its context limit, Mindbaton packages the session into a compact handoff pack (sized to a token budget you set, from 200 to 12,000) so another model carries on from your last message.
 
 ## Quick Links
 - Website: https://mindbaton.com
@@ -63,7 +63,7 @@ Add to your MCP settings file:
 }
 ```
 
-Or connect directly via HTTP SSE/POST at `http://localhost:3004/mcp` with `Authorization: Bearer mb_xxxxxxxx`.
+Or connect directly over streamable HTTP: `POST http://localhost:3004/mcp` with `Authorization: Bearer mb_xxxxxxxx`. Responses are JSON; there is no SSE stream.
 
 ## HTTP API Reference
 
