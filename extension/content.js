@@ -61,8 +61,12 @@
   chrome.runtime.onMessage.addListener((m, _s, reply) => {
     if (!current()) return;
     if (m.insert) insertMemory();
-    if (m.meter) { reply(meter); }
-    if (m.syncNow) { lastSig = ""; sync().then(() => reply(meter)); return true; }
+    if (m.meter) { reply(meter || { wait }); }
+    if (m.syncNow) {  // the popup asks: always answer, with the meter or why there isn't one yet (never leave it hanging)
+      lastSig = "";
+      Promise.race([sync(), new Promise(ok => setTimeout(ok, 6000))]).catch(() => {}).then(() => reply(meter || { wait }));
+      return true;
+    }
   });
 
   function insertText(el, text) {
@@ -186,12 +190,14 @@
     return turns;
   }
 
-  let meter = null, lastSig = "", limitText = null, timer = 0, firstChange = 0, added = [], dismissed = "";
+  let meter = null, lastSig = "", limitText = null, timer = 0, firstChange = 0, added = [], dismissed = "", retry = 0;
+  let wait = "loading";  // why there's no meter yet: loading | off | empty | reply | offline
   const live = async () => (await chrome.storage.local.get({ live: true, enabled: true, warnAt: 80 }));
 
   async function sync() {
     const s = await live();
-    if (!s.live || !s.enabled || !current() || !alive()) return;
+    if (!s.live || !s.enabled) { wait = "off"; return; }
+    if (!current() || !alive()) return;
     for (const n of added.splice(0)) {  // limit banners appear outside the message list
       if (!n.isConnected || !n.closest || n.closest("[contenteditable='true'], textarea, #memgraph-live") || (ANY && n.closest(ANY))) continue;
       const t = (n.innerText || n.textContent || "").slice(0, 600);
@@ -199,13 +205,17 @@
       if (m) limitText = t.trim().split("\n").find(l => LIMIT.test(l)) || m[0];
     }
     const turns = readTurns();
-    if (turns.length < 2 && !limitText) return;  // a new, empty chat: nothing to keep yet
+    if (turns.length < 2 && !limitText) { wait = turns.length ? "reply" : "empty"; return; }  // a new, empty chat: nothing to keep yet
     const sig = turns.length + "|" + turns.map(t => t.text.length).join(",") + "|" + (limitText || "");
     if (sig === lastSig) return;
     lastSig = sig;
     const r = await send({ live: { url: location.href, site: location.hostname, title: document.title, turns, limit: limitText,
                                    model: pickerModel() } });
-    if (r && r.id) { meter = r; banner(s.warnAt); }
+    if (r && r.id) { meter = r; retry = 0; banner(s.warnAt); return; }
+    // the server didn't answer (asleep, restarting, off the network): the chat hasn't changed, so nothing else would
+    // send it again. Forget that it was sent and try again, a little later each time.
+    wait = "offline"; lastSig = "";
+    clearTimeout(timer); timer = setTimeout(sync, Math.min(60000, 4000 * 2 ** retry++));
   }
   function schedule() {  // quiet for 2.5s (a reply finished streaming), or at most every 15s while it streams
     clearTimeout(timer);
@@ -287,5 +297,5 @@
   setTimeout(pickUp, 1200);
   let href = location.href;
   setInterval(() => { if (location.href !== href) { href = location.href; lastSig = ""; limitText = null; meter = null;
-    document.getElementById("memgraph-live")?.remove(); setTimeout(pickUp, 800); schedule(); } }, 1000);  // SPA navigation
+    wait = "loading"; retry = 0; document.getElementById("memgraph-live")?.remove(); setTimeout(pickUp, 800); schedule(); } }, 1000);  // SPA navigation
 })();

@@ -153,7 +153,7 @@ bloom. Its one container per screen is a double bezel (a hairline tray, `--panel
 radius) and its primary button carries its arrow in a circle: the welcome is staged, the app stays flat. Steps enter
 on `cubic-bezier(.32, .72, 0, 1)`, staggered; nothing moves under reduced motion.
 
-### The extension (5.2.0, 2026-10-02)
+### The extension (5.2.1, 2026-10-02)
 The popup, its Connect tab and the bar it adds to chat pages follow this system: sand greys, Geist and Geist Mono
 (bundled in `extension/fonts/`), flat `--panel` cards on hairlines, the website's light behind the top edge. A chat's
 fullness is one 4px meter (`--fg-2`, `--danger` from 80%, as in the app) under a mono number; "Continue in" is a grid

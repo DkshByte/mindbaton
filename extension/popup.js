@@ -42,17 +42,26 @@ function health() {
   });
 }
 
-// This tab's conversation: how full its context is, and where to continue it.
+// This tab's conversation: how full its context is, and where to continue it. Asked again every 2 s while the popup is
+// open: a page that was still loading, a reply still streaming or a server that was asleep shows up by itself.
+const WAITING = { off: "Turn on Live mode to track this chat.", reply: "Waiting for the first reply. This chat's meter appears after it.",
+  empty: "Start chatting. This chat's meter appears after the first reply.", loading: "Reading this chat…",
+  offline: "Can't reach your Mindbaton right now. What you send is kept and saved when it's back." };
+let chatSig = null, chatTimer = 0;
 async function chat() {
+  clearTimeout(chatTimer); chatTimer = setTimeout(chat, 2000);
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const host = tab && tab.url ? new URL(tab.url).hostname : "";
   let m = null;
-  try { m = await chrome.tabs.sendMessage(tab.id, { syncNow: true }); } catch {}
+  try { m = await Promise.race([chrome.tabs.sendMessage(tab.id, { syncNow: true }), new Promise(ok => setTimeout(ok, 7000))]); } catch {}
   const box = $("chat");
-  if (!m) {
+  const sig = m && m.id ? [m.id, m.pct, m.turns, m.limit, m.model, m.chat].join("|") : "wait:" + host + ":" + (m && m.wait || "");
+  if (sig === chatSig) return;  // nothing changed: leave what's shown (a ticked box, a "Copied" label) alone
+  chatSig = sig;
+  if (!m || !m.id) {
+    box.onclick = null;
     box.innerHTML = `<div class="empty"><span class="stack">${TARGETS.slice(0, 4).map(logo).join("")}</span><span>${AI[host]
-      ? (($("live").checked) ? "Start chatting — this chat's meter appears after the first reply." : "Turn on Live mode to track this chat.")
-      : "Open an AI chat to see how full it is and hand it off."}</span></div>`;
+      ? WAITING[m && m.wait] || "Refresh this tab so Mindbaton can read the chat." : "Open an AI chat to see how full it is and hand it off."}</span></div>`;
     return;
   }
   const pct = m.limit ? 100 : m.pct || 0, hot = m.limit || pct >= 80;  // red from 80%, as in the app
@@ -98,7 +107,7 @@ function summary(id, tries = 0) {  // the AI summary of this chat; while it's be
 }
 
 $("enabled").onchange = e => chrome.storage.local.set({ enabled: e.target.checked });
-$("live").onchange = e => { chrome.storage.local.set({ live: e.target.checked }); setTimeout(chat, 100); };
+$("live").onchange = e => { chrome.storage.local.set({ live: e.target.checked }); chatSig = null; setTimeout(chat, 100); };
 $("open").onclick = e => {
   e.preventDefault();
   chrome.storage.local.get({ server: "" }, s => chrome.tabs.create({ url: s.server || "https://github.com/DkshByte/mindbaton#readme" }));
