@@ -879,6 +879,16 @@ dialog.wel::backdrop { background: var(--bg); }
 .wel-code { display: grid; grid-template-columns: minmax(0, 190px) auto; justify-content: start; gap: 8px; }
 .wel-code .inp { font-family: var(--mono); letter-spacing: .08em; text-transform: uppercase; }
 .wel-code .form-err { grid-column: 1 / -1; }
+.wel-facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.wel-facts li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 10px; font-size: 13.5px; color: var(--fg-2); }
+.wel-facts svg { margin-top: 3px; color: var(--ok); }
+.wel-facts b { color: var(--fg); font-weight: 500; }
+.wel-agree { display: grid; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+.wel-agree a, .wel-core .set-note a { color: var(--fg); text-decoration: underline; text-decoration-color: var(--line-3); text-underline-offset: 3px; }
+.wel-now { margin: 0; font-size: 13.5px; color: var(--fg-2); }
+.wel-now b { color: var(--fg); font-weight: 500; }
+.wel-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.wel-ol .keyform .form-err { flex-basis: 100%; }
 .wel-ok { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .wel-ok svg { color: var(--ok); }
 :root[data-theme="light"] .wel .aurora { opacity: .3; }
@@ -2116,18 +2126,21 @@ async function renderSetup() {
 }
 
 // ---------- welcome: the first run ----------
-// A new account with nothing remembered gets four screens instead of the Setup page: hello, a look, the first AI, and
-// what was remembered. Only the third matters, and it ends by itself: when a memory arrives, or an app first uses the
-// memory. One decision per screen, Skip always there, never twice (per account, on this device); Setup can start it again.
-let wel = null;  // { step, path, st, base, had, ext0, ag0, device, timer }
-const welKey = () => "mb-welcome:" + ACCT.username;
-const welSeen = () => { try { return localStorage.getItem(welKey()) === "1"; } catch { return true; } };
+// A person's first sign-in opens the welcome instead of the app: hello (what stays private, and the terms to agree to),
+// a look, the model that runs here, an optional AI key (admins), then the first AI. That last step ends by itself, when a
+// memory arrives or an app first uses the memory. One decision per screen. The terms can't be skipped; everything after
+// can. The server stamps the account when it's done (PATCH /api/me), so it shows once, on whichever device comes first;
+// Setup can start it again.
+let wel = null;  // { flow, step, path, st, base, had, ext0, ag0, device, timer }
 const WEL_STORE = "https://chromewebstore.google.com/detail/mindbaton/nfadphcjimkchbapapbcphnbpajmfmih";
 const WEL_GO = '<span class="go" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>';
+const welNav = (next = "Continue", quiet = "") => `<div class="wel-act"><button type="button" class="btn-quiet" data-wel="back">${IC.back}Back</button>${quiet}
+  ${next ? `<button type="button" class="btn primary cta" data-wel="next">${next}${WEL_GO}</button>` : ""}</div>`;
 async function welcome() {
   let st;
   try { st = await api("/status"); } catch { return show("setup"); }
   wel = { step: 0, path: null, st, had: memories().length, ext0: st.extension.ok, ag0: st.agents.ok, device: "",
+    flow: ["hello", "look", "model", ...(ACCT.role === "admin" ? ["key"] : []), "connect", "done"],
     base: location.origin.startsWith("http://127.") || location.origin.includes("localhost") ? st.server.base : location.origin };
   $("#wel").showModal(); welStep(0);
 }
@@ -2144,83 +2157,126 @@ function welHow() {  // the chosen path's steps; after the extension is paired, 
       <li><b>Type the code it shows</b><form class="wel-code" id="wel-code" novalidate><input class="inp" name="code" placeholder="ABCD-EFGH" aria-label="The code the extension shows"
           autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="9"><button class="btn primary">Connect</button><p class="form-err" role="alert"></p></form></li></ol></div>`;
 }
-const WEL = [
-  () => `<img class="gate-mark" src="/assets/brand/app-icon.svg" alt="" width="60" height="60"><h1 id="wel-h">Welcome, ${esc(ACCT.display_name)}.</h1>
+const WEL = {
+  hello: () => `<img class="gate-mark" src="/assets/brand/app-icon.svg" alt="" width="60" height="60"><h1 id="wel-h">Welcome, ${esc(ACCT.display_name)}.</h1>
     <p class="wel-sub">Tell one AI something and every AI you use knows it. Setting that up takes about two minutes.</p>
-    <div class="wel-act"><button class="btn primary cta" data-wel="next">Get started${WEL_GO}</button></div>`,
-  () => `<h1 id="wel-h">Pick a look</h1><p class="wel-sub">It's yours. You can change it any time in Settings.</p>
-    <div class="wel-shell"><div class="wel-core"><div class="thpick" role="group" aria-label="Theme">${themeCards()}</div></div></div>
-    <div class="wel-act"><button class="btn-quiet" data-wel="back">${IC.back}Back</button><button class="btn primary cta" data-wel="next">Continue${WEL_GO}</button></div>`,
-  () => `<h1 id="wel-h">Connect your first AI</h1><p class="wel-sub">Where do you talk to AI the most? You can add the other one later.</p>
+    <div class="wel-shell"><div class="wel-core"><ul class="wel-facts">
+      <li>${TICK_I}<span><b>It stays on this computer.</b> Your memory lives in a folder here: no cloud, no account with us, nothing phones home.</span></li>
+      <li>${TICK_I}<span><b>Secrets are blanked out.</b> API keys and passwords you paste into a chat are removed before anything is saved.</span></li>
+      <li>${TICK_I}<span><b>Forgetting is one click.</b> And it stays forgotten.</span></li></ul>
+      ${ACCT.terms ? "" : `<form class="wel-agree" id="wel-agree" novalidate><label class="check"><input type="checkbox" name="agree" required>
+        <span>I agree to the <a href="https://mindbaton.com/terms" target="_blank" rel="noopener">Terms</a> and the <a href="https://mindbaton.com/privacy" target="_blank" rel="noopener">Privacy Policy</a>.</span></label>
+        <p class="form-err" role="alert"></p></form>`}</div></div>
+    <div class="wel-act">${ACCT.terms ? "" : `<button type="button" class="btn-quiet" data-acct="out">${IC.out}Sign out</button>`}
+      <button type="button" class="btn primary cta" data-wel="next">Get started${WEL_GO}</button></div>`,
+  look: () => `<h1 id="wel-h">Pick a look</h1><p class="wel-sub">It's yours. You can change it any time in Settings.</p>
+    <div class="wel-shell"><div class="wel-core"><div class="thpick" role="group" aria-label="Theme">${themeCards()}</div></div></div>${welNav()}`,
+  model: () => `<h1 id="wel-h">It has its own small model</h1>
+    <p class="wel-sub">Rules catch most of what you say. A small AI model that runs on this computer reads the rest: the everyday way people type.</p>
+    <div class="wel-shell"><div class="wel-core"><div class="brain-stats"><div><b>28/30</b><span>facts caught in sentences it never saw</span></div>
+        <div><b>0</b><span>made-up facts in that test</span></div><div><b>1.3 GB</b><span>offline, at low priority</span></div></div>
+      <p class="wel-now"><b>On this computer:</b> ${brainSub(wel.st.brain || {})}</p>
+      <p class="set-note">It learned only from made-up examples, never from anyone's messages. The rules check every fact it finds before it's saved, and what you say never leaves this computer.</p></div></div>${welNav()}`,
+  key: () => {
+    const ai = wel.st.ai || {};
+    return `<h1 id="wel-h">A free AI key, if you want one</h1>
+    <p class="wel-sub">Mindbaton works without it. With a key it also writes hand-off summaries, names your topics and answers questions from your memory.</p>
+    <div class="wel-shell"><div class="wel-core">${ai.enabled ? `<p class="wel-ok">${TICK_I}<b>The AI is on${ai.providers?.length ? ": " + esc(ai.providers.join(" → ")) : ""}.</b></p>`
+      : `<ol class="wel-ol"><li><b>Get a free key</b><p>Either one works. Both have a free tier.</p><span class="wel-links"><a class="btn sm" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>
+          <a class="btn sm" href="https://console.groq.com/keys" target="_blank" rel="noopener">Groq</a></span></li>
+        <li><b>Paste it here</b><p>It's tested before it's saved.</p><form class="keyform" id="wel-key" novalidate><select name="provider" aria-label="Provider"><option value="gemini">Google Gemini</option><option value="groq">Groq</option></select>
+          <input name="key" type="password" autocomplete="off" placeholder="Paste your key" aria-label="API key"><button class="btn primary sm">Test and save</button><p class="form-err" role="alert"></p></form></li></ol>`}
+      <p class="set-note">Only the text for a summary, a topic name or an answer goes to that provider. The key is kept on this computer and shared by everyone on this Mindbaton.</p></div></div>
+    ${welNav(ai.enabled ? "Continue" : "", ai.enabled ? "" : `<button type="button" class="btn cta" data-wel="next">Skip this</button>`)}`;
+  },
+  connect: () => `<h1 id="wel-h">Connect your first AI</h1><p class="wel-sub">Where do you talk to AI the most? You can add the other one later.</p>
     <div class="wel-paths" role="group" aria-label="Where you use AI">
       <button type="button" class="wel-path" data-wel-path="web" aria-pressed="${wel.path === "web"}"><span class="stack">${["ChatGPT", "Claude", "Gemini", "Perplexity"].map(a => aiLogo(a, "")).join("")}</span>
         <b>In the browser</b><small>ChatGPT, Claude, Gemini and more</small></button>
       <button type="button" class="wel-path" data-wel-path="agent" aria-pressed="${wel.path === "agent"}"><span class="stack">${["Claude Code", "Codex", "Cursor"].map(a => aiLogo(a, "")).join("")}</span>
         <b>In a coding agent</b><small>Claude Code, Codex, Cursor and more</small></button></div>
     <div class="wel-shell" id="wel-how"${wel.path ? "" : " hidden"}>${wel.path ? welHow() : ""}</div>
-    <div class="wel-act"><button class="btn-quiet" data-wel="back">${IC.back}Back</button><button class="btn-quiet" data-wel="later">I'll do this later</button></div>`,
-  () => {
+    ${welNav("", `<button type="button" class="btn-quiet" data-wel="next">I'll do this later</button>`)}`,
+  done: () => {
     const got = [...memories()].sort((a, b) => b.updated - a.updated).slice(0, memories().length > wel.had ? 3 : 0), on = wel.st.extension.ok || wel.st.agents.ok;
     return (got.length ? `<h1 id="wel-h">It remembered.</h1><p class="wel-sub">Every AI you connect now knows this, and whatever else you tell any of them.</p>
         <div class="wel-shell wel-got"><div class="wel-core rows" inert>${got.map(m => entryRow(m)).join("")}</div></div>`
       : on ? `<h1 id="wel-h">You're connected.</h1><p class="wel-sub">Tell that AI something about you and it lands in your memory within seconds.</p>`
       : `<h1 id="wel-h">Finish whenever you like.</h1><p class="wel-sub">Setup keeps every step, with a green tick beside each thing that works.</p>`)
-      + `<div class="wel-act">${got.length || on ? `<button class="btn primary cta" data-wel="open">Open my memory${WEL_GO}</button>` : `<button class="btn primary cta" data-wel="setup">Open Setup${WEL_GO}</button>`}
-        <button class="btn cta" data-wel="import">Bring what my AIs already know</button></div>`;
+      + `<div class="wel-act">${got.length || on ? `<button type="button" class="btn primary cta" data-wel="open">Open my memory${WEL_GO}</button>` : `<button type="button" class="btn primary cta" data-wel="setup">Open Setup${WEL_GO}</button>`}
+        <button type="button" class="btn cta" data-wel="import">Bring what my AIs already know</button></div>`;
   },
-];
+};
 function welStep(n) {
   clearTimeout(wel.timer); wel.step = n;
-  const box = $("#wel-in");
-  box.className = "wel-in" + (n === 2 ? " wide" : ""); box.innerHTML = WEL[n]();
-  $("#wel-steps").innerHTML = n ? [1, 2, 3].map(i => `<i${i <= n ? ' class="on"' : ""}></i>`).join("") : "";
-  n ? $("#wel-steps").setAttribute("aria-label", `Step ${n} of 3`) : $("#wel-steps").removeAttribute("aria-label");
-  $('#wel [data-wel="skip"]').hidden = n === 3;
+  const box = $("#wel-in"), name = wel.flow[n], mid = wel.flow.length - 2;  // hello and done frame the numbered steps
+  box.className = "wel-in" + (["connect", "key", "model"].includes(name) ? " wide" : ""); box.innerHTML = WEL[name]();
+  $("#wel-steps").innerHTML = n ? Array.from({ length: mid }, (_, i) => `<i${i < n ? ' class="on"' : ""}></i>`).join("") : "";
+  n && n <= mid ? $("#wel-steps").setAttribute("aria-label", `Step ${n} of ${mid}`) : $("#wel-steps").removeAttribute("aria-label");
+  $('#wel [data-wel="skip"]').hidden = name === "done" || !ACCT.terms;  // the terms come first; everything after can be skipped
+  $("#wel").scrollTop = 0;
   anim([...box.children], { opacity: [0, 1], y: [14, 0], filter: ["blur(6px)", "blur(0px)"] }, { duration: .6, ease: [.32, .72, 0, 1], delay: window.Motion?.stagger?.(.06) || 0 });
   quietFocus($("#wel-h"));
-  if (n === 2) welWatch();
-  if (n === 3) bloom($(".wel-got"), box);
+  if (name === "connect") welWatch();
+  if (name === "done") bloom($(".wel-got"), box);
 }
 function welWatch() {  // the connect step ends by itself: a memory arrives, or an app starts using the memory
+  const here = () => wel && wel.flow[wel.step] === "connect";
   wel.timer = setTimeout(async () => {
-    if (!wel || wel.step !== 2) return;
+    if (!here()) return;
     try { wel.st = await api("/status"); await load(); } catch {}
-    if (!wel || wel.step !== 2) return;
-    if (memories().length > wel.had || wel.st.extension.ok && !wel.ext0 || wel.st.agents.ok && !wel.ag0) return welStep(3);
+    if (!here()) return;
+    if (memories().length > wel.had || wel.st.extension.ok && !wel.ext0 || wel.st.agents.ok && !wel.ag0) return welStep(wel.step + 1);
     welWatch();
   }, 3000);
 }
 function welEnd(to) {  // by any door: it won't come back by itself
   clearTimeout(wel?.timer); wel = null;
-  try { localStorage.setItem(welKey(), "1"); } catch {}
+  ACCT.welcomed = ACCT.welcomed || Date.now() / 1000; send("/api/me", { welcomed: true }, "PATCH").catch(() => {});
   $("#wel").close();
   if (to === "import") featFront = "import";
   show(to === "open" ? "overview" : "setup");
   quietFocus($("#page-title"));
 }
-$("#wel").addEventListener("cancel", ev => { ev.preventDefault(); welEnd("setup"); });  // Esc is Skip
+$("#wel").addEventListener("cancel", ev => { ev.preventDefault(); if (ACCT.terms) welEnd("setup"); });  // Esc is Skip, once the terms are agreed
 $("#wel").addEventListener("click", async ev => {
-  const t = ev.target.closest("[data-wel], [data-wel-path], [data-agent], [data-copy]");
+  const t = ev.target.closest("[data-wel], [data-wel-path], [data-agent], [data-copy], [data-acct]");
   if (!t || !wel) return;
+  if (t.dataset.acct) { clearTimeout(wel.timer); wel = null; return $("#wel").close(); }  // signing out instead: the document's handler does the rest
   if (t.dataset.copy) { const was = t.textContent; t.textContent = "Copied"; return setTimeout(() => { t.textContent = was; }, 1400); }  // a toast would sit under the dialog
   if (t.dataset.agent) { agentAt = +t.dataset.agent; $("#wel-agents").innerHTML = agentCards(wel.base, wel.st); return $(`#wel-agents [data-agent="${agentAt}"]`).focus(); }
   if (t.dataset.welPath) {
     wel.path = t.dataset.welPath;
     $("#wel").querySelectorAll("[data-wel-path]").forEach(b => b.setAttribute("aria-pressed", b === t));
     if (wel.path === "agent" && !setupKey) try { setupKey = (await send("/api/tokens", { name: "AI apps (from Setup)", kind: "mcp" })).token; } catch {}  // the commands need a key
-    if (!wel || wel.step !== 2) return;
+    if (!wel || wel.flow[wel.step] !== "connect") return;
     const how = $("#wel-how"); how.hidden = false; how.innerHTML = welHow();
     return anim(how, { opacity: [0, 1], y: [8, 0] }, { duration: .4, ease: [.32, .72, 0, 1] });
   }
   const a = t.dataset.wel;
+  if (a === "next" && $("#wel-agree")) {  // the one thing that can't be skipped
+    const f = $("#wel-agree");
+    if (!f.elements.agree.checked) return fail(f, "agree", "Tick the box to agree before you start.");
+    busy(t, "One moment…");
+    try { ACCT = { ...ACCT, ...await send("/api/me", { terms: true }, "PATCH") }; } catch (e) { busy(t); return fail(f, null, sentence(e.message)); }
+    if (!wel) return;
+  }
   if (a === "next") return welStep(wel.step + 1);
   if (a === "back") return welStep(wel.step - 1);
-  if (a === "later") return welStep(3);
   welEnd(a === "skip" ? "setup" : a);  // open | setup | import
 });
-$("#wel").addEventListener("submit", async ev => {  // the code the extension shows: typing it here is the approval
+$("#wel").addEventListener("submit", async ev => {
   ev.preventDefault();
-  const f = ev.target, c = f.elements.code.value.toUpperCase().replace(/[^A-Z]/g, ""), btn = f.querySelector("button");
+  const f = ev.target, btn = f.querySelector("button");
+  if (f.id === "wel-agree") return $('#wel .cta[data-wel="next"]').click();
+  if (f.id === "wel-key") {  // tested by the server before it's saved, as in Setup
+    if (!f.elements.key.value.trim()) return fail(f, "key", "Paste the key first, or skip this step.");
+    fail(f, null, ""); busy(btn, "Testing…");
+    try { await send("/settings/ai-key", Object.fromEntries(new FormData(f))); wel.st = await api("/status"); if (wel) welStep(wel.step); }
+    catch (e) { busy(btn); fail(f, "key", sentence(e.message)); }
+    return;
+  }
+  const c = f.elements.code.value.toUpperCase().replace(/[^A-Z]/g, "");  // the code the extension shows: typing it here is the approval
   if (c.length !== 8) return fail(f, "code", "A code is 8 letters, like ABCD-EFGH.");
   fail(f, null, ""); busy(btn, "Connecting…");
   try {
@@ -2259,9 +2315,7 @@ function brainPoll(b) {  // while it downloads or reads, only this step refreshe
     if (el && view === "setup") { el.outerHTML = brainStep(st); stackApply(); }
   }, 3000);
 }
-function brainStep(st) {  // Mindbaton's own model: what it's doing, and (admins) re-reading everything with it
-  const b = st.brain || {}, busy = b.forced && b.left;
-  const sub = b.progress ? esc(b.progress)
+const brainSub = b => b.progress ? esc(b.progress)
     : b.state === "waiting" && b.error ? `<span title="${esc(b.error)}">${/URLError|HTTPError|Tunnel|Connection|timed out|getaddrinfo|SSL/i.test(b.error)
       ? "Couldn't reach the download server" : "Something went wrong starting it"} — it tries again in a few minutes.</span>`
     : b.paused ? "Paused. Resume it below."
@@ -2271,6 +2325,9 @@ function brainStep(st) {  // Mindbaton's own model: what it's doing, and (admins
     : b.mode === "off" ? "Turned off in this install (MINDBATON_BRAIN=off)."
     : !b.can ? "This computer can't run it. Set MINDBATON_BRAIN_URL to a model server on another computer."
     : `Off — it turns on by itself with 12 GB of memory or more; this computer has ${b.memory_gb} GB.`;
+function brainStep(st) {  // Mindbaton's own model: what it's doing, and (admins) re-reading everything with it
+  const b = st.brain || {}, busy = b.forced && b.left;
+  const sub = brainSub(b);
   const body = ACCT.role !== "admin" ? `<p class="set-note">It runs on this computer for everyone here, so only an admin can start it.</p>`
     : `<div class="keybar"><div><b>${busy ? "Re-reading everything" : "Re-read everything with the model"}</b><p>${busy
       ? "Pause it any time; it picks up where it left off."
@@ -3489,7 +3546,9 @@ async function startApp(acct) {
   anim($(".app"), { opacity: [0, 1] }, { duration: .35 });
   await logoReady; await load(true);
   checkUpdate();
-  if (!route(location.hash.slice(1)) && !memories().length) welSeen() ? show("setup") : welcome();  // first run: nothing remembered yet
+  const routed = route(location.hash.slice(1));
+  if (!ACCT.welcomed && !/^#pair\//.test(location.hash)) welcome();  // first sign-in (a tab opened to approve a device keeps to that)
+  else if (!routed && !memories().length) show("setup");  // nothing remembered yet
   if (view !== "settings") quietFocus($("#page-title"));  // keyboard users start at the top, not on <body>
 }
 

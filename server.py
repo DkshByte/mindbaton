@@ -1911,14 +1911,15 @@ CONN_LIMITS = ((60, 60), (600, 3600))  # a connector token: at most 60 requests 
 COLORS = ("#8b95ff", "#3dd68c", "#f5a524", "#f472b6", "#38bdf8", "#a78bfa", "#fb923c", "#2dd4bf")  # new accounts, in turn
 AUTH_SCHEMA = """
 CREATE TABLE IF NOT EXISTS accounts(id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, display_name TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'member', hidden INTEGER NOT NULL DEFAULT 0, color TEXT, password TEXT, created REAL, last_login REAL);
+  role TEXT NOT NULL DEFAULT 'member', hidden INTEGER NOT NULL DEFAULT 0, color TEXT, password TEXT, created REAL, last_login REAL,
+  welcomed REAL, terms REAL);
 CREATE TABLE IF NOT EXISTS logins(hash TEXT PRIMARY KEY, account INTEGER NOT NULL REFERENCES accounts ON DELETE CASCADE,
   created REAL, expires REAL);
 CREATE TABLE IF NOT EXISTS tokens(id INTEGER PRIMARY KEY, account INTEGER NOT NULL REFERENCES accounts ON DELETE CASCADE, name TEXT,
   kind TEXT, scope TEXT, hash TEXT UNIQUE, created REAL, last_used REAL, revoked REAL);
 CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT);
 """  # AUTOINCREMENT: an account id is never reused, so no cache, folder or log keyed by it can reach a newer account
-ACCOUNT = ("id", "username", "display_name", "role", "hidden", "color", "created", "last_login")
+ACCOUNT = ("id", "username", "display_name", "role", "hidden", "color", "created", "last_login", "welcomed", "terms")
 AUTH = None                      # auth.db (open_data): used under LOCK only
 GRAPHS = {}                      # account id -> its Graph, opened on first use
 NAMING = False                   # only the running server asks the AI for topic names (never tests or the benchmark)
@@ -1944,6 +1945,13 @@ def open_data(path):
     os.makedirs(path, mode=0o700, exist_ok=True)
     AUTH = sqlite3.connect(os.path.join(path, "auth.db"), isolation_level=None, check_same_thread=False)
     AUTH.executescript("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;" + AUTH_SCHEMA)
+    # auth.db made before the welcome: add its two stamps. Whoever has signed in before is past their first sign-in.
+    have = {r[1] for r in AUTH.execute("PRAGMA table_info(accounts)")}
+    for col in ("welcomed", "terms"):
+        if col not in have:
+            AUTH.execute(f"ALTER TABLE accounts ADD COLUMN {col} REAL")
+            if col == "welcomed":
+                AUTH.execute("UPDATE accounts SET welcomed=last_login WHERE last_login IS NOT NULL")
     aid = migrate_accounts()
     # data dirs made before 'local_account' was stored: the first admin, pinned now so later role changes can't move it
     AUTH.execute("INSERT OR IGNORE INTO meta SELECT 'local_account', min(id) FROM accounts WHERE role='admin' HAVING count(*)")
@@ -2683,7 +2691,7 @@ class Handler(SimpleHTTPRequestHandler):
                 FAILS.pop("u:" + who["username"], None)
                 set_password(me, h, keep=who["login"])
             return self.reply(200, {"ok": True})
-        if (method, p) == ("PATCH", "/api/me"):  # your own name and colour
+        if (method, p) == ("PATCH", "/api/me"):  # your own name and colour; and two stamps: the terms agreed, the welcome done
             try:
                 f = fields(b, ("display_name", "color"))
             except ValueError as e:
@@ -2691,6 +2699,9 @@ class Handler(SimpleHTTPRequestHandler):
             with LOCK:
                 if f:
                     AUTH.execute(f"UPDATE accounts SET {', '.join(k + '=?' for k in f)} WHERE id=?", (*f.values(), me))
+                for k in ("welcomed", "terms"):  # set once, by this clock, and never taken back
+                    if b.get(k) is True:
+                        AUTH.execute(f"UPDATE accounts SET {k}=COALESCE({k}, ?) WHERE id=?", (time.time(), me))
                 out = account(me)
             return self.reply(200, out)
         if (method, p) == ("GET", "/api/tokens"):
@@ -3348,6 +3359,12 @@ def authcheck():
     s, _, d = call("PATCH", "/api/me", {"display_name": "  Sam   K ", "color": "#38bdf8", "role": "admin"}, cookie=b)
     assert s == 200 and d["display_name"] == "Sam K" and d["color"] == "#38bdf8" and d["role"] == "member", d
     assert st("PATCH", "/api/me", {"color": "blue"}, cookie=b) == 400 and st("PATCH", "/api/me", {"display_name": " "}, cookie=b) == 400
+    # the welcome and the terms: stamped once by the server, never taken back
+    assert d["welcomed"] is None and d["terms"] is None, d
+    d = call("PATCH", "/api/me", {"terms": True, "welcomed": True}, cookie=b)[2]
+    assert d["welcomed"] and d["terms"], d
+    again = call("PATCH", "/api/me", {"terms": False, "welcomed": "no"}, cookie=b)[2]
+    assert (again["welcomed"], again["terms"]) == (d["welcomed"], d["terms"]), again
     assert st("PATCH", f"/api/accounts/{sam['id']}", {"hidden": True}, cookie=a) == 200
     assert [p_["username"] for p_ in call("GET", "/api/auth/state")[2]["profiles"]] == ["maya"], "hidden: not on the login screen"
     assert st("GET", "/graph", cookie=login("sam", "sam's secret")) == 200, "hidden, but can still sign in by name"
