@@ -55,20 +55,19 @@ async function chat() {
       : "Open an AI chat to see how full it is and hand it off."}</span></div>`;
     return;
   }
-  const pct = m.limit ? 100 : m.pct || 0, lit = Math.max(1, Math.round(pct / 100 * 24));
-  const cls = m.limit || pct >= 90 ? "full" : pct >= 70 ? "warn" : "on";
+  const pct = m.limit ? 100 : m.pct || 0, hot = m.limit || pct >= 80;  // red from 80%, as in the app
   const here = host.replace("chat.openai.com", "chatgpt.com");
   box.innerHTML = `
     <div class="head"><span class="logo">${logo(host)}</span>
       <span class="who"><b>${esc(m.chat || m.ai)}</b><span>${esc(m.ai)}${m.model ? " · " + esc(m.model) : ""} · ${m.turns} messages</span></span>
       <span class="chip ${m.limit ? "full" : ""}"><i></i>${m.limit ? "Limit hit" : "Live"}</span></div>
-    <div class="gauge"><div class="nums"><b>${m.limit ? "Full" : pct + "%"}</b><span>~${fmt(m.tokens)} / ${fmt(m.window)} tokens</span></div>
-      <div class="segs">${Array.from({ length: 24 }, (_, i) => `<i class="${i < lit ? cls : ""}"></i>`).join("")}</div></div>
+    <div class="gauge"><div class="nums"><b${m.limit ? ' class="w"' : ""}>${m.limit ? "Full" : pct + "%"}</b><span>~${fmt(m.tokens)} / ${fmt(m.window)} tokens</span></div>
+      <div class="meter${hot ? " hot" : ""}" role="img" aria-label="${m.limit ? "Full" : pct + "% full"}"><b style="transform:scaleX(${Math.max(pct, 2) / 100})"></b></div></div>
     <div class="sum" id="sum" hidden></div>
     <div class="cont"><div class="label">Continue in</div>
       <div class="grid">${TARGETS.filter(h => h !== here).slice(0, 6).map(h => `<button data-to="${h}">${logo(h)}${AI[h][0]}</button>`).join("")}</div>
-      <button class="copy">Copy hand-off pack</button>
-      <label class="about"><input type="checkbox" id="about"> New AI? Include what Mindbaton knows about me</label></div>`;
+      <button class="btn copy">Copy hand-off pack</button>
+      <label class="about"><input type="checkbox" id="about"> Include what Mindbaton knows about me</label></div>`;
   chrome.storage.local.get({ handoffAbout: false }, s => { $("about").checked = s.handoffAbout; });
   $("about").onchange = e => chrome.storage.local.set({ handoffAbout: e.target.checked });
   summary(m.id);
@@ -79,7 +78,7 @@ async function chat() {
       if (!r || !r.text) { $("warn").hidden = false; $("warn").textContent = (r && r.error) || "Can't reach Mindbaton"; return; }
       if (b.dataset.to) return window.close();
       await navigator.clipboard.writeText(r.text);
-      b.textContent = `Copied · ~${fmt(r.tokens)} tokens${r.summary_by ? " · by " + r.summary_by : ""} ✓`;
+      b.textContent = `Copied · ~${fmt(r.tokens)} tokens${r.summary_by ? " · by " + r.summary_by : ""}`;
     });
   };
 }
