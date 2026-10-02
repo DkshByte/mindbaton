@@ -10,7 +10,7 @@ negations, secrets, pasted code), then:
   topics     — which messages belong together and which don't
   privacy    — secrets typed into a chat must never be stored
 """
-import json, os, sys, time
+import json, os, re, sys, time
 import live, server
 
 DAY = 86400
@@ -289,7 +289,46 @@ def cross_app():
     check("MCP client names are canonical", {r[0] for r in g.db.execute("SELECT type FROM nodes WHERE kind='session'")} >= {"Antigravity", "Claude Code"})
     check("each chat links its memories", all(g.db.execute("SELECT 1 FROM edges WHERE rel='said in' AND dst=?", (n,)).fetchone()
                                               for (n,) in g.db.execute("SELECT id FROM nodes WHERE kind='session'").fetchall()))
-    return ok, 12, bad
+    # common sense about projects and small things, as the owner's real memory needed it (2026-10-02): a project kept on a
+    # shelf (~/Documents) under a name with a space, memory files named after facts, a second checkout, a chat that links
+    # the repo, a chat whose title names it -> one topic, named after the project. A short untitled chat is a loose end.
+    # No topic is named after a typo, and an import is named after where it came from.
+    g = server.Graph(":memory:")
+    cwd = os.path.expanduser("~/Documents/plant log")
+    said = lambda *ts: [{"role": "user", "text": t} for t in ts]
+    live.sync(g, None, "claude-code", "Seed swap reminders", said("add a reminder a week before each seed swap",
+              "the watering schedule should skip rainy days", "show the last repotting date on each plant card"), ts=t0, key="claude-code/p1", cwd=cwd)
+    live.sync(g, None, "claude-code", "Landing page copy", said("the landing page headline is too long", "use dummy plants on the landing page, no real names"),
+              ts=t0 + 100, key="claude-code/p2", cwd=os.path.expanduser("~/plant-logger"))
+    g.ingest("Plant log (~/Documents/plant log) has its signing key only on this laptop; losing it blocks every update", "claude-code", None,
+             "memory://claude-code/release-key-backup", t0 + 200)
+    g.ingest("The play store listing needs the release build, never the debug one", "claude-code", None, "memory://claude-code/store-listing-plan",
+             t0 + 300, meta={"file": "~/.claude/projects/%s/memory/store-listing-plan.md" % re.sub(r"[^A-Za-z0-9]", "-", cwd)})
+    live.sync(g, None, "antigravity-client", None, said("in this repo https://github.com/someone/plant-logger the login video is cut off on small phones",
+              "the blur under the video still shows a hard edge"), ts=t0 + 400, key="antigravity/p3")
+    g.ingest("which host is cheapest for it", "gemini.google.com", "Hosting Plant Log Online", "https://gemini.google.com/app/pl1", t0 + 500)
+    for i, t in enumerate(["are yuo done, do it fast", "what about the 1080 p one i want to see it"]):
+        g.ingest(t, "claude.ai", None, "https://claude.ai/code/session_s1", t0 + 600 + i)
+    for i, t in enumerate(["why can i see lines in the gradint", "mkae the gradint smooth plese", "betifull cards plese, like big comapnies",
+                           "the cards are still not betifull", "add a gradint picker with presets"]):
+        g.ingest(t, "claude.ai", None, "https://claude.ai/code/session_s2", t0 + 700 + i)
+    g.ingest("I always pick the window seat", "chatgpt.com", "Memory from ChatGPT", "memory://chatgpt.com/import", t0 + 800)
+    g.ingest("I keep a paper notebook for every trip", "chatgpt.com", "Memory from ChatGPT", "memory://chatgpt.com/import", t0 + 801)
+    g.ensure()
+    tp = lambda like: {c for (c,) in g.db.execute("SELECT cluster FROM nodes WHERE kind='memory' AND label LIKE ?", (like,))}
+    plant = tp("%seed swap%")
+    name = lambda cs: (g.topics.get(next(iter(cs)) if cs else None) or {}).get("name", "")
+    check("a project on a shelf is named after its own folder", len(plant) == 1 and name(plant).lower() == "plant log")
+    check("a memory file naming the project's folder joins it", tp("%signing key%") == plant)
+    check("a memory file kept for the project's folder joins it", tp("%play store%") == plant)
+    check("a second checkout is the same project", tp("%headline%") == plant)
+    check("a chat that links the project's repo joins it", tp("%hard edge%") == plant)
+    check("a chat whose title names the project joins it", tp("%cheapest%") == plant)
+    check("a short untitled chat is a loose end", tp("%yuo done%") == {None})
+    names = [t["name"] for t in g.topics.values()]
+    check("no topic is named after a typo", not any(w in n.lower() for n in names for w in ("gradint", "betifull", "plese", "mkae", "comapnies")))
+    check("an import is named after where it came from", name(tp("%window seat%")) == "Memory from ChatGPT")
+    return ok, 21, bad
 
 
 # ---- the brain: meaning, people, links, honesty, change ---------------------------------------------------------------

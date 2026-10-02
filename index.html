@@ -474,6 +474,10 @@ a.btn { text-decoration: none; }
 .keyform { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .keyform select, .keyform input { height: 34px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg); color: var(--fg); padding: 0 10px; font: 13px var(--sans); }
 .keyform input { flex: 1; min-width: 220px; font-family: var(--mono); }
+.aiset { display: grid; gap: 8px; }
+.airow { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13.5px; color: var(--fg-2); }
+.airow select, .airow input { height: 34px; min-width: 0; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg); color: var(--fg); padding: 0 10px; font: 13px var(--sans); }
+.airow input { max-width: 140px; font-family: var(--mono); }
 .banner.update { background: var(--panel-2); color: var(--fg-2); border-bottom-color: var(--line-2); flex-wrap: wrap; row-gap: 8px; }
 .banner.update b { color: var(--fg); font-weight: 600; }
 .banner.update .spacer { flex: 1; }
@@ -1063,6 +1067,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
   .brain-stats div { padding: 10px; }
   .brain-stats b { font-size: 17px; }
   .reader { grid-template-columns: 1fr; }
+  .airow { grid-template-columns: 1fr; gap: 4px; }
   .tgrid, .imp-pair, .sk-grid { grid-template-columns: 1fr; }
   .jump { display: none; }
   .stat { padding: 10px 0; margin-right: 18px; }
@@ -1284,6 +1289,8 @@ const aboutPref = () => { try { return localStorage.getItem("mb-handoff-about") 
 document.addEventListener("change", e => {
   if (e.target.id === "ho-about") try { localStorage.setItem("mb-handoff-about", e.target.checked ? "1" : "0"); } catch {}
   if (e.target.name === "reader") setReader(e.target);
+  if (e.target.id === "brain-plug") plugChange(e.target);
+  if (e.target.dataset.aiset) saveAI(e.target);
 });
 async function handoff(sid, to, btn) {  // the pack (with the AI summary) waits in that AI's new chat; the extension puts it in the box
   const w = to ? window.open("about:blank", "_blank") : null;  // opened now, on the click, so the browser allows it
@@ -1904,14 +1911,34 @@ function setupItems(st, base) {  // every piece: its card (status in a line) and
           <li>On the phone, open this in <b>Chrome</b>:</li></ol>${cmdBox(st.phone.url)}<ol start="3"><li>Tap <b>⋮ → Add to Home screen → Install</b>.</li>
           <li>In ChatGPT, Gemini or any app: long-press a message → <b>Share</b> → <b>Mindbaton</b>.</li></ol>`
           : `<p class="set-note">Install Tailscale on this computer and your phone to use Mindbaton from anywhere.</p>` },
-      { key: "ai", icon: ICON.spark, ok: st.ai.enabled && "On", idle: "Optional", title: "Free AI",
-        sub: st.ai.enabled ? `${esc(st.ai.providers.join(" → "))} · ${st.ai.used_today} today${st.ai.last_error ? " · last error: " + esc(st.ai.last_error) : ""}` : "Summaries, answers and topic names.",
-        lead: "Mindbaton works without it. With a free key it writes hand-off summaries, names topics and answers questions from your memory.",
-        body: ACCT.role !== "admin" ? `<p class="set-note">The key is shared by everyone on this Mindbaton, so only an admin can add or change it.</p>`
-          : `<ol><li>Get a free key: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--accent-strong)">Google AI Studio ↗</a>
-          or <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style="color:var(--accent-strong)">Groq ↗</a>.</li><li>Paste it here — it's tested before it's saved:</li></ol>
-          <form class="keyform" id="keyform"><select name="provider" aria-label="Provider"><option value="gemini">Google Gemini</option><option value="groq">Groq</option></select>
-            <input name="key" type="password" autocomplete="off" placeholder="Paste your key" aria-label="API key" required><button class="btn primary sm">Test and save</button></form>` },
+      { key: "ai", icon: ICON.spark, ok: st.ai.enabled && "On", idle: "Optional", title: "AI keys",
+        sub: st.ai.enabled ? `${esc(st.ai.providers.join(" → "))} · ${st.ai.used_today} today${st.ai.paid.length ? ` · ${usd(st.ai.spend.usd)} of ${usd(st.ai.spend.cap)} this month` : ""}${
+          st.ai.last_error ? " · last error: " + esc(st.ai.last_error) : ""}` : "Summaries, answers and topic names.",
+        lead: "Mindbaton works without it. With a key it writes hand-off summaries, names topics and answers questions from your memory. Unless you choose otherwise, free keys are used first and a paid key only when the free ones can't answer; a paid key never goes past its monthly limit.",
+        body: ACCT.role !== "admin" ? `<p class="set-note">The keys are shared by everyone on this Mindbaton, so only an admin can add or change them.</p>`
+          : `<ol><li>Get a key. Free: ${keyLink("https://aistudio.google.com/apikey", "Google AI Studio")} or ${keyLink("https://console.groq.com/keys", "Groq")}.
+            Paid, for the best results: ${keyLink("https://platform.openai.com/api-keys", "OpenAI")} or ${keyLink("https://platform.claude.com/settings/keys", "Claude")}.
+            A paid key has no free-tier quota to run out of, and you can pick a stronger model for it below.</li>
+            <li>For a paid key, make one only for Mindbaton and set a spending limit for it on the provider's site.</li>
+            <li>Paste it here. It's tested before it's saved, kept on this computer only and never shown again:</li></ol>
+          <form class="keyform" id="keyform"><select name="provider" aria-label="Provider"><optgroup label="Free"><option value="gemini">Google Gemini</option><option value="groq">Groq</option></optgroup>
+            <optgroup label="Paid"><option value="openai">OpenAI</option><option value="claude">Claude</option></optgroup></select>
+            <input name="key" type="password" autocomplete="off" placeholder="Paste your key" aria-label="API key" required><button class="btn primary sm">Test and save</button></form>
+          ${location.protocol !== "https:" && !/^(localhost|127\.|\[::1\])/.test(location.hostname) ? `<p class="set-note"><b>This page isn't on HTTPS</b>, so a key you paste crosses your network unencrypted. On a network you don't control, put it in <code>mindbaton.env</code> on the server instead.</p>` : ""}
+          ${st.ai.providers.map(n => `<div class="set-row"><span class="chip">${aiLogo(KEY_AI[n] || n, "")}${esc(n)}<span class="desc">${st.ai.paid.includes(n) ? "paid" : "free"}</span></span>
+            <button type="button" class="btn sm" data-rmkey="${esc(n.toLowerCase())}">Remove key</button></div>`).join("")}
+          ${st.ai.providers.length ? `<div class="aiset">
+            <label class="airow"><span>Answer with</span><select data-aiset="first" aria-label="Which key answers first">
+              <option value="">Free keys first, a paid key only when needed (recommended)</option>
+              ${st.ai.providers.map(n => `<option value="${esc(n)}"${st.ai.first === n ? " selected" : ""}>${esc(n)} first${st.ai.paid.includes(n) ? " (paid: every answer is charged)" : ""}</option>`).join("")}</select></label>
+            ${st.ai.paid.map(n => `<label class="airow"><span>${esc(n)} model</span><select data-aiset="model" data-p="${esc(n)}" aria-label="${esc(n)} model">
+              ${st.ai.choices[n].map((m, i) => `<option value="${esc(m.id)}"${st.ai.models[n] === m.id ? " selected" : ""}>${esc(m.id)}${m.price ? ` · $${m.price[0]} in, $${m.price[1]} out per million tokens` : ""}${i ? "" : " (cheapest)"}</option>`).join("")}</select></label>`).join("")}
+            ${st.ai.paid.length ? `<label class="airow"><span>Monthly limit, US$</span><input data-aiset="cap" type="number" min="0" max="1000" step="0.5" value="${+st.ai.spend.cap}" aria-label="Monthly limit for paid keys, in US dollars"></label>` : ""}</div>` : ""}
+          ${st.ai.paid.length ? `<p class="set-note">Paid keys this month: about <b>${usd(st.ai.spend.usd)}</b> of ${usd(st.ai.spend.cap)} in ${plural(st.ai.spend.calls, "answer")}.
+            At the limit they stop until next month; the free keys and the rules carry on.</p>` : ""}
+          <p class="set-note"><b>Your keys, your bills.</b> Whatever Google, Groq, OpenAI or Anthropic charge for a key you add is between you and them.
+            The limit and the total here are Mindbaton's own estimate from the tokens each answer reports, not a guarantee, so set a spending limit on the provider's site too.
+            The Mindbaton project is not responsible for any charges. ${keyLink("https://dkshbyte.github.io/mindbaton/terms.html", "Terms")}</p>` },
       { key: "conn", icon: ICON.globe, ok: st.connector.ok, idle: "Optional", title: "Claude & ChatGPT apps",
         sub: st.connector.ok ? "Last used " + ago(st.connector.last) : !st.server.https ? "Needs an HTTPS address first." : st.connector.configured ? "Ready to add in Claude or ChatGPT." : "On the web and on your phone.",
         lead: "Claude.ai and ChatGPT reach your memory through a private address — on the web and in their phone apps.",
@@ -1975,6 +2002,21 @@ function watchSetup(base) {  // while Setup is open, a piece that starts working
     watchSetup(base);
   }, 8000);
 }
+const usd = x => x > 0 && x < .01 ? "under $0.01" : "$" + (+x || 0).toFixed(2);
+const KEY_AI = { OpenAI: "ChatGPT" };  // the logo a provider's key goes by
+const keyLink = (href, name) => `<a href="${href}" target="_blank" rel="noopener" style="color:var(--accent-strong)">${name} ↗</a>`;
+async function saveAI(t) {  // which key answers first, a paid key's model, the monthly limit: saved as soon as it's changed
+  const what = t.dataset.aiset, at = `[data-aiset="${what}"]` + (t.dataset.p ? `[data-p="${t.dataset.p}"]` : "");
+  if (what === "cap" && !(t.value !== "" && +t.value >= 0 && +t.value <= 1000)) return toast("The limit can't be less than 0 or more than 1000");
+  try { await send("/settings/ai", what === "first" ? { first: t.value || null } : what === "model" ? { models: { [t.dataset.p]: t.value } } : { cap: +t.value }); toast("Saved"); }
+  catch (e) { toast(e.message); }
+  await renderSetup(); $(at)?.focus();
+}
+async function removeKey(btn) {
+  btn.disabled = true;
+  try { const r = await send("/settings/ai-key", { provider: btn.dataset.rmkey, remove: true }); toast(`${r.removed} key removed`); renderSetup(); }
+  catch (e) { btn.disabled = false; toast(e.message); }
+}
 async function renderSetup() {
   const el = $("#setup");
   let st;
@@ -1999,6 +2041,8 @@ async function renderSetup() {
   stackApply(); setTimeout(() => $("#fstack")?.classList.remove("deal"), 900);
   $("#fswap").onclick = () => { featFront = featFront === "brain" ? "import" : "brain"; stackApply(); };
   el.onclick = ev => {
+    const rm = ev.target.closest("[data-rmkey]");
+    if (rm) return removeKey(rm);
     const c = ev.target.closest("[data-set], [data-set-close]");
     if (c) {
       const grp = c.closest(".deck").dataset.grp;
@@ -2017,7 +2061,7 @@ async function renderSetup() {
     const f = new FormData(ev.target), btn = ev.target.querySelector("button");
     btn.disabled = true; btn.textContent = "Testing…";
     try { const r = await api("/settings/ai-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.fromEntries(f)) });
-      toast(`${r.saved} key saved — the AI is on`); renderSetup(); }
+      toast(`${r.saved} key saved`); renderSetup(); }
     catch (e) { toast(e.message); btn.disabled = false; btn.textContent = "Test and save"; }
   };
   watchSetup(base);
@@ -2051,9 +2095,32 @@ function brainPoll(b) {  // while it downloads or reads, only this step refreshe
 async function brainRefresh() {  // redraw only this step; a focused choice keeps the keyboard
   const st = await api("/status"), el = $("#brain-step"), at = document.activeElement;
   if (!el || view !== "setup") return;
-  const held = el.contains(at) && at.name === "reader" && at.value;
+  const held = el.contains(at) && (at.name === "reader" ? `input[name="reader"][value="${at.value}"]` : at.id === "brain-plug" && "#brain-plug");
   el.outerHTML = brainStep(st); stackApply();
-  if (held) $(`#brain-step input[name="reader"][value="${held}"]`)?.focus();
+  if (held) $("#brain-step " + held)?.focus();
+}
+function plugRow(b) {  // the safe default: on a laptop the model waits for the charger. Turning it off warns first
+  if (b.reader === "light" || b.remote || !b.can || b.mode === "off") return "";
+  return `<label class="check"><input type="checkbox" id="brain-plug"${b.battery ? "" : " checked"}${ACCT.role === "admin" ? "" : " disabled"}>
+    <span>Only read while plugged in<small>${b.battery ? "Off: the model reads on battery too, which drains it faster."
+      : "On a laptop the model waits for the charger, so it never drains the battery."}</small></span></label>`;
+}
+async function setBattery(allow) {
+  try { await send("/brain/battery", { allow }); toast(allow ? "The model reads on battery too" : "The model waits for the charger"); }
+  catch (e) { toast(e.message); }
+  try { await brainRefresh(); } catch {}
+}
+function plugChange(inp) {
+  if (inp.checked) return setBattery(false);  // back to the safe default: nothing to warn about
+  inp.checked = true;  // it stays on until the warning has been read
+  const d = $("#sheet");
+  d.innerHTML = `<div class="sheet-h"><h2 id="sheet-title">Let the model read on battery?</h2><button class="icon-btn" data-close aria-label="Close">${IC.x}</button></div>
+    <div class="sheet-b"><div class="sheet-sec"><ul class="warns">
+      <li>While it reads, the model uses <b>about half the processor</b>. On battery that <b>drains it faster</b> and the laptop can get warm.</li>
+      <li>Waiting costs you nothing: the rules read every message straight away, and the model catches up as soon as you plug in.</li>
+      <li>You can switch this back on any time.</li></ul>
+      <div class="set-row"><button class="btn primary sm" data-close>Keep waiting for the charger</button><button class="btn sm" data-brain="battery">Read on battery</button></div></div></div>`;
+  d.showModal();
 }
 function readerChoice(b) {  // accurate: the model reads every message · light: the rules alone. One choice for the install
   const admin = ACCT.role === "admin", low = b.memory_gb < 12 && !b.remote, best = b.can && b.mode !== "off" && !low ? "accurate" : "light";
@@ -2115,7 +2182,7 @@ function brainStep(st) {  // Mindbaton's own model: what it's doing, and (admins
     <p class="feat-lead">A small AI model that runs on this computer. It reads the everyday way people type — “switched jobs, I'm at Stripe now”,
       “not a coffee person tbh” — and the rules check every fact before it's saved. It learned only from made-up examples, never from anyone's
       messages, and what you say never leaves this computer.</p>
-    ${readerChoice(b)}
+    ${readerChoice(b)}${plugRow(b)}
     <div class="brain-stats"><div><b>28/30</b><span>facts caught in sentences it never saw</span></div>
       <div><b>0</b><span>made-up facts in that test</span></div><div><b>1.3 GB</b><span>offline, at low priority</span></div></div>
     ${live || `<p class="brain-now">${sub}</p>${info}`}${body}</section>`;
@@ -2173,6 +2240,7 @@ function bloom(from, box) {  // the topic colours spread from what was pressed a
   }
 }
 async function brainAction(what, btn) {
+  if (what === "battery") { $("#sheet").close(); return setBattery(true); }
   if (what === "pause" || what === "resume") {
     try { await send("/brain/pause", { paused: what === "pause" }); } catch (e) { toast(e.message); }
     return renderSetup();
@@ -2194,7 +2262,7 @@ async function brainAction(what, btn) {
     <div class="sheet-b"><div class="sheet-sec"><ul class="warns">
       <li>It reads <b>${plural(n, "message")}</b> again, one at a time. On this computer that takes <b>about ${eta(n * (b.sec || 4))}</b>. Mindbaton keeps working meanwhile.</li>
       ${b.downloaded ? "" : `<li>First it downloads <b>about 1.3 GB</b>: the model and the engine that runs it. Only once.</li>`}
-      <li>While it reads it uses <b>about 1.5 GB of memory</b> and half the processor, at low priority. On a laptop, keep it plugged in: it waits while on battery.</li>
+      <li>While it reads it uses <b>about 1.5 GB of memory</b> and half the processor, at low priority. ${b.battery ? "On a laptop it reads on battery too, as chosen in Setup." : "On a laptop, keep it plugged in: it waits while on battery."}</li>
       ${low ? `<li class="bad">This computer has <b>${b.memory_gb} GB</b> of memory, less than the 12 GB it needs to run comfortably. Other apps may slow down while it reads.</li>` : ""}
       <li>Every fact it reads is checked by the rules before it's saved, and nothing is deleted. When it has read everything, your memory is rebuilt once, in a few seconds.</li>
       <li>You can pause it any time from this page.</li></ul>

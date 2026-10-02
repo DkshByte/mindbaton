@@ -29,6 +29,7 @@ RELS = {"works at", "lives in", "from", "is", "has", "uses", "likes", "dislikes"
 STATE = {"state": "off", "read": 0, "left": None, "progress": None, "error": None, "sec": None, "dl": None}
 FORCED = PAUSED = False  # an admin asked to re-read everything (Setup, with warnings) / paused it
 READER = None  # the admin's choice in Setup: "accurate" (the model reads every chat statement) | "light" (rules only) | None
+BATTERY = None  # the admin's choice in Setup: True = it reads on battery too | False = it waits for the charger | None: the env
 WAKE = threading.Event()  # a choice in Setup ends the reader's nap, so the page shows it at once
 RUN = {"graphs": None, "lock": None, "thread": None, "engine": None}
 
@@ -69,9 +70,14 @@ def enabled():
         (READER == "accurate" or MODE == "on" or bool(URL) or FORCED or memory_gb() >= 12)
 
 
+def battery_ok():
+    """May the model read on battery? Setup's switch once someone has set it, else MINDBATON_BRAIN_BATTERY=1. Off by default."""
+    return os.environ.get("MINDBATON_BRAIN_BATTERY") == "1" if BATTERY is None else BATTERY
+
+
 def on_battery():
-    """True on a laptop running on its battery: the model waits for the charger (MINDBATON_BRAIN_BATTERY=1 reads anyway)."""
-    if os.environ.get("MINDBATON_BRAIN_BATTERY") == "1":
+    """True on a laptop running on its battery: the model waits for the charger, unless the admin let it read anyway."""
+    if battery_ok():
         return False
     try:
         if sys.platform == "darwin":
@@ -351,6 +357,16 @@ def pause(paused):
     return {"paused": PAUSED}
 
 
+def battery(allow):
+    """Setup's switch, for the whole install: let the model read while a laptop is on battery (the page warns first)."""
+    global BATTERY
+    if not isinstance(allow, bool):
+        raise ValueError("allow is true or false")
+    BATTERY = allow
+    WAKE.set()
+    return {"battery": BATTERY}
+
+
 def choose(reader):
     """The admin's choice in Setup, for everyone on this install: the model as the main reader, or the rules alone."""
     global READER, FORCED, PAUSED
@@ -372,7 +388,7 @@ def choose(reader):
 def status():
     d = home()
     disk = sum(os.path.getsize(os.path.join(r, f)) for r, _, fs in os.walk(d) for f in fs) if os.path.isdir(d) else 0
-    return dict(STATE, enabled=enabled(), paused=PAUSED, reader=READER, model=MODEL, engine=URL or BUILD, mode=MODE, can=bool(URL or asset()),
+    return dict(STATE, enabled=enabled(), paused=PAUSED, reader=READER, battery=battery_ok(), model=MODEL, engine=URL or BUILD, mode=MODE, can=bool(URL or asset()),
                 memory_gb=round(memory_gb(), 1), downloaded=bool(URL or glob.glob(os.path.join(d, "*.gguf"))), remote=bool(URL),
                 disk=disk, usage=RUN["engine"].usage() if RUN["engine"] else None)
 
@@ -434,6 +450,10 @@ def selfcheck():
         except ValueError:
             pass
         READER = None
+        global BATTERY
+        assert battery(True) == {"battery": True} and not on_battery(), "allowed: on battery or not, it reads"
+        assert battery(False) == {"battery": False} and not battery_ok()
+        BATTERY = None
         srv.shutdown()
         g.rebuild()  # the stand-in is gone: a rebuild replays what was read
         assert {("me", "plays", "football"), ("me", "avoids", "caffeine")} <= rels(), "kept with the capture"

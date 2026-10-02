@@ -43,7 +43,8 @@ The app's visual system: `DESIGN.md`. How to contribute: `CONTRIBUTING.md`. What
   into `<data>/brain`, or any OpenAI-compatible server in `MINDBATON_BRAIN_URL`. Who reads is the admin's choice in Setup
   (`deep.READER`, kept in `auth.db`, set by `POST /brain/reader`): `accurate` = the model is the main reader, asked about
   every statement typed in a chat; `light` = never; not chosen = only the messages `deep.need` picks (no firm fact from
-  the rules). One background thread (`deep.work`) asks it, the rules veto its answer (`deep.check`), and
+  the rules). On a laptop it waits for the charger unless an admin turned that off in Setup (`deep.BATTERY`,
+  `POST /brain/battery`; the page warns first). One background thread (`deep.work`) asks it, the rules veto its answer (`deep.check`), and
   the capture keeps it (`extra.deep`), so `Graph.deep_read` applies it now and `rebuild` replays it without the model.
   Facts reach the graph through `add()`'s own steps (`_assert`, `_more`), so they settle, merge and link like any other.
   Never let the model write without `check`; never ask it in tests (the self-check uses a stand-in server).
@@ -58,9 +59,15 @@ The app's visual system: `DESIGN.md`. How to contribute: `CONTRIBUTING.md`. What
   become memories or things.
 - **One name per AI:** `server.ai_of(site)` maps every raw source (web host, MCP `clientInfo.name`,
   `antigravity-client`…) to the display name that is also its logo key. Never compare raw site strings.
-- **Topics = conversations.** A memory's unit is its chat (`ctx`); units merge by average-linkage tf-idf (`TAU`);
-  projects (`memory://` notes, coding sessions' `cwd` under `~`) pool; different projects never merge. The bench gate
-  "same topic across apps" is the core promise as a test — keep it green.
+- **Topics = conversations.** A memory's unit is its chat (`ctx`); units merge by average-linkage tf-idf (`TAU`).
+  **Projects** come from coding sessions' folders (`Graph.project_of`: `~/Documents` and the like are shelves, not
+  projects; `same_project` makes a second checkout or `name-site` the same one). Whatever points at one project joins
+  it: a memory file kept for that folder or naming its path, a chat that links its repo, has it in its title or keeps
+  naming it. Different projects never merge; a memory file that points at none only lends its name. A short untitled
+  chat that joined nothing is a loose end, not a topic. **Names** are the project, else the title an app gave the chat,
+  else real words said more than once, else "Claude chat · 2 Oct": never a typo (`brain.misspelt`) or a pasted line.
+  Meaning vectors are not used to merge topics: on the owner's data they pulled chats to the wrong project. The bench
+  gate "same topic across apps" is the core promise as a test — keep it green.
 - **Attribution:** a capture's `extra` holds `session` (its chat) and `model`; memory sources are
   `{ai, chat, ts, ctx, model, note}`; turns carry `model` and `ts`. Claude Code transcripts give the model per reply and
   the app's own title (`ai-title`); agent hooks can send their conversation id, title, model and times to `/session`.
@@ -87,12 +94,20 @@ The app's visual system: `DESIGN.md`. How to contribute: `CONTRIBUTING.md`. What
   the owner's session cookie (`mb_session`) or a device token (`Authorization: Bearer mb_…`; `/t/<token>/` path prefix
   only for `/mcp` and `/health`). Cookie-authenticated writes pass the same-origin check (`foreign()`). Connector-scope
   tokens get no forget/export, are rate-limited and logged to `access.log`. New endpoints are authenticated by default.
-- Never print, log or commit secrets: the data dir holds `mindbaton.db`, `ai_keys` (0600) and `access.log`; `data/` and
+- Never print, log or commit secrets: the data dir holds `mindbaton.db`, `ai_keys` (0600), `ai_usage.json` and `access.log`; `data/` and
   `*.env` are git-ignored.
 
 ## Optional AI
 
-`ai.py`: Gemini → Groq, keys in `<data>/ai_keys` or `GEMINI_KEY`/`GROQ_KEY`. It writes hand-off summaries, topic
+`ai.py`: Gemini → Groq (free) → OpenAI → Claude (paid: `ai.PAID`), keys in `<data>/ai_keys` or `GEMINI_KEY`/`GROQ_KEY`/
+`OPENAI_KEY`/`ANTHROPIC_KEY` (never the providers' usual env names, so a key meant for another tool isn't spent). A paid
+key is used only when needed: after the free ones, cheapest model, never for `ai.warm`, background jobs once an hour,
+and only under `MINDBATON_AI_MONTHLY_USD` (counted in `<data>/ai_usage.json` from each answer's token usage; add a model's
+price to `ai.PRICES` when you add the model). Claude is called on its own Messages API, not an OpenAI-compatible one. Keys
+are never returned by an endpoint or logged; `ai.selfcheck` (a stand-in provider) holds these rules. An admin can
+change the order, each paid key's model and the limit in Setup (`ai.configure`, `POST /settings/ai`, kept in `auth.db`);
+the default is always free first, cheapest model. Anything that can cost the owner money says so where they choose it,
+and `site/terms.html` ("AI keys and what they cost") and `site/privacy.html` must stay true to what the code does. It writes hand-off summaries, topic
 names/summaries and search answers (`/ask`, cited, grounded in recall), always outside `LOCK`
 (`ai.prepare`/`ai.warm`/`ai.warm_topics`), validated and cached (names in `meta.topic_names` by membership signature, so a
 rebuild makes no calls; forgetting clears them). Only the running server calls it (`G.naming`), never tests or the bench.
