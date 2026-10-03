@@ -28,6 +28,8 @@ unmodified SVG files: colour marks as they are, one-colour marks tinted with the
 - **`shots/*.png`** are screenshots of the Mindbaton app (1440×900 at 1.5×) running on `demo.py`, with the own model
   switched off (`MINDBATON_BRAIN=off`) and no AI keys.
 - **`og.png`** is a 1200×630 screenshot of the page's first viewport, taken with headless Chromium.
+- **`brand/made-by-daksh.svg`**, the seal at the foot of the page, is the author's own mark and links to his site,
+  https://dkshbyte.com. Its lettering is outlines of Google Sans Flex (SIL OFL 1.1) and Yellowtail (Apache 2.0).
 
 ## Regenerating
 
