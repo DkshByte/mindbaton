@@ -157,3 +157,5 @@ change and share it; if you run a changed version for other people over a networ
 ChatGPT, Claude, Gemini and other product names and logos are trademarks of their owners. Mindbaton is an independent
 project, not affiliated with or endorsed by them. [Privacy](https://mindbaton.com/privacy.html) ·
 [Terms](https://mindbaton.com/terms.html)
+
+[![M8ven Verified](https://m8ven.ai/badge/mcp/dkshbyte-mindbaton-18etms?variant=verified&v=4dcde18a3c6872fe8179ee4b39c55c02)](https://m8ven.ai/mcp/dkshbyte-mindbaton-18etms?s=readme)
