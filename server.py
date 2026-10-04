@@ -1860,24 +1860,27 @@ class Graph:
 
 
 # ---- MCP: the same memory as tools for Claude Desktop, Claude Code, Cursor, … ----------------------------------------
-MCP_VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
+MCP_VERSIONS = ("2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05")
+# Every tool states all four hints as literals (static scanners read them as written): a missing hint defaults to
+# destructive and open-world in the spec. Only handoff reaches outside: it may send the chat to the AI provider to summarise.
 MCP_TOOLS = [
     {"name": "context", "description": "Get a briefing about the user from their long-term memory: who they are, what they "
      "use, what they're working on, their preferences, and (if you pass a topic) what they've said before about it. Call this "
      "at the start of a conversation, and whenever the user's request might depend on their personal context.",
      "inputSchema": {"type": "object", "properties": {"topic": {"type": "string", "description": "What the conversation is about (optional)."}}},
-     "annotations": {"readOnlyHint": True}},
+     "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False}},
     {"name": "recall", "description": "Search the user's long-term memory (everything they've told any AI: facts, preferences, "
      "projects, past questions). Returns a direct answer when one is known, plus the most relevant memories with ids. Use it "
      "before answering questions about the user or when they refer to something from the past.",
      "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "k": {"type": "integer", "minimum": 1, "maximum": 20}},
-                     "required": ["query"]}, "annotations": {"readOnlyHint": True}},
+                     "required": ["query"]}, "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False}},
     {"name": "remember", "description": "Save a durable fact about the user to long-term memory: who they are, where they "
      "live or work, what they use, like, dislike, own, are building or learning, or a change ('I switched from X to Y'). Write "
      "one self-contained sentence in the user's own first person ('I use Neovim'). Don't save one-off requests or secrets.",
-     "inputSchema": {"type": "object", "properties": {"fact": {"type": "string"}, "model": {"type": "string", "description": "The model you are (e.g. 'Claude Opus 5.5'), if you know it."}}, "required": ["fact"]}},
+     "inputSchema": {"type": "object", "properties": {"fact": {"type": "string"}, "model": {"type": "string", "description": "The model you are (e.g. 'Claude Opus 5.5'), if you know it."}}, "required": ["fact"]},
+     "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False}},
     {"name": "profile", "description": "Everything known about the user, as a structured profile (summary, facts, preferences, goals).",
-     "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True}},
+     "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False}},
     {"name": "handoff", "description": "Continue a conversation the user had with another AI (ChatGPT, Claude, Gemini, Claude Code…) "
      "that hit its limit or that they want to pick up here. Returns a continuation pack: the goal, latest messages, decisions, key code, "
      "open questions and what you should know about the user. With no arguments it uses their most recent conversation; pass `session` "
@@ -1886,19 +1889,21 @@ MCP_TOOLS = [
                      "description": "Size of the pack in tokens (default 2500)."},
                      "about": {"type": "boolean", "description": "Also include what Mindbaton knows about the user (name, work, tools, "
                                "people…). Only for an AI that doesn't know them yet; default false: the chat only."}}},
-     "annotations": {"readOnlyHint": True}},
+     "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True}},
     {"name": "sessions", "description": "List the user's recent conversations across AIs (Live mode): id, AI, title, messages, how full each "
      "one's context is, and whether it hit a limit. Use with `handoff` to continue one here.",
-     "inputSchema": {"type": "object", "properties": {"limit": {"type": "integer", "minimum": 1, "maximum": 50}}}, "annotations": {"readOnlyHint": True}},
+     "inputSchema": {"type": "object", "properties": {"limit": {"type": "integer", "minimum": 1, "maximum": 50}}}, "annotations": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False}},
     {"name": "save_conversation", "description": "Save THIS conversation to the user's memory so they can continue it in another AI or a new "
      "chat — call it when the conversation is long, when you're near your context limit, or when the user asks to hand it off. Pass the "
      "turns so far (most important first if you must shorten), or a summary as a single turn. Returns the id to hand off.",
      "inputSchema": {"type": "object", "properties": {"title": {"type": "string"}, "turns": {"type": "array", "items": {"type": "object",
                      "properties": {"role": {"type": "string", "enum": ["user", "assistant"]}, "text": {"type": "string"}}, "required": ["role", "text"]}},
-                     "summary": {"type": "string"}, "model": {"type": "string", "description": "The model you are (e.g. 'Claude Opus 5.5'), if you know it."}}, "required": ["title"]}},
+                     "summary": {"type": "string"}, "model": {"type": "string", "description": "The model you are (e.g. 'Claude Opus 5.5'), if you know it."}}, "required": ["title"]},
+     # destructive: saving again under the same title replaces that conversation, and a shorter save drops the turns past it
+     "annotations": {"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True, "openWorldHint": False}},
     {"name": "forget", "description": "Permanently delete a memory (by the id recall returned) when the user asks you to forget "
      "it or it is wrong.", "inputSchema": {"type": "object", "properties": {"id": {"type": "integer"}}, "required": ["id"]},
-     "annotations": {"destructiveHint": True}},
+     "annotations": {"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True, "openWorldHint": False}},
 ]
 MCP_INSTRUCTIONS = ("Mindbaton is the user's personal long-term memory, fed by their chats with every AI they use. Call `context` "
                     "at the start of a conversation. Use `recall` before answering anything personal. When the user tells you a "
@@ -3174,6 +3179,10 @@ def selfcheck():
     assert mcp_handle(g, {"jsonrpc": "2.0", "method": "notifications/initialized"}) is None
     assert {t["name"] for t in mcp_handle(g, {"jsonrpc": "2.0", "id": 2, "method": "tools/list"})["result"]["tools"]} >= {"recall", "remember"}
     assert "forget" not in {t["name"] for t in mcp_handle(g, {"jsonrpc": "2.0", "id": 2, "method": "tools/list"}, connector=True)["result"]["tools"]}
+    hint_keys = {"readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"}  # unset ones default to destructive, open-world
+    assert all(set(t["annotations"]) == hint_keys and all(type(v) is bool for v in t["annotations"].values()) for t in MCP_TOOLS), \
+        "every MCP tool states all four hints"
+    assert {t["name"] for t in MCP_TOOLS if t["annotations"]["destructiveHint"]} == {"forget", "save_conversation"}
     assert all(live.model_name(live.model_name(x)) == live.model_name(x) for x in ("claude-opus-5-5", "Claude Opus 4.6 (Thinking)", "gpt-5-6-thinking"))
     g.save_topic_names({"x": {"name": "Test", "summary": "quotes a memory"}})
     g.forget(g.db.execute("SELECT id FROM nodes WHERE kind='memory' AND status='active' ORDER BY id DESC LIMIT 1").fetchone()[0])

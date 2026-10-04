@@ -338,8 +338,8 @@ def build():
         ids[src] = p.ids
         files[f"{slug}.html"] = page_html(n, slug, label, p, body)
         index += sections(slug, label if slug == "index" else p.title, body)
-    files["search-index.js"] = ("// Made by docs_site.py: one entry per section, for the docs search.\nwindow.MB_DOCS = "
-                                + json.dumps(index, ensure_ascii=False, separators=(",", ":")) + ";\n")
+    files["search-index.js"] = ("// Made by docs_site.py: one entry per section, for the docs search.\nwindow.MB_DOCS = [\n"
+                                + ",\n".join(json.dumps(e, ensure_ascii=False) for e in index) + "\n];\n")
     for src, target, frag in links:
         if frag and frag not in ids[target]:
             problems.append(f"{src}: no heading #{frag} in {target}")

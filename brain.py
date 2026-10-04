@@ -1543,7 +1543,7 @@ def selfcheck():
     assert ("me", "working on", "hearthlink") in rel_set("I'm working on Hearthlink, a voice intercom for my house using esp32 boards")
     r = rel_set("I'm 24 and I love cricket")
     assert ("me", "age", "24") in r and ("me", "likes", "cricket") in r, r
-    assert "[secret]" in redact("my api key is sk-proj-abc123def456ghi789jkl012mno345pqr678 ok")
+    assert "[secret]" in redact("my api key is sk-" "proj-abc123def456ghi789jkl012mno345pqr678 ok")  # split: not a key to scanners
     assert redact("my wifi password is hunter2secret, thanks") == "my wifi password is [secret], thanks"
     assert redact("the token is expired") == "the token is expired"
     assert redact("auth disabled (pin 1423 present)") == "auth disabled (pin [secret] present)"

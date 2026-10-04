@@ -34,7 +34,7 @@ MSGS = [
     ("claude.ai", "DoorTalk", "the esp32 audio cuts out when wifi is busy, how do I buffer it?"),                 # 15
     ("chatgpt.com", None, "my sister meera is a doctor in pune"),                                                # 16
     ("chatgpt.com", None, "I use vscode and neovim, mostly neovim"),                                             # 17
-    ("grok.com", None, "my api key is sk-proj-abc123def456ghi789jkl012mno345pqr678 can you check why this curl fails"),  # 18
+    ("grok.com", None, "my api key is sk-" "proj-abc123def456ghi789jkl012mno345pqr678 can you check why this curl fails"),  # 18
     ("chatgpt.com", None, "my wifi password is hunter2secret, make a qr code for it"),                           # 19
     ("claude.ai", None, "I work at Infosys but I'm planning to switch jobs"),                                    # 20
     ("gemini.google.com", None, "i moved to bangalore last month"),                                              # 21
@@ -104,6 +104,8 @@ ANSWERS = [("where do I live", "bangalore"), ("where do i work", "razorpay"), ("
 SAME_TOPIC = [(3, 4), (7, 8), (8, 9), (14, 15), (15, 38), (11, 12), (24, 25)]
 DIFF_TOPIC = [(3, 11), (7, 14), (11, 15), (29, 4)]
 
+# A fake GitHub token for the redaction test, split so secret scanners don't take test data for a leaked one
+FAKE_GH_TOKEN = "gh" + "p_" + "16C7e42F292c6912E7710c838347Ae178B4a"
 
 HOLDOUT = dict(  # a different person and phrasing; never tuned against, only reported
     msgs=[
@@ -119,7 +121,7 @@ HOLDOUT = dict(  # a different person and phrasing; never tuned against, only re
         ("claude.ai", None, "I'm allergic to peanuts"),
         ("chatgpt.com", "Portfolio", "can you write alt text for these portfolio images"),
         ("chat.deepseek.com", None, "should i learn three.js or spline for 3d on the web?"),
-        ("gemini.google.com", None, "my github token is ghp_16C7e42F292c6912E7710c838347Ae178B4a so pls debug"),
+        ("gemini.google.com", None, f"my github token is {FAKE_GH_TOKEN} so pls debug"),
     ],
     have=[("me", "named", "ananya"), ("me", "lives in", "pune"), ("me", "uses", "figma"), ("me", "cat", "mochi"),
           ("me", "likes", "jazz"), ("me", "working on", "portfolio site"), ("me", "is", "ux designer")],
@@ -127,7 +129,7 @@ HOLDOUT = dict(  # a different person and phrasing; never tuned against, only re
     queries=[("where do I live", [5], 1, [0]), ("what design tools do i use", [1], 3, []), ("my pet", [2], 2, []),
              ("portfolio animation bug", [4], 2, []), ("music taste", [8], 3, []), ("food allergies", [9], 2, [])],
     answers=[("where do I live", "pune"), ("what's my name", "ananya")],
-    secrets=["ghp_16C7e42F292c6912E7710c838347Ae178B4a"],
+    secrets=[FAKE_GH_TOKEN],
 )
 
 
