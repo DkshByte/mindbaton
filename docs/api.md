@@ -89,3 +89,16 @@ curl -H "Authorization: Bearer mb_xxxxxxxx" -H "Content-Type: application/json" 
 # pack up your latest chat for another AI
 curl -H "Authorization: Bearer mb_xxxxxxxx" "http://192.168.1.20:3004/handoff"
 ```
+
+
+## Team Baton (experimental)
+
+`GET /team/discovery` returns nearby host announcements for the Mindbaton server’s LAN, with
+`state`, `hosts`, and (when discovery is running) `advertising` and `checked_at`.
+Each host includes `name`, `address`, and an optional HTTPS `url`. No project or account data is included.
+This endpoint allows invitation visitors, enforces Team Baton’s transport and same-origin checks,
+and caches bounded UDP discovery for ten seconds. Announcements do not authenticate a host.
+
+The opt-in endpoint `/team/<project-id>/mcp` accepts only project access. Its tools are `project_context`,
+`project_search`, `project_publish` and `project_handoff`. Project tokens never authorize personal endpoints.
+See [Team Baton](team-baton.md) for schemas, invitations, upload acknowledgements and release gates.

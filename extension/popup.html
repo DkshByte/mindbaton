@@ -177,6 +177,17 @@
       <p>Chat with ChatGPT, Claude, Gemini or any AI: what you tell them is saved to your Mindbaton. You can close this tab.</p></div>
   </section>
   <section class="chat" id="chat"></section>
+  <section class="opts" id="team-panel">
+    <label for="team-project">Share this conversation</label>
+    <select id="team-project" style="width:100%;padding:10px;background:var(--panel);color:inherit"><option value="">Private</option></select>
+    <p id="team-status" role="status" aria-live="polite">Private</p>
+    <details><summary>Connect a project</summary><p>Join at the host's Team Baton page, then create a project device token. No personal account is needed.</p>
+      <label>Host address<input type="text" id="team-host" autocomplete="url" spellcheck="false"></label>
+      <label>Project ID<input type="text" id="team-id" autocomplete="off" spellcheck="false"></label>
+      <label>Project device token<input type="password" id="team-token" autocomplete="off" spellcheck="false"></label>
+      <label><input type="checkbox" id="team-private"> Host uses an encrypted private network</label>
+      <button class="primary" id="team-connect">Connect project</button><p id="team-result" role="status"></p></details>
+  </section>
   <div class="opts">
     <div class="row"><label for="enabled">Save what I send<small>Facts, preferences and plans from every AI</small></label>
       <label class="switch"><input type="checkbox" id="enabled"><span></span></label></div>

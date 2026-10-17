@@ -163,19 +163,22 @@ def _budget():
         return True
 
 
-def chat(prompt, timeout=90, json_mode=False, max_tokens=None, models=None, background=False, paid=True):
+def chat(prompt, timeout=90, json_mode=False, max_tokens=None, models=None, background=False, paid=True, exact=None):
     """One completion from the first provider that answers. prompt: a string, or f(chars) -> a prompt that fits (None =
     too big for this provider: skipped without spending a request). models: which of PROVIDERS' models to try, in order.
     background: nobody is waiting for this (topic names), so a paid key does it at most once an hour. paid=False: free
     providers only. Returns (text, provider) or (None, None); the last failure is kept for status()."""
     k = keys()
-    for name, var, url, model, cap in lineup(models):
+    providers = [(n, v, u, exact[1], c) for n, v, u, m, c in PROVIDERS if n == exact[0]][:1] if exact else lineup(models)
+    for name, var, url, model, cap in providers:
         if var not in k:
             continue
         costs = name in PAID
         if costs and (not paid or spend()["usd"] >= MONTH_CAP or background and time.time() - _used.get("bg", 0) < 3600):
             continue  # a paid key: only when it is needed, and only while this month's budget lasts
         text_in = prompt(cap) if callable(prompt) else prompt
+        if exact and costs and spend()["usd"] + team_estimate(model, text_in or "") > MONTH_CAP:
+            continue
         if text_in is None or len(text_in) > cap + 4000 or not _budget():
             continue
         headers = {"Content-Type": "application/json", "User-Agent": "mindbaton/1.0 (+self-hosted)"}  # Groq's CDN refuses urllib's default
@@ -199,7 +202,7 @@ def chat(prompt, timeout=90, json_mode=False, max_tokens=None, models=None, back
                 if name == "Groq":
                     req_body["reasoning_effort"] = "low"
         req = urllib.request.Request(url, json.dumps(req_body).encode(), headers)
-        for attempt in (0, 1):  # one retry: free tiers answer 429/503 when busy
+        for attempt in ((0,) if exact else (0, 1)):  # one retry: free tiers answer 429/503 when busy
             try:
                 with urllib.request.urlopen(req, timeout=timeout) as r:
                     d = json.load(r)
@@ -516,6 +519,26 @@ def selfcheck():
         srv.shutdown()
         srv.server_close()
     print("ai ok")
+
+
+
+def team_models():
+    """Project settings reuse the host's providers and known model prices."""
+    return list(dict.fromkeys([(n, m) for n, _, _, m, _ in PROVIDERS if n not in PAID] +
+                             [(n, m) for n, choices in CHOICES.items() for m in choices]))
+
+
+def team_estimate(model, prompt):
+    pin, pout = PRICES.get(model, (0, 0))
+    # UTF-8 bytes upper-bound ordinary input tokens; reserve the entire response allowance before sending.
+    return (len(prompt.encode()) * pin + 4000 * pout) / 1e6
+
+
+def team_chat(prompt, provider, model):
+    """One selected provider, with the host key and cap; never silently fall through to a paid provider."""
+    if not enabled() or (provider, model) not in team_models():
+        return None
+    return chat(prompt, timeout=30, json_mode=True, max_tokens=4000, exact=(provider, model))[0]
 
 
 if __name__ == "__main__":  # live check against the configured providers

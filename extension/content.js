@@ -5,6 +5,7 @@
   const me = Math.random().toString(36).slice(2);
   document.documentElement.dataset.memgraph = me;          // a newer copy (after an update) takes over from this one
   const current = () => document.documentElement.dataset.memgraph === me;
+  const TEAM_BLOCK = /\[team-baton\][\s\S]*?(?:\[\/team-baton\]|$)/gi;
   const BLOCK = /\[memgraph( handoff)?\][\s\S]*?(\[\/memgraph\1\]|$)/gi;  // our own inserted text is not the user speaking
   const isComposer = el => !!el && (el.tagName === "TEXTAREA" || el.isContentEditable);
   const deep = e => (e.composedPath ? e.composedPath()[0] : e.target);  // the real element, even inside shadow DOM
@@ -32,7 +33,7 @@
     if (composer && composer.isConnected) return composer;
     return document.querySelector(COMPOSER);
   }
-  const draft = el => (el ? (el.value ?? el.innerText ?? "") : "").replace(BLOCK, "").trim();
+  const draft = el => (el ? (el.value ?? el.innerText ?? "") : "").replace(BLOCK, "").replace(TEAM_BLOCK, "").trim();
 
   function grab() {
     if (!current()) return;
@@ -60,6 +61,7 @@
   addEventListener("submit", e => { if (current() && e.target.querySelector && isComposer(e.target.querySelector("textarea, [contenteditable='true']"))) grab(); }, true);
   chrome.runtime.onMessage.addListener((m, _s, reply) => {
     if (!current()) return;
+    if (m.teamCapability) { reply({ automatic: !!(box() && sendButton(box())) }); return; }
     if (m.insert) insertMemory();
     if (m.meter) { reply(meter || { wait }); }
     if (m.syncNow) {  // the popup asks: always answer, with the meter or why there isn't one yet (never leave it hanging)
@@ -86,8 +88,10 @@
   async function insertMemory() {
     const el = box();
     if (!el) return toast("Click into the message box first");
-    const r = await send({ context: draft(el) || document.title });
+    const shared = await send({ team: { action: "context", url: location.href, query: draft(el) || document.title } });
+    const r = shared && !shared.private ? shared : await send({ context: draft(el) || document.title });
     if (!r || !r.text) return toast(r && r.error ? r.error : "Can't reach Mindbaton");
+    if ((el.value ?? el.innerText ?? "").includes("[team-baton]")) return toast("Project context is already in this draft");
     insertText(el, r.text);
     toast(`Added what Mindbaton knows · ${r.text.split("\n").length - 2} lines`);
   }
@@ -100,6 +104,69 @@
     document.body.append(t);
     setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.remove(), 300); }, 3200);
   }
+
+  let teamBusy = false, teamReplay = false, teamBinding = null;
+  async function refreshTeamBinding() {
+    const status = await send({ team: { action: "status", url: location.href } });
+    const previous = teamBinding; teamBinding = !!status?.selected;
+    if (previous !== teamBinding) { lastSig = ""; schedule(); }
+  }
+  chrome.storage.onChanged.addListener(changes => { if (changes.teamState) refreshTeamBinding(); });
+  refreshTeamBinding();
+  function sendButton(el) {
+    const selectors = {
+      "chatgpt.com": 'button[data-testid="send-button"], button[aria-label="Send prompt"]',
+      "chat.openai.com": 'button[data-testid="send-button"], button[aria-label="Send prompt"]',
+      "claude.ai": 'button[aria-label="Send message"], button[data-testid="send-button"]',
+      "gemini.google.com": 'button.send-button, button[aria-label="Send message"]',
+      "aistudio.google.com": 'button[aria-label="Run"], button.run-button',
+      "www.perplexity.ai": 'button[aria-label="Submit"], button[aria-label="Send"]',
+      "chat.deepseek.com": 'button[aria-label="Send"], [role="button"][aria-label="Send"]',
+      "grok.com": 'button[aria-label="Submit"], button[aria-label="Send"]',
+      "poe.com": 'button[class*="sendButton"], button[aria-label="Send message"]',
+      "chat.mistral.ai": 'button[aria-label="Send message"], button[type="submit"]',
+      "copilot.microsoft.com": 'button[aria-label="Submit message"], button[aria-label="Send"]',
+      "copilot.com": 'button[aria-label="Submit message"], button[aria-label="Send"]',
+      "www.copilot.com": 'button[aria-label="Submit message"], button[aria-label="Send"]'
+    };
+    const selector = selectors[location.hostname];
+    return selector ? (el.closest("form")?.querySelector(selector) || document.querySelector(selector)) : null;
+  }
+  async function teamSubmit(event, button) {
+    if (!current() || teamBinding === false || teamReplay) return;
+    const el = box();
+    if (!el || !draft(el)) return;
+    button = button || sendButton(el);
+    if (!button || button.disabled) { toast("Automatic project context unavailable here. Use Alt+M before sending."); return; }
+    event.preventDefault(); event.stopImmediatePropagation();
+    if (teamBusy) return;
+    teamBusy = true;
+    const original = el.value ?? el.innerText ?? "";
+    const url = location.href;
+    try {
+      const r = await send({ team: { action: "context", url, query: draft(el) } });
+      if ((el.value ?? el.innerText ?? "") !== original || location.href !== url || !el.isConnected) {
+        toast("Draft changed while retrieving context. Send again when ready."); return;
+      }
+      if (r?.private) { teamReplay = true; button.click(); setTimeout(() => { teamReplay = false; }, 0); return; }
+      if (!r?.text) { toast("Automatic project context unavailable. Draft kept; use Alt+M."); return; }
+      if (!original.includes("[team-baton]")) insertText(el, r.text);
+      if (!(el.value ?? el.innerText ?? "").includes("[team-baton]")) { toast("Context insertion unavailable. Draft kept; use Alt+M."); return; }
+      // One replayed click is the only submission. Its native site handler runs with the original user text intact.
+      teamReplay = true;
+      button.click();
+      setTimeout(() => { teamReplay = false; }, 0);
+      toast(r.outdated ? "Context outdated · sent with cached context or outage notice" : "Project context added");
+    } finally { teamBusy = false; }
+  }
+  addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing && !e.ctrlKey && !e.metaKey && isComposer(deep(e))) teamSubmit(e);
+  }, true);
+  addEventListener("click", e => {
+    const el = box(), button = el && sendButton(el);
+    if (button && (e.composedPath ? e.composedPath().includes(button) : button.contains(e.target))) teamSubmit(e, button);
+  }, true);
+  addEventListener("submit", e => teamSubmit(e), true);
 
   // ---- Live mode ----------------------------------------------------------------------------------------------------
   // Where each site keeps its messages. Selectors are unions across the site's DOM generations; the outermost match wins.
@@ -130,7 +197,7 @@
   const CLOCK = /^\s*\d{1,2}:\d{2}\s?([AaPp][Mm])?\s*$/;
   const clean = el => {
     const c = el.cloneNode(true);  // thinking panes, buttons, screen-reader headings and time labels are not the message
-    c.querySelectorAll("button, svg, style, script, time, [class*='think'], [class*='reasoning'], .sr-only, .cdk-visually-hidden, " +
+    c.querySelectorAll("button, svg, style, script, time, [hidden], [aria-hidden='true'], [data-testid*='thinking'], [data-testid*='reasoning'], [class*='think'], [class*='reasoning'], .sr-only, .cdk-visually-hidden, " +
                        "[class*='visually-hidden']").forEach(n => n.remove());
     c.querySelectorAll("span, div").forEach(n => { if (!n.children.length && CLOCK.test(n.textContent)) n.remove(); });
     return (c.innerText || c.textContent || "").replace(/\n{3,}/g, "\n\n").trim();
@@ -185,7 +252,7 @@
       if (!text) continue;
       const prev = turns[turns.length - 1];
       if (prev && prev.role === role && prev.text === text) continue;  // the same bubble rendered twice
-      turns.push({ role, text: text.slice(0, 60000), ...(role === "assistant" && replyModel(el) ? { model: replyModel(el) } : {}) });
+      turns.push({ role, text: text.replace(TEAM_BLOCK, "").slice(0, 60000), sourceId: el.getAttribute("data-message-id") || el.getAttribute("data-turn-id") || el.id || null, ...(role === "assistant" && replyModel(el) ? { model: replyModel(el) } : {}) });
     }
     return turns;
   }
@@ -196,7 +263,7 @@
 
   async function sync() {
     const s = await live();
-    if (!s.live || !s.enabled) { wait = "off"; return; }
+    if ((!s.live || !s.enabled) && teamBinding !== true) { wait = "off"; return; }
     if (!current() || !alive()) return;
     for (const n of added.splice(0)) {  // limit banners appear outside the message list
       if (!n.isConnected || !n.closest || n.closest("[contenteditable='true'], textarea, #memgraph-live") || (ANY && n.closest(ANY))) continue;
@@ -206,11 +273,13 @@
     }
     const turns = readTurns();
     if (turns.length < 2 && !limitText) { wait = turns.length ? "reply" : "empty"; return; }  // a new, empty chat: nothing to keep yet
-    const sig = turns.length + "|" + turns.map(t => t.text.length).join(",") + "|" + (limitText || "");
+    const sig = turns.length + "|" + turns.map(t => t.role + ":" + t.text).join("|") + "|" + (limitText || "");
     if (sig === lastSig) return;
     lastSig = sig;
     const r = await send({ live: { url: location.href, site: location.hostname, title: document.title, turns, limit: limitText,
                                    model: pickerModel() } });
+    if (r?.shared) { wait = "shared"; return; }
+    if (r?.captureError) { toast("Capture error: " + r.captureError); lastSig = ""; return; }
     if (r && r.id) { meter = r; retry = 0; banner(s.warnAt); return; }
     // the server didn't answer (asleep, restarting, off the network): the chat hasn't changed, so nothing else would
     // send it again. Forget that it was sent and try again, a little later each time.
@@ -296,6 +365,6 @@
   }
   setTimeout(pickUp, 1200);
   let href = location.href;
-  setInterval(() => { if (location.href !== href) { href = location.href; lastSig = ""; limitText = null; meter = null;
+  setInterval(() => { if (location.href !== href) { const previous = href; href = location.href; teamBinding = null; send({ team: { action: "follow", from: previous, url: href } }).then(refreshTeamBinding); lastSig = ""; limitText = null; meter = null;
     wait = "loading"; retry = 0; document.getElementById("memgraph-live")?.remove(); setTimeout(pickUp, 800); schedule(); } }, 1000);  // SPA navigation
 })();

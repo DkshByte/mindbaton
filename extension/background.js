@@ -1,3 +1,4 @@
+importScripts("team_background.js");
 // Captures wait in storage so nothing is lost off the LAN; every new message flushes the queue.
 // The server does the understanding (which AI, chat title, facts, topics), so this stays simple.
 // Your own server's address and this browser's device token come from pairing (popup: Connect → approve the code).
@@ -30,8 +31,11 @@ chrome.runtime.onMessage.addListener((m, _sender, reply) => {
     return true;
   }
   if (m.live) {  // Live mode: the whole conversation, re-sent when it changes; the server keeps only what's new
-    api("/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(m.live) })
-      .then(r => r.json()).then(r => { if (r.limit) badge("!", "#ff6369"); reply(r); }).catch(() => reply(null));
+    teamCapture(m.live).then(shared => {
+      if (shared) return reply({ shared: true });
+      api("/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(m.live) })
+        .then(r => r.json()).then(r => { if (r.limit) badge("!", "#ff6369"); reply(r); }).catch(() => reply(null));
+    }).catch(e => { badge("!", "#ff6369"); reply({ captureError: e.message }); });
     return true;
   }
   if (m.handoff) {  // pack the conversation; with a target AI, it waits for that AI's new chat, which opens now
@@ -52,7 +56,7 @@ chrome.runtime.onMessage.addListener((m, _sender, reply) => {
     api(`/handoff/pending?host=${encodeURIComponent(m.pending)}`).then(r => r.json()).then(reply).catch(() => reply(null));
     return true;
   }
-  if (m.text) capture(m);
+  if (m.text) teamSelected(m.url).then(selected => { if (!selected) capture(m); }).catch(() => badge("!", "#ff6369"));
 });
 
 async function capture(m) {

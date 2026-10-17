@@ -534,6 +534,11 @@
   "mono": true,
   "src": "lh/grok.svg"
  },
+ "groq": {
+  "hex": null,
+  "mono": true,
+  "src": "lh/groq.svg"
+ },
  "haskell": {
   "hex": null,
   "mono": true,

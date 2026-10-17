@@ -279,3 +279,54 @@ Colour washes or gradients inside cards and panels (surfaces are flat `--panel`;
 logos), eyebrow labels above headings, hero-metric number tiles (numbers are one quiet line of links), sparklines
 standing in for content, zero-offset glow halos, tilted stacks of tiles as illustration. The aurora behind the app is
 the one decorative gradient, and it never sits inside a box.
+
+
+## Team Baton workspace (2026-10-17)
+
+Team Baton opens inside the app shell. Its home leads with the shared briefing and
+one Copy briefing action, then current team updates and three recent conversations
+that open their source messages. A supporting column holds real setup steps,
+client contact, pending join approvals, project access, people, creation date and
+source apps. Steps complete only from observed client contact, shared messages or
+approved membership. Empty projects explain the next action; archived projects
+remain readable. On phones, the briefing action precedes preview text and the
+supporting column stacks below the working content. Project selection shows
+creation dates and explains the sharing model without a second app shell.
+
+App and team selects share `assets/controls.js` and `assets/controls.css`: flat
+popover menus, real provider logos, neutral hover/selection, keyboard navigation,
+and type-ahead. Native select values still own forms. Monochrome marks use masks;
+color marks stay images. Focus remains visible with a quiet outline; mouse clicks
+do not add a bright focus box. The Popover API puts menus above dialogs and scroll
+containers; browsers without it retain native selects.
+
+Generated invite codes and join inputs both show six uppercase alphanumeric
+characters in two groups of three. Invite display cells reveal once with a small
+stagger; dropdowns enter over 150ms. Both respect reduced motion. Generated Baton
+illustrations belong to actual empty states; populated content uses real source
+logos and people's initials.
+
+
+### Project bento and measured health
+
+The project chooser uses a twelve-column bento with alternating wide and narrow
+cards, one column on phones. Join with an invite sits beside New project.
+Per the user's 2026-10-17 request, these cards are a scoped exception to flat
+surfaces: a restrained status-colored aurora washes their upper edge. Green
+means project storage is readable and sharing is available; amber means archived
+(read only) or optional AI summaries need attention; red means a project storage
+check failed or the shared host could not be reached. Text and an icon always
+explain the color. All projects use the same host, stated beside the check time.
+Health summaries read existing databases in SQLite read-only mode, never create
+missing storage, never expose messages, and remain scoped to the signed-in host.
+The list checks every ten seconds while visible, retains last-known details on
+connection failure, and recovers in place. It does not infer separate server
+processes, uptime, client connectivity, or completed work from project existence.
+
+### Nearby Team Baton hosts
+
+Discovery lives inside the invitation form beside the current host, using the existing flat list, shared icons, quiet borders, and themed controls. The list describes the Mindbaton server’s network rather than implying browser-wide LAN access. Host announcements never imply authentication or project health; HTTPS availability, empty results, disabled discovery, and network failures have explicit text. Opening another host starts its existing invitation flow.
+
+The invitation host picker follows device-selection patterns: a visible current host, an inline disclosure of nearby announcements, and the existing code form. Search feedback runs only while the open invitation is checking. Results reveal with a short clipped sequence capped at 112 ms stagger; reduced motion uses a stationary progress indicator and immediate results.
+
+Invitation refinement: keep one short sentence for the host’s copy-code dialog. Joining gives the six code boxes priority over the name field, with one full-width primary action and a short approval/privacy line. Nearby help stays inside the inline disclosure; repeated instructions and provider explanations are removed from the initial view. Processing status remains visible when access is requested.

@@ -1,0 +1,2 @@
+{"type":"user","uuid":"synthetic-user","timestamp":"2026-10-17T12:00:01Z","message":{"role":"user","content":"Investigate the upload queue.\n[team-baton]\ninjected briefing\n[/team-baton]"}}
+{"type":"assistant","uuid":"synthetic-assistant","timestamp":"2026-10-17T12:00:04Z","message":{"role":"assistant","model":"synthetic-model","content":[{"type":"thinking","thinking":"secret reasoning"},{"type":"text","text":"The queue persists uploads before sending."}]}}

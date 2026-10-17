@@ -136,3 +136,14 @@ Run these in the Mindbaton folder (Docker: prefix with `docker compose exec mind
 | `python3 server.py --setup-code` | Show the first-run setup code and link (only before a password is set). |
 | `python3 server.py --reset-password` | Forgot your password: removes it and signs out every browser; memories and device tokens stay. Prints a new setup code. |
 | `python3 bench.py` | The quality benchmark (for contributors). |
+
+
+## Team Baton
+
+`MINDBATON_TEAM=0` is the default; `1` enables experimental shared projects after a host restart.
+`MINDBATON_TEAM_DISCOVERY=1` enables IPv4 LAN discovery when Team Baton is on; use `0` to disable it.
+Set `MINDBATON_PUBLIC_URL` to the host’s HTTPS origin so discovered teammates can open it.
+Discovery uses UDP multicast `239.255.77.66:45837` on the server’s default interface, not the browser’s network.
+`MINDBATON_TEAM_PRIVATE_CIDRS` optionally lists peer CIDRs on an encrypted private network; it does not secure plain HTTP
+on a LAN. Otherwise cross-device project access requires HTTPS through a loopback TLS proxy.
+See [Team Baton](team-baton.md) before enabling and for the multi-laptop release gate.

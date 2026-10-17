@@ -159,3 +159,10 @@ project, not affiliated with or endorsed by them. [Privacy](https://mindbaton.co
 [Terms](https://mindbaton.com/terms.html)
 
 [![M8ven Verified](https://m8ven.ai/badge/mcp/dkshbyte-mindbaton-18etms?variant=verified&v=4dcde18a3c6872fe8179ee4b39c55c02)](https://m8ven.ai/mcp/dkshbyte-mindbaton-18etms?s=readme)
+
+
+## Team Baton (experimental)
+
+Isolated shared project memory, invitations, project MCP tools and durable Codex/Claude Code/browser capture are available
+behind `MINDBATON_TEAM=1`. It is disabled by default and requires no personal-memory migration.
+Read [setup, limitations and release gates](docs/team-baton.md) before enabling it on a test host.

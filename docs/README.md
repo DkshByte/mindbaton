@@ -31,3 +31,5 @@ MINDBATON_DATA=/tmp/mb-demo MINDBATON_PORT=3005 python3 server.py
 ```
 
 Then open `http://localhost:3005` and sign in as `maya` with that password.
+
+- [Team Baton (experimental)](team-baton.md): isolated project invitations, shared memory, durable clients and release gates.

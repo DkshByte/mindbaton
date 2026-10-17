@@ -54,7 +54,7 @@ gradSet(GRAD);
   --accent: #eeeeec; --accent-strong: #ffffff; --accent-soft: rgba(255, 253, 243, .09); --accent-line: rgba(255, 253, 243, .3);
   --brand: #eeeeec; --brand-hi: #ffffff; --brand-ink: #111110;  /* primary buttons: warm white, dark text — no colour on what you touch */
   --glass: rgba(255, 253, 243, .06); --glass-hi: rgba(255, 253, 243, .11); --glass-rim: rgba(255, 253, 243, .14);
-  --ok: #3dd68c; --danger: #ff8fa3; --danger-soft: rgba(233, 61, 130, .14);
+  --ok: #3dd68c; --warn: #f0c25d; --danger: #ff8fa3; --danger-soft: rgba(233, 61, 130, .14);
   /* colour codes: kinds of fact and topic identity (map, dots, chips) */
   /* Radix Colors, dark scale, step 11 (hand-tuned to read on dark; MIT): amber orange grass blue plum violet pink tomato teal lime gold */
   --c-who: #ffca16; --c-place: #ffa057; --c-project: #71d083; --c-tool: #70b8ff; --c-own: #e796f3; --c-learn: #baa7ff;
@@ -75,7 +75,7 @@ gradSet(GRAD);
   --accent: #21201c; --accent-strong: #1a1916; --accent-soft: rgba(33, 32, 28, .07); --accent-line: rgba(33, 32, 28, .32);
   --brand: #21201c; --brand-hi: #34332e; --brand-ink: #ffffff;
   --glass: rgba(33, 32, 28, .03); --glass-hi: rgba(33, 32, 28, .07); --glass-rim: rgba(33, 32, 28, .13);
-  --ok: #218358; --danger: #cb1d63; --danger-soft: rgba(233, 61, 130, .1);
+  --ok: #218358; --warn: #876000; --danger: #cb1d63; --danger-soft: rgba(233, 61, 130, .1);
   --c-who: #ab6400; --c-place: #cc4e00; --c-project: #2a7e3b; --c-tool: #0d74ce; --c-own: #953ea3; --c-learn: #6550b9;
   --c-like: #c2298a; --c-dislike: #cb1d63; --c-people: #008573; --c-want: #5c7c2f; --c-other: #71624b;
   --t1: #ab6400; --t2: #0d74ce; --t3: #2a7e3b; --t4: #c2298a; --t5: #6550b9; --t6: #cc4e00; --t7: #008573; --t8: #5c7c2f;
@@ -680,6 +680,8 @@ dialog.palette::backdrop { background: rgba(0, 0, 0, .5); }
 .kinds:hover .kcard::before { opacity: 1; }
 .kcard .wm { position: absolute; right: -16px; bottom: -20px; width: 128px; height: 128px; z-index: -1; pointer-events: none; color: var(--c); opacity: .07; }
 .kcard .wm svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; }
+.kcard .wm img { width: 100%; height: 100%; object-fit: contain; }
+.kcard .bento-icon { width: 36px; height: 36px; flex: none; object-fit: contain; }
 .kcard.who .chips { display: grid; justify-items: start; gap: 2px; }
 .kcard.who .chip { height: auto; padding: 1px 0; background: none; border: 0; border-radius: 6px; font-size: 16px; font-weight: 500; letter-spacing: -.01em; color: var(--fg-2); text-align: left; }
 .kcard.who .chip:first-child { margin-bottom: 4px; font-size: 24px; font-weight: 600; letter-spacing: -.025em; line-height: 1.15; color: var(--fg); }
@@ -1110,7 +1112,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
   .pill-live { margin-right: 0; }
   /* phone: the views become a bottom tab bar, in reach of a thumb; every page leaves room for it */
   body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
-  .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px;
+  .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px;
     padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); background: rgba(20, 20, 19, .9); border-top: 1px solid var(--line-2);
     -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); }
   .nav button { flex-direction: column; justify-content: center; gap: 3px; min-height: 52px; padding: 4px 0; font-size: 11.5px; border-radius: 10px; }
@@ -1180,6 +1182,16 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .6); }
   .pair-act { grid-column: 1; }
   .pair-act .btn { flex: 1; justify-content: center; height: 38px; }
 }
+
+/* Team Baton uses the same view, shell, themes and aurora as personal memory. */
+.app[data-view="team"] #lookup { display: none; }
+.app[data-view="team"] #page-title { display: flex; margin-right: auto; }
+.team-nav-short { display: none; }
+@media(max-width:820px) { .team-nav-long { display: none; } .team-nav-short { display: inline; } }
+.app[data-view="team"] > .aurora { opacity: .4; }
+:root[data-theme="light"] .app[data-view="team"] > .aurora { opacity: .16; }
+:root[data-theme="oled"] .app[data-view="team"] > .aurora { opacity: .12; }
+#team-view-root { min-height: 100%; }
 </style>
 </head>
 <body>
@@ -1202,11 +1214,12 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
     </div>
     <div class="pulse" id="pulse" hidden></div>
     <nav class="nav" aria-label="Views">
-      <button data-view="overview" aria-current="page"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/></svg>You<kbd>1</kbd></button>
-      <button data-view="topics"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>Topics<kbd>2</kbd></button>
-      <button data-view="chats"><svg class="i" viewBox="0 0 24 24"><path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8.5a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17H5a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 5 5.5Z"/><path d="M8 10h8M8 13h5"/></svg>Chats<kbd>3</kbd></button>
-      <button data-view="map"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.6"/><circle cx="5" cy="6" r="1.8"/><circle cx="19" cy="6" r="1.8"/><circle cx="6" cy="19" r="1.8"/><circle cx="18" cy="18" r="1.8"/><path d="M10 10.4 6.4 7.2M14 10.4l3.6-3.2M10.2 13.9 7.3 17.6M14 13.8l2.8 2.8"/></svg>Map<kbd>4</kbd></button>
-      <button data-view="setup"><svg class="i" viewBox="0 0 24 24"><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3M6 6l2.1 2.1M15.9 15.9 18 18M6 18l2.1-2.1M15.9 8.1 18 6"/><circle cx="12" cy="12" r="3"/></svg>Setup<kbd>5</kbd></button>
+      <button data-view="overview" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" data-ui-icon="who"><use href="/assets/icons/ui/sprite.svg#who"/></svg>You<kbd>1</kbd></button>
+      <button data-view="topics"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" data-ui-icon="topics"><use href="/assets/icons/ui/sprite.svg#topics"/></svg>Topics<kbd>2</kbd></button>
+      <button data-view="chats"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" data-ui-icon="chat"><use href="/assets/icons/ui/sprite.svg#chat"/></svg>Chats<kbd>3</kbd></button>
+      <button data-view="map"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" data-ui-icon="map"><use href="/assets/icons/ui/sprite.svg#map"/></svg>Map<kbd>4</kbd></button>
+      <button data-view="setup"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" data-ui-icon="setup"><use href="/assets/icons/ui/sprite.svg#setup"/></svg>Setup<kbd>5</kbd></button>
+      <button data-view="team"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" data-ui-icon="team"><use href="/assets/icons/ui/sprite.svg#team"/></svg><span class="team-nav-long">Team Baton</span><span class="team-nav-short">Team</span></button>
     </nav>
     <div class="side-scroll">
       <div class="side-h"><span>Topics</span><span class="num" id="n-topics"></span></div>
@@ -1219,17 +1232,17 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 
   <div class="main">
     <div class="banner update" id="update" role="status" hidden></div>
-    <div class="banner" id="offline" role="alert" hidden><svg class="i" viewBox="0 0 24 24"><path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/></svg>
+    <div class="banner" id="offline" role="alert" hidden><svg class="i" viewBox="0 0 24 24" aria-hidden="true" data-ui-icon="alert"><use href="/assets/icons/ui/sprite.svg#alert"/></svg>
       <span>Can't reach the Mindbaton server. It may be restarting — this page reconnects on its own.</span></div>
     <header class="top">
       <h1 id="page-title"><b>You</b></h1>
       <form class="search" role="search" id="lookup">
-        <svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true" data-ui-icon="search"><use href="/assets/icons/ui/sprite.svg#search"/></svg>
         <input id="q" type="search" autocomplete="off" placeholder="Ask your memory — where do I live, jellyfin, my gpu…" aria-label="Search your memory">
         <kbd aria-hidden="true">/</kbd>
       </form>
       <button class="btn primary" id="copy-brief" title="Copy what Mindbaton knows, ready to paste into any AI chat">
-        <svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8"/></svg><span>Copy briefing</span></button>
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true" data-ui-icon="copy"><use href="/assets/icons/ui/sprite.svg#copy"/></svg><span>Copy briefing</span></button>
       <div class="acct"><button class="acct-btn" id="acct-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="acct-menu" aria-label="Account"></button>
         <div class="menu" id="acct-menu" role="menu" aria-label="Account" hidden></div></div>
     </header>
@@ -1237,6 +1250,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
     <section class="view" id="overview" aria-label="You"><div id="ov"></div></section>
     <section class="view" id="topics" aria-label="Topics" hidden></section>
     <section class="view" id="chats" aria-label="Chats" hidden></section>
+    <section class="view" id="team" aria-label="Team Baton" hidden><div id="team-view-root"></div></section>
     <section class="view" id="setup" aria-label="Setup" hidden></section>
     <section class="view" id="settings" aria-label="Settings" hidden></section>
     <section class="view" id="map" aria-label="Map" hidden>
@@ -1246,7 +1260,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         <nav class="dg-crumbs" id="dg-crumbs" aria-label="Where you are"></nav>
         <p id="dg-sub"></p>
       </div>
-      <div class="dg-tools"><button id="dg-back" class="btn sm" hidden><svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Back</button><button id="dg-fit" class="btn sm">Fit</button></div>
+      <div class="dg-tools"><button id="dg-back" class="btn sm" hidden><svg class="i" viewBox="0 0 24 24" aria-hidden="true" data-ui-icon="back"><use href="/assets/icons/ui/sprite.svg#back"/></svg>Back</button><button id="dg-fit" class="btn sm">Fit</button></div>
       <div class="dg-legend" id="dg-legend" aria-label="Legend"></div>
       <div class="dg-tip" id="dg-tip" role="tooltip" hidden></div>
     </section>
@@ -1254,7 +1268,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 
     <aside class="panel" id="panel" aria-label="Details">
       <div class="panel-h"><span id="panel-kind">Details</span><span class="spacer"></span>
-        <button class="icon-btn" id="panel-close" aria-label="Close details"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+        <button class="icon-btn" id="panel-close" aria-label="Close details"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" data-ui-icon="close"><use href="/assets/icons/ui/sprite.svg#close"/></svg></button></div>
       <div class="panel-b" id="panel-body"></div>
     </aside>
   </div>
@@ -1262,7 +1276,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 <main class="gate" id="gate" hidden>
   <div class="aurora" id="gate-aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
   <div class="gate-in" id="gate-in"></div>
-  <p class="gate-foot"><span><b class="gate-line">Tell one AI. Every AI knows.</b> <svg class="i" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg> Private — your memory stays on the computer Mindbaton runs on.</span></p>
+  <p class="gate-foot"><span><b class="gate-line">Tell one AI. Every AI knows.</b> <svg class="i" viewBox="0 0 24 24" aria-hidden="true" data-ui-icon="lock"><use href="/assets/icons/ui/sprite.svg#lock"/></svg> Private — your memory stays on the computer Mindbaton runs on.</span></p>
 </main>
 <dialog class="wel" id="wel" aria-labelledby="wel-h">
   <div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
@@ -1273,7 +1287,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 <dialog class="sheet" id="sheet" aria-labelledby="sheet-title"></dialog>
 <div class="toast" id="toast" role="status" hidden></div>
 <dialog class="palette" id="palette" aria-label="Jump to">
-  <div class="pal-in"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+  <div class="pal-in"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" data-ui-icon="search"><use href="/assets/icons/ui/sprite.svg#search"/></svg>
     <input id="pal-q" type="text" autocomplete="off" spellcheck="false" placeholder="Jump to a topic, chat or memory — or do something" role="combobox" aria-expanded="true" aria-controls="pal-list" aria-autocomplete="list"><kbd>Esc</kbd></div>
   <div class="pal-list" id="pal-list" role="listbox" aria-label="Results"></div>
   <div class="pal-foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span></div>
@@ -1283,6 +1297,10 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
   <dt><kbd>1</kbd>–<kbd>5</kbd></dt><dd>You · Topics · Chats · Map · Setup</dd><dt><kbd>Esc</kbd></dt><dd>Close details or clear the search</dd>
   <dt><kbd>?</kbd></dt><dd>This help</dd></dl><form method="dialog" style="margin-top:16px;text-align:right"><button class="btn sm">Close</button></form></dialog>
 
+<link rel="stylesheet" href="/assets/controls.css">
+<script src="/assets/icons/ui/icons.js"></script>
+<script src="/assets/controls.js"></script>
+<script src="/assets/team.js"></script>
 <script src="/assets/vendor/motion.js"></script>
 <script>
 "use strict";
@@ -1294,15 +1312,7 @@ const AI_VAR = { ChatGPT: "chatgpt", Claude: "claude", Gemini: "gemini", Perplex
   Cursor: "agent", Windsurf: "agent", "Gemini CLI": "gemini", "GitHub Copilot": "copilot", Phone: "agent" };
 const KIND = { fact: "Fact", preference: "Preference", goal: "Goal", event: "Event", question: "Asked", task: "Task", note: "Note" };
 const PERSONAL = new Set(["fact", "preference", "goal", "event"]);
-const ICON = {
-  spark: '<svg class="i" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.8 2.8M14.9 14.9l2.8 2.8M6.3 17.7l2.8-2.8M14.9 9.1l2.8-2.8"/></svg>',
-  plug: '<svg class="i" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M7 8h10v3a5 5 0 0 1-10 0V8ZM12 16v5"/></svg>',
-  refresh: '<svg class="i" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4"/></svg>',
-  globe: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.3 3.6 5.1 3.6 8.5s-1.2 6.2-3.6 8.5c-2.4-2.3-3.6-5.1-3.6-8.5S9.6 5.8 12 3.5Z"/></svg>',
-  chat: '<svg class="i" viewBox="0 0 24 24"><path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8.5a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17H5a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 5 5.5Z"/></svg>',
-  note: '<svg class="i" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10A1.5 1.5 0 0 1 6 19V5a1.5 1.5 0 0 1 1-1.5Z"/><path d="M14 3.5V8h4"/></svg>',
-  copy: '<svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8"/></svg>',
-};
+const ICON = MindbatonIcons;
 
 let G = { nodes: [], edges: [], topics: [], stats: {}, summary: [] }, byId = new Map(), me = null;
 let view = "overview", selected = null, lastSig = "", recallIds = null, seen = new Set(), online = true, kindFilter = "all", ownAll = false, aiFilter = "all";
@@ -1629,26 +1639,7 @@ function openPalette() {
   anim($("#palette"), { opacity: [0, 1], scale: [.98, 1], y: [-6, 0] }, { duration: .18 });
 }
 
-const svg = d => `<svg class="i" viewBox="0 0 24 24">${d}</svg>`;
-const KIND_IC = {
-  who: svg('<circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/>'),
-  place: svg('<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.4"/>'),
-  project: svg('<path d="m12 3.5 8.5 4.5-8.5 4.5L3.5 8 12 3.5Z"/><path d="m3.5 12 8.5 4.5 8.5-4.5M3.5 16l8.5 4.5 8.5-4.5"/>'),
-  tool: svg('<path d="M14.7 6.3a4 4 0 0 0 5 5l-9 9a2.1 2.1 0 0 1-3-3l9-9a4 4 0 0 1-2-2Z"/><path d="m14.7 6.3 2-2.3 3.3 3.3-2.3 2"/>'),
-  own: svg('<path d="M4 8 12 4l8 4v8l-8 4-8-4V8Z"/><path d="m4 8 8 4 8-4M12 12v8"/>'),
-  learn: svg('<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5v-13ZM20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5v-13Z"/>'),
-  like: svg('<path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20Z"/>'),
-  dislike: svg('<circle cx="12" cy="12" r="8"/><path d="m6.5 6.5 11 11"/>'),
-  people: svg('<circle cx="9" cy="8.5" r="3"/><path d="M3.5 19c.6-3 2.8-4.8 5.5-4.8s4.9 1.8 5.5 4.8"/><circle cx="16.5" cy="9.5" r="2.4"/><path d="M15.8 14.3c2.3-.1 4.1 1.4 4.7 4.2"/>'),
-  want: svg('<path d="m12 4 2.4 5 5.4.6-4 3.7 1.1 5.4L12 16l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6L12 4Z"/>'),
-  other: svg('<path d="M10 14a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1 1M14 10a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1-1"/>'),
-  said: svg('<path d="M20 15a2 2 0 0 1-2 2H8.5L4 20.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9Z"/>'),
-  notes: svg('<path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10A1.5 1.5 0 0 1 6 19V5a1.5 1.5 0 0 1 1-1.5Z"/><path d="M14 3.5V8h4M9 12.5h6M9 16h4"/>'),
-  asked: svg('<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.1-2.4 3.6M12 16.8v.2"/>'),
-  change: svg('<path d="M4 8.5h14l-3.5-3.5M20 15.5H6l3.5 3.5"/>'),
-  chat: svg('<path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8.5a1.5 1.5 0 0 1-1.5 1.5H10l-4.5 3.5V17H5a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 5 5.5Z"/><path d="M8 10h8M8 13h5"/>'),
-  tasks: svg('<rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="m8.5 12.2 2.4 2.4 4.8-5"/>'),
-};
+const KIND_IC = MindbatonIcons;
 const kic = (key, c, cls = "") => `<span class="kic ${cls}" style="--c:${c}" aria-hidden="true">${KIND_IC[key] || KIND_IC.other}</span>`;
 const SMALL_WORDS = new Set(["a", "an", "the", "to", "of", "and", "for", "in", "on", "at", "my", "with"]);
 function tmark(k, size = 16) {  // a topic's mark: its initials (two once there's room; a person for About you) on a tile of its colour
@@ -1715,8 +1706,8 @@ function renderOverview(fresh) {
       return `<button class="chip" data-id="${o.id}" aria-pressed="${selected === o.id}">${mark}${pre}${esc(label)}${desc ? `<span class="desc">${esc(byId.get(desc.dst).label)}</span>` : ""}</button>`;
     });
     return { w: (10 + list.reduce((n, { o }) => n + o.label.length + 5, 0)) * (g.key === "who" ? 1.6 : 1),
-      html: span => `<section class="kcard${g.key === "who" ? " who" : ""}" style="--c:${color};--span:${span}"><span class="wm" aria-hidden="true">${KIND_IC[g.key] || KIND_IC.other}</span>
-        <h3>${kic(g.key, color)}${esc(g.title)}<span class="n">${items.length}</span></h3><div class="chips">${items.join("")}</div></section>` };
+      html: span => `<section class="kcard${g.key === "who" ? " who" : ""}" style="--c:${color};--span:${span}"><span class="wm" aria-hidden="true"><img src="/assets/icons/generated/${g.key}.webp" alt="" width="128" height="128" decoding="async"></span>
+        <h3><img class="bento-icon" src="/assets/icons/generated/${g.key}.webp" alt="" width="36" height="36" decoding="async">${esc(g.title)}<span class="n">${items.length}</span></h3><div class="chips">${items.join("")}</div></section>` };
   });
   const recent = [...mems].sort((a, b) => b.updated - a.updated).slice(0, 6);
   const mine = mems.filter(m => PERSONAL.has(m.type)).sort((a, b) => (b.importance * (1 + .1 * b.count)) - (a.importance * (1 + .1 * a.count)) || b.updated - a.updated);
@@ -1773,8 +1764,8 @@ function connectCard() {
 
 // ---------- topics ----------
 let openTopic = null, topicSort = "recent", topicMore = new Set(), renaming = false;  // null: the grid of all topics
-const IC_EDIT = '<svg class="i" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4ZM13.5 6.5l4 4"/></svg>';
-const IC_MERGE = '<svg class="i" viewBox="0 0 24 24"><path d="M6 4v4a4 4 0 0 0 4 4h4a4 4 0 0 1 4 4v4M18 4v4a4 4 0 0 1-4 4"/></svg>';
+const IC_EDIT = MindbatonIcons["edit"];
+const IC_MERGE = MindbatonIcons["merge"];
 const TSECS = [["said", "What you've said", "--c-who", ["fact", "preference", "goal", "event"]], ["notes", "Notes & decisions", "--c-project", ["note"]],
   ["asked", "Open questions", "--c-learn", ["question"]], ["tasks", "Tasks", "--c-want", ["task"]]];
 function topicData() {  // every topic with what it's made of: memories, chats, things, when it was last touched
@@ -1957,8 +1948,8 @@ $("#chats").addEventListener("click", ev => {
 });
 
 // ---------- setup: each piece, whether it's working, and exactly how to connect it ----------
-const TICK = '<svg viewBox="0 0 24 24"><path d="M5 12.5 10 17 19 7.5"/></svg>';
-const TICK_I = '<svg class="i" viewBox="0 0 24 24"><path d="M5 12.5 10 17 19 7.5"/></svg>';
+const TICK = MindbatonIcons["check"].replace('class="i"', "");
+const TICK_I = MindbatonIcons["check"];
 const cmdBox = (text, label = "Copy", off) => `<div class="cmd"><pre>${esc(text)}</pre><button class="btn sm" data-copy="${esc(text)}"${
   off ? ' disabled title="Create your key above first"' : ""}>${label}</button></div>`;
 let setupKey = null, connKey = null;  // made on this page for this account; shown once, gone on reload (Devices lists them)
@@ -2134,7 +2125,7 @@ async function saveAI(t) {  // which key answers first, a paid key's model, the 
   if (what === "cap" && !(t.value !== "" && +t.value >= 0 && +t.value <= 1000)) return toast("The limit can't be less than 0 or more than 1000");
   try { await send("/settings/ai", what === "first" ? { first: t.value || null } : what === "model" ? { models: { [t.dataset.p]: t.value } } : { cap: +t.value }); toast("Saved"); }
   catch (e) { toast(e.message); }
-  await renderSetup(); $(at)?.focus();
+  await renderSetup(); const field = $(at); (field?.closest(".mb-select")?.querySelector(".mb-trigger") || field)?.focus();
 }
 async function removeKey(btn) {
   btn.disabled = true;
@@ -2184,7 +2175,7 @@ async function renderSetup() {
   };
   if ($("#keyform")) $("#keyform").onsubmit = async ev => {
     ev.preventDefault();
-    const f = new FormData(ev.target), btn = ev.target.querySelector("button");
+    const f = new FormData(ev.target), btn = ev.target.querySelector("button:not(.mb-trigger)");
     btn.disabled = true; btn.textContent = "Testing…";
     try { const r = await api("/settings/ai-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.fromEntries(f)) });
       toast(`${r.saved} key saved`); renderSetup(); }
@@ -2201,7 +2192,7 @@ async function renderSetup() {
 // Setup can start it again.
 let wel = null;  // { flow, step, path, st, base, had, ext0, ag0, device, timer }
 const WEL_STORE = "https://chromewebstore.google.com/detail/mindbaton/nfadphcjimkchbapapbcphnbpajmfmih";
-const WEL_GO = '<span class="go" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>';
+const WEL_GO = '<span class="go" aria-hidden="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" data-ui-icon="arrow-right"><use href="/assets/icons/ui/sprite.svg#arrow-right"/></svg></span>';
 const welNav = (next = "Continue", quiet = "") => `<div class="wel-act"><button type="button" class="btn-quiet" data-wel="back">${IC.back}Back</button>${quiet}
   ${next ? `<button type="button" class="btn primary cta" data-wel="next">${next}${WEL_GO}</button>` : ""}</div>`;
 async function welcome() {
@@ -2335,7 +2326,7 @@ $("#wel").addEventListener("click", async ev => {
 });
 $("#wel").addEventListener("submit", async ev => {
   ev.preventDefault();
-  const f = ev.target, btn = f.querySelector("button");
+  const f = ev.target, btn = f.querySelector("button:not(.mb-trigger)");
   if (f.id === "wel-agree") return $('#wel .cta[data-wel="next"]').click();
   if (f.id === "wel-key") {  // tested by the server before it's saved, as in Setup
     if (!f.elements.key.value.trim()) return fail(f, "key", "Paste the key first, or skip this step.");
@@ -2356,7 +2347,7 @@ $("#wel").addEventListener("submit", async ev => {
 });
 
 // ---------- import your old memory (Setup) ----------
-const IC_BRAIN = '<svg class="i" viewBox="0 0 24 24"><path d="M12 5.5A3.5 3.5 0 0 0 5.6 4.3 3 3 0 0 0 3.5 9a3.5 3.5 0 0 0 .7 5.8A3.5 3.5 0 0 0 8.5 20 3.5 3.5 0 0 0 12 18.5m0-13a3.5 3.5 0 0 1 6.4-1.2A3 3 0 0 1 20.5 9a3.5 3.5 0 0 1-.7 5.8 3.5 3.5 0 0 1-4.3 5.2 3.5 3.5 0 0 1-3.5-1.5m0-13v13"/></svg>';
+const IC_BRAIN = MindbatonIcons["brain"];
 const eta = s => s >= 5400 ? `${Math.round(s / 3600)} hours` : s >= 90 ? `${Math.round(s / 60)} minutes` : "a minute or two";
 let brainTimer, featFront = "brain", stackRO;
 function stackApply() {  // which card is in front, how tall the stack is, and what the one behind is called
@@ -2559,7 +2550,7 @@ async function brainAction(what, btn) {
       <div class="set-row"><button class="btn primary sm" data-brain="go">Re-read everything</button><button class="btn sm" data-close>Cancel</button></div></div></div>`;
   d.showModal();
 }
-const IC_IMPORT = '<svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg>';
+const IC_IMPORT = MindbatonIcons["import"];
 let impInfo = null, impAI = null, impFacts = null;
 async function wireImport() {
   const el = $("#imp");
@@ -2707,7 +2698,7 @@ function renderPanel() {
       <div class="ai-card loading" id="p-sum" hidden><div class="ai-h">${ICON.spark}Summary</div><p>Summarising this chat…</p></div>
       <div class="p-sec">Continue in</div>
       <div class="handoff">${HANDOFF_TO.filter(([, name]) => name !== ai).map(([host, name]) => `<button data-handoff="${n.sid}" data-to="${host}">${aiLogo(name)}<span>${esc(name)}</span></button>`).join("")}
-        <button data-handoff="${n.sid}"><svg class="i" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8"/></svg><span>Copy hand-off</span></button></div>
+        <button data-handoff="${n.sid}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" data-ui-icon="copy"><use href="/assets/icons/ui/sprite.svg#copy"/></svg><span>Copy hand-off</span></button></div>
       <label class="check" style="margin-top:8px"><input type="checkbox" id="ho-about"${aboutPref() ? " checked" : ""}><span>New AI? Include what Mindbaton knows about me
         <small>Adds your name, work, tools and people. Leave it off when that AI already knows you: then it's this chat only.</small></span></label>
       <dl class="props">
@@ -2802,7 +2793,7 @@ async function forget(id, btn) {
 addEventListener("pagehide", () => { for (const [id, t] of gone) { clearTimeout(t); fetch("/node/" + id, { method: "DELETE", keepalive: true }); } });
 
 // ---------- views ----------
-const TITLES = { overview: "You", topics: "Topics", chats: "Chats", map: "Map", recall: "Search", setup: "Setup", settings: "Settings" };
+const TITLES = { overview: "You", topics: "Topics", chats: "Chats", map: "Map", recall: "Search", setup: "Setup", team: "Team Baton", settings: "Settings" };
 function show(v) {
   if (v !== view && innerWidth <= 820) scrollTo(0, 0);  // phone: one page scroll, shared by every view
   view = v;
@@ -2813,13 +2804,25 @@ function show(v) {
   $("#page-title").innerHTML = `<b>${TITLES[v]}</b>`;
   if (v === "map") diagram.start();
   if (v === "setup") renderSetup();
+  if (v === "team") {
+    const match = location.hash.match(/^#team\/([a-f0-9]{32})$/);
+    TeamBaton.open($("#team-view-root"), { embedded: true, project: match?.[1], onProject: id => {
+      if (view === "team") history.replaceState(null, "", "#team/" + id);
+    } }).catch(e => toast(e.message));
+  }
   markSide();
   if (v === "overview") countUp($("#ov"));
   if (v === "chats") countUp($("#chats"));
-  if (location.hash.slice(1) !== v && v !== "recall" && v !== "settings") history.replaceState(null, "", "#" + v);
+  if (location.hash.slice(1) !== v && !(v === "team" && /^#team\/[a-f0-9]{32}$/.test(location.hash)) && v !== "recall" && v !== "settings") history.replaceState(null, "", "#" + v);
   if (v !== "settings") anim($("#" + v), { opacity: [0, 1], y: [8, 0] }, { duration: .26 });
 }
 function route(h) {  // #devices, #pair/ABCD-EFGH … → a view; false when the hash names none
+  if (/^team\/[a-f0-9]{32}$/.test(h)) {
+    const controller = $("#team-view-root").teamBaton;
+    show("team");
+    if (controller) controller.selectProject(h.slice(5)).catch(e => toast(e.message));
+    return true;
+  }
   if (/^pair\/[\w-]{4,20}$/.test(h)) { openSettings("devices", h.slice(5)); return true; }
   if (SET_TABS.includes(h)) { openSettings(h); return true; }
   if (TITLES[h] && h !== "recall" && h !== "settings") { show(h); scrollTo(0, 0); return true; }  // a typed #view jumps to its section
@@ -2841,8 +2844,7 @@ function iconCanvas(key, color) {
   ICON_IMG.set(k, null);
   const img = new Image();
   img.onload = () => { ICON_IMG.set(k, img); diagram.draw(); };
-  img.src = "data:image/svg+xml," + encodeURIComponent((KIND_IC[key] || KIND_IC.other).replace('<svg class="i"',
-    `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"`));
+  img.src = "data:image/svg+xml," + encodeURIComponent((KIND_IC[key] || KIND_IC.other).replaceAll("currentColor", color));
   return null;
 }
 const GROUP_IC = k => KIND_IC[k] && !["chat"].includes(k) ? k : { "tg:Tools & tech": "tool", "tg:People": "people", "tg:Places": "place", "tg:Organisations": "place",
@@ -3457,22 +3459,7 @@ const stagger = s => window.Motion ? Motion.stagger(s) : 0;
 const COLORS = [["#8b95ff", "Periwinkle"], ["#3dd68c", "Green"], ["#f5a524", "Amber"], ["#f472b6", "Pink"], ["#38bdf8", "Sky"], ["#a3e635", "Lime"],
   ["#fb923c", "Orange"], ["#2dd4bf", "Teal"]];
 const KINDS = { extension: "Browser extension", mcp: "AI app (MCP)", agent: "Coding agent", phone: "Phone", connector: "Claude / ChatGPT connector", other: "Other" };
-const IC = {
-  back: '<svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>',
-  chev: '<svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>',
-  x: '<svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>',
-  plus: '<svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
-  alert: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v4.5M12 15.8v.2"/></svg>',
-  user: '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/></svg>',
-  people: '<svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3"/><path d="M3.5 19c.6-3 2.8-4.8 5.5-4.8s4.9 1.8 5.5 4.8"/><circle cx="16.5" cy="9.5" r="2.4"/><path d="M15.8 14.3c2.3-.1 4.1 1.4 4.7 4.2"/></svg>',
-  devices: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="13" height="10" rx="1.8"/><path d="M1.8 18.5h11"/><rect x="15.5" y="9" width="6" height="10.5" rx="1.5"/></svg>',
-  out: '<svg class="i" viewBox="0 0 24 24"><path d="M14 4h3.5A1.5 1.5 0 0 1 19 5.5v13a1.5 1.5 0 0 1-1.5 1.5H14M10 8l-4 4 4 4M6 12h9.5"/></svg>',
-  eyeoff: '<svg class="i" viewBox="0 0 24 24"><path d="M4 4l16 16M10.6 6.1A9 9 0 0 1 12 6c5 0 8.5 4.5 9 6-.3.8-1.2 2.3-2.7 3.6M6.5 7.6C4.7 8.8 3.5 10.6 3 12c.5 1.5 4 6 9 6 1.6 0 3-.5 4.2-1.1"/><path d="M9.9 10a3 3 0 0 0 4.1 4.1"/></svg>',
-  key: '<svg class="i" viewBox="0 0 24 24"><circle cx="8" cy="15" r="3.8"/><path d="m10.8 12.3 8.2-8.2M16.2 6.8l2.6 2.6M13.8 9.2l2 2"/></svg>',
-  extension: '<svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9h17M6.8 6.8h.01M9.3 6.8h.01"/></svg>',
-  agent: '<svg class="i" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="m7.5 10 3 2.5-3 2.5M13 15h3.5"/></svg>',
-  phone: '<svg class="i" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M11 17.5h2"/></svg>',
-};
+const IC = { ...MindbatonIcons };
 IC.mcp = ICON.plug; IC.connector = ICON.globe; IC.other = IC.key;
 const USER_RX = /^[a-z0-9._-]{2,32}$/;
 const initials = n => ([...String(n || "?").trim()].length ? String(n).trim().split(/\s+/).slice(0, 2).map(w => [...w][0]).join("") : "?").toUpperCase();
@@ -3702,7 +3689,7 @@ function renderAcct() {
     <button role="menuitem" data-go="account">${IC.user}My account</button>
     <button role="menuitem" data-go="devices">${IC.devices}Devices</button>
     ${ACCT.role === "admin" ? `<button role="menuitem" data-go="people">${IC.people}People</button>` : ""}<hr>
-    <div class="menu-theme"><span><svg class="i" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg>Theme</span>
+    <div class="menu-theme"><span><svg class="i" viewBox="0 0 24 24" aria-hidden="true" data-ui-icon="moon"><use href="/assets/icons/ui/sprite.svg#moon"/></svg>Theme</span>
       <div class="segs" role="group" aria-label="Theme">${[["", "Dark"], ["light", "Light"], ["oled", "OLED"]].map(([k, t]) =>
         `<button type="button" data-theme-set="${k}" aria-pressed="${(document.documentElement.dataset.theme || "") === k}">${t}</button>`).join("")}</div></div>
     <button role="menuitem" data-go="appearance"><span class="gsw" aria-hidden="true"></span>Gradient<span class="menu-v">${esc(gradName(GRAD))}</span></button><hr>
@@ -3770,7 +3757,7 @@ const loading = () => fill(`<div class="skel" aria-label="Loading"></div>`);
 const stillOn = tab => view === "settings" && setTab === tab && $("#set-body");
 
 // ---- appearance: the theme and the gradient behind the app, remembered on this device ----
-const IC_CHECK = '<svg viewBox="0 0 24 24"><path d="m6 12.5 4 4 8-9"/></svg>';
+const IC_CHECK = MindbatonIcons["check"].replace('class="i"', "");
 const THEMES = [["", "Dark", "Warm graphite", "#111110", "#191918", "#eeeeec"], ["light", "Light", "Off-white paper", "#f3f2f0", "#ffffff", "#1a1916"],
   ["oled", "OLED", "True black", "#000000", "#0d0d0c", "#eeeeec"]];
 const gradName = id => id === "auto" ? `Auto · ${gradPhase()[2]}` : id === "off" ? "None" : (GRADS.find(g => g[0] === id) || GRADS[0])[1];
@@ -3783,7 +3770,7 @@ function gradCard(id) {
   const g = GRADS.find(x => x[0] === id), off = id === "off", auto = id === "auto";
   const vars = off ? "" : gradColors(id).map((c, i) => `--g${i + 1}:${c}`).join(";");
   return `<button type="button" class="gcard" data-grad-set="${id}" aria-pressed="${GRAD === id}">
-    <span class="gp${off ? " none" : ""}" style="${vars}" aria-hidden="true">${off ? '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="m6.5 17.5 11-11"/></svg>'
+    <span class="gp${off ? " none" : ""}" style="${vars}" aria-hidden="true">${off ? '<svg class="i" viewBox="0 0 24 24" aria-hidden="true" data-ui-icon="dislike"><use href="/assets/icons/ui/sprite.svg#dislike"/></svg>'
       : "<i></i><i></i><i></i><i></i>"}${auto ? gradDay() : ""}<span class="gk">${IC_CHECK}</span></span>
     <span><b>${auto ? "Auto" : off ? "None" : esc(g[1])}</b><small>${auto ? `${gradPhase()[2]} now` : off ? "Just the page, no glow" : esc(g[2])}</small></span></button>`;
 }
@@ -4111,7 +4098,7 @@ document.addEventListener("click", ev => {
 document.addEventListener("keydown", ev => {
   if (!ACCT || ev.target.closest("dialog, .menu")) return;  // the sign-in screen, a sheet and the menu own their keys
   const typing = ev.target.matches("input, textarea, select");
-  if (ev.key === "/" && !typing) { ev.preventDefault(); $("#q").focus(); $("#q").select(); }
+  if (ev.key === "/" && !typing) { ev.preventDefault(); if (view === "team") $("#team-view-root").teamBaton?.search(); else { $("#q").focus(); $("#q").select(); } }
   else if (ev.key === "Escape") {
     if (ev.target === $("#q")) { $("#q").value = ""; recall(""); $("#q").blur(); }
     else if (selected != null) select(null);
@@ -4123,6 +4110,7 @@ $("#lookup").addEventListener("submit", ev => { ev.preventDefault(); clearTimeou
 $("#q").addEventListener("input", () => { clearTimeout(recallTimer); recallTimer = setTimeout(() => recall($("#q").value), 260); });
 
 async function copyBrief(btn) {
+  if (view === "team") return $("#team-view-root").teamBaton?.copyBriefing();
   let text;
   try { text = (await api("/context")).text; } catch (e) { return toast("Couldn't build the briefing: " + e.message); }
   const ta = Object.assign(document.createElement("textarea"), { value: text }); // plain http: no async clipboard API

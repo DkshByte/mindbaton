@@ -1,0 +1,49 @@
+{
+  "icons": {
+    "who": {
+      "label": "Who you are",
+      "section": "Profile"
+    },
+    "place": {
+      "label": "Where",
+      "section": "Profile"
+    },
+    "project": {
+      "label": "Working on",
+      "section": "Profile"
+    },
+    "tool": {
+      "label": "Uses",
+      "section": "Profile"
+    },
+    "own": {
+      "label": "Has",
+      "section": "Profile"
+    },
+    "learn": {
+      "label": "Learning",
+      "section": "Profile"
+    },
+    "like": {
+      "label": "Likes",
+      "section": "Profile"
+    },
+    "dislike": {
+      "label": "Dislikes",
+      "section": "Profile"
+    },
+    "people": {
+      "label": "People",
+      "section": "Profile"
+    },
+    "want": {
+      "label": "Wants and goals",
+      "section": "Profile"
+    },
+    "other": {
+      "label": "Connections",
+      "section": "Profile"
+    }
+  },
+  "aliases": {}
+}

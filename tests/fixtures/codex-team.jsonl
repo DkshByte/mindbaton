@@ -1,0 +1,5 @@
+{"type":"session_meta","timestamp":"2026-10-17T12:00:00Z","payload":{"id":"synthetic-codex-session"}}
+{"type":"response_item","timestamp":"2026-10-17T12:00:01Z","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Investigate the upload queue.\n[team-baton]\ninjected briefing\n[/team-baton]"}]}}
+{"type":"response_item","timestamp":"2026-10-17T12:00:02Z","payload":{"type":"reasoning","summary":[{"text":"secret reasoning"}]}}
+{"type":"response_item","timestamp":"2026-10-17T12:00:03Z","payload":{"type":"message","role":"assistant","channel":"analysis","content":[{"type":"output_text","text":"secret reasoning"}]}}
+{"type":"response_item","timestamp":"2026-10-17T12:00:04Z","payload":{"type":"message","role":"assistant","channel":"final","content":[{"type":"output_text","text":"The queue persists uploads before sending."}]}}

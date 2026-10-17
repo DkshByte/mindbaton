@@ -1,0 +1,139 @@
+{
+  "generatedWith": "Built-in image generation",
+  "reference": "../team/baton-together.png",
+  "format": "PNG with transparent alpha",
+  "assets": [
+    {
+      "slug": "welcome",
+      "title": "Welcome",
+      "use": "Sign-in and first-run welcome",
+      "scene": "One friendly Baton character upright, gently leaning forward in a welcoming bow. No props. A simple inviting pose. Preserve the same two black pill eyes as the reference.",
+      "file": "welcome.png",
+      "prompt": "Use case: stylized-concept. Asset type: a single reusable transparent PNG empty-state / feedback illustration for the Mindbaton app. Reference image is the exact character and material style, not an edit target. Match its warm-white elongated rounded capsule relay-baton body and two black pill-shaped eyes. No mouth, arms, legs, clothing or facial additions. Restrained premium monochrome matte 3D illustration; soft subtle volume, clean contours, white #eeeeec and warm graphite #111110 only. Same camera and soft upper-left studio lighting as reference. Simple orthographic-like three-quarter view. Truly transparent alpha background; do not draw a checkerboard, ground plane, solid backdrop, cast ground shadow, frame, text, watermark, gradient or glow. Character and requested props centered together in a square composition, fully visible with 15% transparent margins, readable at 140px. Deliver ONE illustration for the specified situation, no sheet or collage. Props are beside the character, never extra body parts. Situation: Welcome. One friendly Baton character upright, gently leaning forward in a welcoming bow. No props. A simple inviting pose. Preserve the same two black pill eyes as the reference.",
+      "width": 1254,
+      "height": 1254,
+      "transparent": true
+    },
+    {
+      "slug": "first-memory",
+      "title": "Your first memory",
+      "use": "Empty personal memory",
+      "scene": "One curious Baton character beside a small open shallow graphite memory tray containing exactly one blank warm-white note card. The character leans toward the card, ready to remember.",
+      "file": "first-memory.png",
+      "prompt": "Use case: stylized-concept. Asset type: a single reusable transparent PNG empty-state / feedback illustration for the Mindbaton app. Reference image is the exact character and material style, not an edit target. Match its warm-white elongated rounded capsule relay-baton body and two black pill-shaped eyes. No mouth, arms, legs, clothing or facial additions. Restrained premium monochrome matte 3D illustration; soft subtle volume, clean contours, white #eeeeec and warm graphite #111110 only. Same camera and soft upper-left studio lighting as reference. Simple orthographic-like three-quarter view. Truly transparent alpha background; do not draw a checkerboard, ground plane, solid backdrop, cast ground shadow, frame, text, watermark, gradient or glow. Character and requested props centered together in a square composition, fully visible with 15% transparent margins, readable at 140px. Deliver ONE illustration for the specified situation, no sheet or collage. Props are beside the character, never extra body parts. Situation: Your first memory. One curious Baton character beside a small open shallow graphite memory tray containing exactly one blank warm-white note card. The character leans toward the card, ready to remember.",
+      "width": 1254,
+      "height": 1254,
+      "transparent": true
+    },
+    {
+      "slug": "search-empty",
+      "title": "Nothing found yet",
+      "use": "No search results",
+      "scene": "One curious Baton character leaning toward a large simple graphite magnifying glass resting beside it. The glass has a transparent clear center and a warm-white edge highlight. Calm and inquisitive, never sad.",
+      "file": "search-empty.png",
+      "prompt": "Use case: stylized-concept. Asset type: a single reusable transparent PNG empty-state / feedback illustration for the Mindbaton app. Reference image is the exact character and material style, not an edit target. Match its warm-white elongated rounded capsule relay-baton body and two black pill-shaped eyes. No mouth, arms, legs, clothing or facial additions. Restrained premium monochrome matte 3D illustration; soft subtle volume, clean contours, white #eeeeec and warm graphite #111110 only. Same camera and soft upper-left studio lighting as reference. Simple orthographic-like three-quarter view. Truly transparent alpha background; do not draw a checkerboard, ground plane, solid backdrop, cast ground shadow, frame, text, watermark, gradient or glow. Character and requested props centered together in a square composition, fully visible with 15% transparent margins, readable at 140px. Deliver ONE illustration for the specified situation, no sheet or collage. Props are beside the character, never extra body parts. Situation: Nothing found yet. One curious Baton character leaning toward a large simple graphite magnifying glass resting beside it. The glass has a transparent clear center and a warm-white edge highlight. Calm and inquisitive, never sad.",
+      "width": 1254,
+      "height": 1254,
+      "transparent": true
+    },
+    {
+      "slug": "no-chats",
+      "title": "Start a conversation",
+      "use": "Empty chats list",
+      "scene": "One Baton character peeking from beside a single small warm-white rounded speech-bubble object with an empty face and graphite edge. The bubble is a physical matte object with no text or dots.",
+      "file": "no-chats.png",
+      "prompt": "Use case: stylized-concept. Asset type: a single reusable transparent PNG empty-state / feedback illustration for the Mindbaton app. Reference image is the exact character and material style, not an edit target. Match its warm-white elongated rounded capsule relay-baton body and two black pill-shaped eyes. No mouth, arms, legs, clothing or facial additions. Restrained premium monochrome matte 3D illustration; soft subtle volume, clean contours, white #eeeeec and warm graphite #111110 only. Same camera and soft upper-left studio lighting as reference. Simple orthographic-like three-quarter view. Truly transparent alpha background; do not draw a checkerboard, ground plane, solid backdrop, cast ground shadow, frame, text, watermark, gradient or glow. Character and requested props centered together in a square composition, fully visible with 15% transparent margins, readable at 140px. Deliver ONE illustration for the specified situation, no sheet or collage. Props are beside the character, never extra body parts. Situation: Start a conversation. One Baton character peeking from beside a single small warm-white rounded speech-bubble object with an empty face and graphite edge. The bubble is a physical matte object with no text or dots.",
+      "width": 1254,
+      "height": 1254,
+      "transparent": true
+    },
+    {
+      "slug": "no-topics",
+      "title": "Room for new topics",
+      "use": "Empty topics list",
+      "scene": "One Baton character beside two small graphite tabbed folders, one standing slightly open with a single blank warm-white card inside. Minimal arrangement, no labels.",
+      "file": "no-topics.png",
+      "prompt": "Use case: stylized-concept. Asset type: a single reusable transparent PNG empty-state / feedback illustration for the Mindbaton app. Reference image is the exact character and material style, not an edit target. Match its warm-white elongated rounded capsule relay-baton body and two black pill-shaped eyes. No mouth, arms, legs, clothing or facial additions. Restrained premium monochrome matte 3D illustration; soft subtle volume, clean contours, white #eeeeec and warm graphite #111110 only. Same camera and soft upper-left studio lighting as reference. Simple orthographic-like three-quarter view. Truly transparent alpha background; do not draw a checkerboard, ground plane, solid backdrop, cast ground shadow, frame, text, watermark, gradient or glow. Character and requested props centered together in a square composition, fully visible with 15% transparent margins, readable at 140px. Deliver ONE illustration for the specified situation, no sheet or collage. Props are beside the character, never extra body parts. Situation: Room for new topics. One Baton character beside two small graphite tabbed folders, one standing slightly open with a single blank warm-white card inside. Minimal arrangement, no labels.",
+      "width": 1254,
+      "height": 1254,
+      "transparent": true
+    },
+    {
+      "slug": "connect",
+      "title": "Connect your first AI",
+      "use": "Setup and client connection empty state",
+      "scene": "One Baton character leaning toward two simple chunky graphite cable connectors that fit together, positioned close with a narrow gap between them. Matte white tip details, short curved cable ends, no sockets on the character.",
+      "file": "connect.png",
+      "prompt": "Use case: stylized-concept. Asset type: a single reusable transparent PNG empty-state / feedback illustration for the Mindbaton app. Reference image is the exact character and material style, not an edit target. Match its warm-white elongated rounded capsule relay-baton body and two black pill-shaped eyes. No mouth, arms, legs, clothing or facial additions. Restrained premium monochrome matte 3D illustration; soft subtle volume, clean contours, white #eeeeec and warm graphite #111110 only. Same camera and soft upper-left studio lighting as reference. Simple orthographic-like three-quarter view. Truly transparent alpha background; do not draw a checkerboard, ground plane, solid backdrop, cast ground shadow, frame, text, watermark, gradient or glow. Character and requested props centered together in a square composition, fully visible with 15% transparent margins, readable at 140px. Deliver ONE illustration for the specified situation, no sheet or collage. Props are beside the character, never extra body parts. Situation: Connect your first AI. One Baton character leaning toward two simple chunky graphite cable connectors that fit together, positioned close with a narrow gap between them. Matte white tip details, short curved cable ends, no sockets on the character.",
+      "width": 1254,
+      "height": 1254,
+      "transparent": true
+    },
+    {
+      "slug": "handoff",
+      "title": "Baton passed",
+      "use": "Successful chat handoff",
+      "scene": "Two Baton characters facing slightly toward one another, a small warm-white blank conversation card resting between them as if being passed from the left character to the right. The left character leans forward; the right stands ready. No limbs, no arrows.",
+      "file": "handoff.png",
+      "prompt": "Use case: stylized-concept. Asset type: a single reusable transparent PNG empty-state / feedback illustration for the Mindbaton app. Reference image is the exact character and material style, not an edit target. Match its warm-white elongated rounded capsule relay-baton body and two black pill-shaped eyes. No mouth, arms, legs, clothing or facial additions. Restrained premium monochrome matte 3D illustration; soft subtle volume, clean contours, white #eeeeec and warm graphite #111110 only. Same camera and soft upper-left studio lighting as reference. Simple orthographic-like three-quarter view. Truly transparent alpha background; do not draw a checkerboard, ground plane, solid backdrop, cast ground shadow, frame, text, watermark, gradient or glow. Character and requested props centered together in a square composition, fully visible with 15% transparent margins, readable at 140px. Deliver ONE illustration for the specified situation, no sheet or collage. Props are beside the character, never extra body parts. Situation: Baton passed. Two Baton characters facing slightly toward one another, a small warm-white blank conversation card resting between them as if being passed from the left character to the right. The left character leans forward; the right stands ready. No limbs, no arrows.",
+      "width": 1254,
+      "height": 1254,
+      "transparent": true
+    },
+    {
+      "slug": "import",
+      "title": "Bring your memories",
+      "use": "Import and migration",
+      "scene": "One Baton character beside a small open graphite storage box. Three blank warm-white note cards are arranged in a gentle descending arc toward the open box. No arrows, labels, particles, or confetti.",
+      "file": "import.png",
+      "prompt": "Use case: stylized-concept. Asset type: a single reusable transparent PNG empty-state / feedback illustration for the Mindbaton app. Reference image is the exact character and material style, not an edit target. Match its warm-white elongated rounded capsule relay-baton body and two black pill-shaped eyes. No mouth, arms, legs, clothing or facial additions. Restrained premium monochrome matte 3D illustration; soft subtle volume, clean contours, white #eeeeec and warm graphite #111110 only. Same camera and soft upper-left studio lighting as reference. Simple orthographic-like three-quarter view. Truly transparent alpha background; do not draw a checkerboard, ground plane, solid backdrop, cast ground shadow, frame, text, watermark, gradient or glow. Character and requested props centered together in a square composition, fully visible with 15% transparent margins, readable at 140px. Deliver ONE illustration for the specified situation, no sheet or collage. Props are beside the character, never extra body parts. Situation: Bring your memories. One Baton character beside a small open graphite storage box. Three blank warm-white note cards are arranged in a gentle descending arc toward the open box. No arrows, labels, particles, or confetti.",
+      "width": 1254,
+      "height": 1254,
+      "transparent": true
+    },
+    {
+      "slug": "saved",
+      "title": "Safely remembered",
+      "use": "Memory saved confirmation",
+      "scene": "One Baton character standing proudly beside a simple bold graphite checkmark on a small warm-white rounded square tile. Friendly subtle lean, restrained success moment, no confetti.",
+      "file": "saved.png",
+      "prompt": "Use case: stylized-concept. Asset type: a single reusable transparent PNG empty-state / feedback illustration for the Mindbaton app. Reference image is the exact character and material style, not an edit target. Match its warm-white elongated rounded capsule relay-baton body and two black pill-shaped eyes. No mouth, arms, legs, clothing or facial additions. Restrained premium monochrome matte 3D illustration; soft subtle volume, clean contours, white #eeeeec and warm graphite #111110 only. Same camera and soft upper-left studio lighting as reference. Simple orthographic-like three-quarter view. Truly transparent alpha background; do not draw a checkerboard, ground plane, solid backdrop, cast ground shadow, frame, text, watermark, gradient or glow. Character and requested props centered together in a square composition, fully visible with 15% transparent margins, readable at 140px. Deliver ONE illustration for the specified situation, no sheet or collage. Props are beside the character, never extra body parts. Situation: Safely remembered. One Baton character standing proudly beside a simple bold graphite checkmark on a small warm-white rounded square tile. Friendly subtle lean, restrained success moment, no confetti.",
+      "width": 1254,
+      "height": 1254,
+      "transparent": true
+    },
+    {
+      "slug": "offline",
+      "title": "Waiting to reconnect",
+      "use": "Offline and reconnecting states",
+      "scene": "One Baton character calmly resting at a slight angle beside two disconnected graphite cable ends with a clear gap. One connector lies on its side. The character's two black pill eyes stay unchanged. Reassuring pause, no alarm or sadness.",
+      "file": "offline.png",
+      "prompt": "Use case: stylized-concept. Asset type: a single reusable transparent PNG empty-state / feedback illustration for the Mindbaton app. Reference image is the exact character and material style, not an edit target. Match its warm-white elongated rounded capsule relay-baton body and two black pill-shaped eyes. No mouth, arms, legs, clothing or facial additions. Restrained premium monochrome matte 3D illustration; soft subtle volume, clean contours, white #eeeeec and warm graphite #111110 only. Same camera and soft upper-left studio lighting as reference. Simple orthographic-like three-quarter view. Truly transparent alpha background; do not draw a checkerboard, ground plane, solid backdrop, cast ground shadow, frame, text, watermark, gradient or glow. Character and requested props centered together in a square composition, fully visible with 15% transparent margins, readable at 140px. Deliver ONE illustration for the specified situation, no sheet or collage. Props are beside the character, never extra body parts. Situation: Waiting to reconnect. One Baton character calmly resting at a slight angle beside two disconnected graphite cable ends with a clear gap. One connector lies on its side. The character's two black pill eyes stay unchanged. Reassuring pause, no alarm or sadness.",
+      "width": 1254,
+      "height": 1254,
+      "transparent": true
+    },
+    {
+      "slug": "private",
+      "title": "Yours to keep",
+      "use": "Privacy and access explanation",
+      "scene": "One Baton character partly tucked behind a small upright graphite shield with a warm-white edge and a plain inset lock silhouette. Character fully recognizable and calmly protected. No text, letters or badges.",
+      "file": "private.png",
+      "prompt": "Use case: stylized-concept. Asset type: a single reusable transparent PNG empty-state / feedback illustration for the Mindbaton app. Reference image is the exact character and material style, not an edit target. Match its warm-white elongated rounded capsule relay-baton body and two black pill-shaped eyes. No mouth, arms, legs, clothing or facial additions. Restrained premium monochrome matte 3D illustration; soft subtle volume, clean contours, white #eeeeec and warm graphite #111110 only. Same camera and soft upper-left studio lighting as reference. Simple orthographic-like three-quarter view. Truly transparent alpha background; do not draw a checkerboard, ground plane, solid backdrop, cast ground shadow, frame, text, watermark, gradient or glow. Character and requested props centered together in a square composition, fully visible with 15% transparent margins, readable at 140px. Deliver ONE illustration for the specified situation, no sheet or collage. Props are beside the character, never extra body parts. Situation: Yours to keep. One Baton character partly tucked behind a small upright graphite shield with a warm-white edge and a plain inset lock silhouette. Character fully recognizable and calmly protected. No text, letters or badges.",
+      "width": 1254,
+      "height": 1254,
+      "transparent": true
+    },
+    {
+      "slug": "backup",
+      "title": "A safe copy",
+      "use": "Backup and export completion",
+      "scene": "One Baton character beside a small closed graphite archive box with a warm-white blank label and a subtle lid seam. A single blank warm-white note card rests neatly against the box. Quiet reassuring pose, no locks or text.",
+      "file": "backup.png",
+      "prompt": "Use case: stylized-concept. Asset type: a single reusable transparent PNG empty-state / feedback illustration for the Mindbaton app. Reference image is the exact character and material style, not an edit target. Match its warm-white elongated rounded capsule relay-baton body and two black pill-shaped eyes. No mouth, arms, legs, clothing or facial additions. Restrained premium monochrome matte 3D illustration; soft subtle volume, clean contours, white #eeeeec and warm graphite #111110 only. Same camera and soft upper-left studio lighting as reference. Simple orthographic-like three-quarter view. Truly transparent alpha background; do not draw a checkerboard, ground plane, solid backdrop, cast ground shadow, frame, text, watermark, gradient or glow. Character and requested props centered together in a square composition, fully visible with 15% transparent margins, readable at 140px. Deliver ONE illustration for the specified situation, no sheet or collage. Props are beside the character, never extra body parts. Situation: A safe copy. One Baton character beside a small closed graphite archive box with a warm-white blank label and a subtle lid seam. A single blank warm-white note card rests neatly against the box. Quiet reassuring pose, no locks or text.",
+      "width": 1254,
+      "height": 1254,
+      "transparent": true
+    }
+  ]
+}

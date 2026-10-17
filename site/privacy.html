@@ -75,6 +75,13 @@ project never sees it, and has no access to your account or bill with any provid
 your computer.</li>
 </ul>
 
+<h2>Experimental shared projects</h2>
+<p>When a host explicitly enables Team Baton, selected conversations are shared with invited members of that project
+on that host. Personal memory remains separate. Project browser access uses a separate HttpOnly cookie scoped to the
+project API. Client queues, credentials and cached briefings are stored locally by project. If the host separately
+enables external project processing, the selected shared text goes to the chosen provider using the host's key.
+Teammates see that setting when joining. Revocation stops future access; already received project material cannot be
+remotely erased from another person's copies.</p>
 <h2>The browser extension</h2>
 <ul>
 <li>On AI chat sites it supports (such as ChatGPT, Claude and Gemini), it reads what you type and, in Live mode, the

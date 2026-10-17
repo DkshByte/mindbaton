@@ -39,7 +39,7 @@
   </div>
 </header>
 <div class="shell">
-  <nav class="side" id="side" aria-label="Documentation"><p class="grp">Start</p><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="connect.html">Connect your AIs</a></li></ul><p class="grp">Guides</p><ul><li><a href="remote-access.html">Remote access</a></li><li><a href="configuration.html">Configuration</a></li><li><a href="backup-and-upgrade.html">Backup and upgrade</a></li><li><a href="troubleshooting.html">Troubleshooting</a></li></ul><p class="grp">Reference</p><ul><li><a href="api.html" aria-current="page">API reference</a></li><li><a href="security.html">Security</a></li><li><a href="changelog.html">Changelog</a></li></ul></nav>
+  <nav class="side" id="side" aria-label="Documentation"><p class="grp">Start</p><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="connect.html">Connect your AIs</a></li></ul><p class="grp">Guides</p><ul><li><a href="team-baton.html">Team Baton (experimental)</a></li><li><a href="remote-access.html">Remote access</a></li><li><a href="configuration.html">Configuration</a></li><li><a href="backup-and-upgrade.html">Backup and upgrade</a></li><li><a href="troubleshooting.html">Troubleshooting</a></li></ul><p class="grp">Reference</p><ul><li><a href="api.html" aria-current="page">API reference</a></li><li><a href="security.html">Security</a></li><li><a href="changelog.html">Changelog</a></li></ul></nav>
   <main class="doc" id="doc">
     <article>
 <h1>API reference</h1>
@@ -72,11 +72,14 @@ curl -H "Authorization: Bearer mb_xxxxxxxx" -H "Content-Type: application/json" 
 
 <span class="c"># pack up your latest chat for another AI</span>
 curl -H "Authorization: Bearer mb_xxxxxxxx" "http://192.168.1.20:3004/handoff"</code></pre></div>
+<h2 id="team-baton-experimental">Team Baton (experimental)<a class="anchor" href="#team-baton-experimental" aria-label="Link to this section">#</a></h2>
+<p><code>GET /team/discovery</code> returns nearby host announcements for the Mindbaton server’s LAN, with <code>state</code>, <code>hosts</code>, and (when discovery is running) <code>advertising</code> and <code>checked_at</code>. Each host includes <code>name</code>, <code>address</code>, and an optional HTTPS <code>url</code>. No project or account data is included. This endpoint allows invitation visitors, enforces Team Baton’s transport and same-origin checks, and caches bounded UDP discovery for ten seconds. Announcements do not authenticate a host.</p>
+<p>The opt-in endpoint <code>/team/&lt;project-id&gt;/mcp</code> accepts only project access. Its tools are <code>project_context</code>, <code>project_search</code>, <code>project_publish</code> and <code>project_handoff</code>. Project tokens never authorize personal endpoints. See <a href="team-baton.html">Team Baton</a> for schemas, invitations, upload acknowledgements and release gates.</p>
     </article>
     <nav class="pns" aria-label="Previous and next"><a class="pn prev" href="troubleshooting.html"><span>Previous</span>Troubleshooting</a><a class="pn next" href="security.html"><span>Next</span>Security</a></nav>
     <p class="edit"><a href="https://github.com/DkshByte/mindbaton/edit/main/docs/api.md" rel="noopener"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg>Edit this page on GitHub</a></p>
   </main>
-  <aside class="toc" aria-label="On this page"><p class="grp">On this page</p><ul><li class="l2"><a href="#authentication">Authentication</a></li><li class="l2"><a href="#mcp">MCP</a></li><li class="l2"><a href="#read">Read</a></li><li class="l2"><a href="#write">Write</a></li><li class="l2"><a href="#examples">Examples</a></li></ul></aside>
+  <aside class="toc" aria-label="On this page"><p class="grp">On this page</p><ul><li class="l2"><a href="#authentication">Authentication</a></li><li class="l2"><a href="#mcp">MCP</a></li><li class="l2"><a href="#read">Read</a></li><li class="l2"><a href="#write">Write</a></li><li class="l2"><a href="#examples">Examples</a></li><li class="l2"><a href="#team-baton-experimental">Team Baton (experimental)</a></li></ul></aside>
 </div>
 <dialog class="sdlg" aria-label="Search the docs">
   <form method="dialog" role="search">

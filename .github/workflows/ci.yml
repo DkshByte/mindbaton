@@ -15,6 +15,10 @@ jobs:
       - run: python3 server.py --check
       - run: python3 bench.py
       - run: python3 docs_site.py --check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node tests/team_extension.cjs
       - name: Lint install.sh
         run: if command -v shellcheck >/dev/null; then shellcheck install.sh; else sh -n install.sh; fi
 
@@ -23,3 +27,19 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: docker build -t mindbaton .
+
+  team-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install isolated browser test tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/team-browser" playwright@1.49.1
+          "$RUNNER_TEMP/team-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Check every supported site fixture
+        run: |
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/team-browser/node_modules/playwright" node tests/team_browser.cjs
+          PLAYWRIGHT_MODULE="$RUNNER_TEMP/team-browser/node_modules/playwright" node tests/team_ui.cjs

@@ -21,7 +21,7 @@ DV = "https://cdn.jsdelivr.net/npm/devicon@2.16.0/icons"
 LOBE = {  # AI products: key -> LobeHub file (colour where it exists)
     "chatgpt": "openai", "openai": "openai", "whisper": "openai", "codex": "codex-color", "claude": "claude-color",
     "claude code": "claudecode-color", "anthropic": "anthropic", "gemini": "gemini-color", "perplexity": "perplexity-color",
-    "deepseek": "deepseek-color", "grok": "grok", "xai": "xai", "copilot": "copilot-color", "githubcopilot": "githubcopilot",
+    "deepseek": "deepseek-color", "grok": "grok", "groq": "groq", "xai": "xai", "copilot": "copilot-color", "githubcopilot": "githubcopilot",
     "microsoft": "microsoft-color", "mistral": "mistral-color", "poe": "poe-color", "cursoride": "cursor", "cursor": "cursor",
     "windsurf": "windsurf", "ollama": "ollama", "huggingface": "huggingface-color", "midjourney": "midjourney",
     "comfyui": "comfyui-color", "stablediffusion": "stability-color", "n8n": "n8n-color", "llama": "meta-color",

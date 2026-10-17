@@ -44,7 +44,7 @@ function health() {
 
 // This tab's conversation: how full its context is, and where to continue it. Asked again every 2 s while the popup is
 // open: a page that was still loading, a reply still streaming or a server that was asleep shows up by itself.
-const WAITING = { off: "Turn on Live mode to track this chat.", reply: "Waiting for the first reply. This chat's meter appears after it.",
+const WAITING = { shared: "Sharing this chat with its selected project. Upload status is shown below.", off: "Turn on Live mode to track this chat.", reply: "Waiting for the first reply. This chat's meter appears after it.",
   empty: "Start chatting. This chat's meter appears after the first reply.", loading: "Reading this chat…",
   offline: "Can't reach your Mindbaton right now. What you send is kept and saved when it's back." };
 let chatSig = null, chatTimer = 0;
@@ -145,3 +145,32 @@ $("insert").onclick = async () => {
 chrome.storage.onChanged.addListener(c => { render(); if (c.token) health(); });
 chrome.runtime.sendMessage({ flush: true }, () => { render(); health(); });  // retry anything waiting whenever the popup opens
 render(); chat();
+
+// Each conversation is Private until the user selects a project here. Personal pairing is independent.
+async function teamRender() {
+  const [tab] = await chrome.tabs.query({active:true,currentWindow:true});
+  if (!tab?.url || !AI[new URL(tab.url).hostname]) { $("team-project").disabled=true; $("team-status").textContent="Open a supported AI conversation to select a project."; return; }
+  const status=await chrome.runtime.sendMessage({team:{action:"status",url:tab.url}});
+  const select=$("team-project"); select.disabled=false; select.replaceChildren(new Option("Private",""));
+  for(const c of status.connections)select.add(new Option(c.name,c.scope));select.value=status.selected;
+  const c=status.connections.find(c=>c.scope===status.selected);
+  $("team-status").textContent=c ? "Sharing with Project "+c.name+" · "+(c.stopped?"Access stopped: "+c.stopped:c.pending?"Pending upload ("+c.pending+")":"Synced")+(c.error?" · "+c.error:"")+(c.contextOutdated?" · Context outdated":"") : "Private";
+  if(c){try{const capability=await chrome.tabs.sendMessage(tab.id,{teamCapability:true});$("team-status").textContent+=" · "+(capability?.automatic?"Automatic retrieval ready":"Automatic retrieval unavailable · use Alt+M");}catch{$("team-status").textContent+=" · Automatic retrieval unavailable · refresh the chat";}}
+}
+$("team-project").onchange=async()=>{
+  const [tab]=await chrome.tabs.query({active:true,currentWindow:true});
+  const r=await chrome.runtime.sendMessage({team:{action:"select",url:tab.url,scope:$("team-project").value}});
+  if(r?.error)$("team-status").textContent=r.error;else {await teamRender();chrome.tabs.sendMessage(tab.id,{syncNow:true}).catch(()=>{});}
+};
+$("team-connect").onclick=async()=>{
+  try{
+    const host=new URL($("team-host").value).origin;
+    const allowed=await chrome.permissions.request({origins:[host+"/*"]});
+    if(!allowed)throw new Error("Host permission was declined");
+    const r=await chrome.runtime.sendMessage({team:{action:"connect",host:$("team-host").value,project:$("team-id").value.trim(),token:$("team-token").value.trim(),privateNetwork:$("team-private").checked}});
+    if(r.error)throw new Error(r.error);$("team-token").value="";$("team-result").textContent="Connected to "+r.name+". External processing "+(r.external?"is enabled.":"is off.")+" Select it above to start sharing.";await teamRender();
+  }catch(e){$("team-result").textContent=e.message;}
+};
+teamRender();
+
+chrome.storage.onChanged.addListener(changes => { if(changes.teamState)teamRender(); });

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Profile bento artwork.** Eleven original, transparent category icons now appear in the You-page cards, with lightweight local WebP exports and a downloadable PNG collection.
+- **Consistent controls and icons.** Shared keyboard-accessible select menus, local provider logos, and one rounded SVG icon family across the app and Team Baton.
+
+- **Team Baton (experimental, off by default).** Isolated project databases, expiring invitations with host approval,
+  project-only credentials, revisioned uploads, local retrieval and four project MCP tools. Coding hooks and the
+  extension keep durable queues and scoped briefing caches; selected browser conversations retrieve context before
+  Send/Enter with a visible Alt+M fallback. The project interface shows sourced reports, agreed decisions, members,
+  connected devices, optional budgeted AI processing, archive and backup/restore. Existing personal memory needs no
+  migration. See [setup and release gates](docs/team-baton.md); keep it off until the multi-laptop rehearsal passes.
+
 - **OpenAI and Claude keys.** Setup → AI keys now takes paid keys next to the free Gemini and Groq ones, and each key
   can be removed again. A paid key is used only when it's needed: after the free providers, with the provider's cheapest
   model, never to prepare a summary nobody asked for, at most once an hour for topic names, and only until the month's

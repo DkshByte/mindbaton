@@ -40,7 +40,7 @@ def load_env(path=os.path.join(HERE, "mindbaton.env")):
 
 
 load_env()
-import ai, brain, deep, handoff, learn, live, sense  # noqa: E402  (after the env file: ai.py reads its settings at import)
+import ai, brain, deep, handoff, learn, live, sense, team  # noqa: E402  (after the env file: ai.py reads its settings at import)
 
 HOST = os.environ.get("MINDBATON_HOST", "127.0.0.1")
 PORT = int(os.environ.get("MINDBATON_PORT", 3004))
@@ -2035,6 +2035,7 @@ CREATE TABLE IF NOT EXISTS tokens(id INTEGER PRIMARY KEY, account INTEGER NOT NU
 CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT);
 """  # AUTOINCREMENT: an account id is never reused, so no cache, folder or log keyed by it can reach a newer account
 ACCOUNT = ("id", "username", "display_name", "role", "hidden", "color", "created", "last_login", "welcomed", "terms")
+TEAM = None                      # isolated projects; never passed a personal Graph
 AUTH = None                      # auth.db (open_data): used under LOCK only
 GRAPHS = {}                      # account id -> its Graph, opened on first use
 NAMING = False                   # only the running server asks the AI for topic names (never tests or the benchmark)
@@ -2050,7 +2051,9 @@ sha = lambda s: hashlib.sha256(s.encode()).hexdigest()
 def open_data(path):
     """Use a data dir: auth.db (accounts, sessions, tokens, settings) + accounts/<id>/memory.db, one per account.
     The first start after the upgrade turns a single-owner database into the first admin's memory."""
-    global DATA, AUTH
+    global DATA, AUTH, TEAM
+    if TEAM:
+        TEAM.close()
     for g in GRAPHS.values():
         g.db.close()
     GRAPHS.clear()
@@ -2067,6 +2070,7 @@ def open_data(path):
             AUTH.execute(f"ALTER TABLE accounts ADD COLUMN {col} REAL")
             if col == "welcomed":
                 AUTH.execute("UPDATE accounts SET welcomed=last_login WHERE last_login IS NOT NULL")
+    TEAM = team.Team(AUTH, path, LOCK)
     aid = migrate_accounts()
     # data dirs made before 'local_account' was stored: the first admin, pinned now so later role changes can't move it
     AUTH.execute("INSERT OR IGNORE INTO meta SELECT 'local_account', min(id) FROM accounts WHERE role='admin' HAVING count(*)")
@@ -2447,7 +2451,7 @@ def save_ai_key(provider, key, remove=False):
     return {"removed" if remove else "saved": name, "ai": ai.status()}
 
 
-FILES = {"/", "/index.html", "/manifest.webmanifest", "/sw.js", "/share.html", "/mcp_stdio.py", "/mindbaton.py"}  # public, served as files
+FILES = {"/", "/index.html", "/manifest.webmanifest", "/sw.js", "/share.html", "/mcp_stdio.py", "/mindbaton.py", "/team.html", "/team_client.py"}  # public, served as files
 # (mindbaton.py: so another computer can fetch the CLI from its own server and `connect`; it holds no secrets)
 ASSETS = os.path.join(HERE, "assets") + os.sep
 SESSION_ONLY = {"/api/auth/logout", "/api/auth/logout-all", "/api/auth/password", "/api/tokens", "/api/pair/pending",
@@ -2522,7 +2526,8 @@ class Handler(SimpleHTTPRequestHandler):
             n = int(self.headers.get("Content-Length") or 0)
         except ValueError:
             n = -1
-        if not 0 <= n <= 1_000_000:
+        limit = 50_000_000 if urlparse(self.path).path == "/team/projects" else 1_000_000
+        if not 0 <= n <= limit:
             raise ValueError("body too large")
         return json.loads(self.rfile.read(n) or b"{}")
 
@@ -2661,8 +2666,13 @@ class Handler(SimpleHTTPRequestHandler):
         if not tok and self.foreign():  # a cookie rides along with cross-site requests; a token never does
             return self.reply(403, {"error": "cross-origin requests are not allowed"})
         who = self.who(tok)
+        if p.startswith("/team/"):
+            self.team_service = TEAM
+            return team.route(self, method, p, qs, b, who)
         if ptok and not who:
             return self.reply(401, {"error": "login required"})
+        if tok and tok.startswith("tb_"):
+            return self.reply(403, {"error": "project credentials cannot access personal memory or host administration"})
         if self.open_route(method, p, qs, b, who) is not False:
             return
         if not who:
@@ -3671,6 +3681,10 @@ if __name__ == "__main__":
         handoff.selfcheck()
         selfcheck()
         authcheck()
+        import unittest
+        suite = unittest.defaultTestLoader.discover(os.path.join(HERE, "tests"), pattern="test_team*.py")
+        if not unittest.TextTestRunner().run(suite).wasSuccessful():
+            sys.exit(1)
         sys.exit()
     def link(code):  # read in a log on another computer, "localhost" would be wrong when it listens on every address
         host = HOST
@@ -3694,6 +3708,8 @@ if __name__ == "__main__":
         code = setup_code()
         sys.exit(print(f"Setup code: {code} — open {link(code)}" if code else "Mindbaton already has accounts. Forgot a "
                        "password? Run: python3 server.py --reset-password [username]"))
+    if TEAM.enabled():
+        TEAM.start()
     NAMING = True  # only the running server asks the AI for topic names (never tests or the benchmark)
     if os.environ.get("MINDBATON_UPDATE_CHECK", "1") != "0":
         update_watch()
@@ -3705,4 +3721,12 @@ if __name__ == "__main__":
         live.watch_claude_code(lambda: (a := local_account()) and graph(a), LOCK)
     print(f"Mindbaton {VERSION} on http://{HOST}:{PORT} · data in {DATA}", flush=True)
     ThreadingHTTPServer.daemon_threads = True
-    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
+    http = ThreadingHTTPServer((HOST, PORT), Handler)
+    if TEAM.enabled() and os.environ.get('MINDBATON_TEAM_DISCOVERY', '1') != '0':
+        TEAM.discovery = team.team_discovery.Discovery(HOST, http.server_port, PUBLIC_URL)
+        TEAM.discovery.start()
+    try:
+        http.serve_forever()
+    finally:
+        http.server_close()
+        TEAM.close()

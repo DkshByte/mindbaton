@@ -17,6 +17,7 @@ PAGES = [
     ("Start", "docs/README.md", "index", "Overview"),
     ("Start", "docs/getting-started.md", "getting-started", "Getting started"),
     ("Start", "docs/connect.md", "connect", "Connect your AIs"),
+    ("Guides", "docs/team-baton.md", "team-baton", "Team Baton (experimental)"),
     ("Guides", "docs/remote-access.md", "remote-access", "Remote access"),
     ("Guides", "docs/configuration.md", "configuration", "Configuration"),
     ("Guides", "docs/backup-and-upgrade.md", "backup-and-upgrade", "Backup and upgrade"),
@@ -326,7 +327,11 @@ def page_html(n, slug, label, p, body):
 def mcp_tools():
     src = open(os.path.join(HERE, "server.py"), encoding="utf-8").read()
     block = src[src.index("MCP_TOOLS = ["):src.index("MCP_INSTRUCTIONS")]
-    return re.findall(r'\{"name": "(\w+)"', block)
+    import ast
+    module = ast.parse(open(os.path.join(HERE, 'team.py'), encoding='utf-8').read())
+    project_tools = [n.value for n in ast.walk(module) if isinstance(n, ast.Constant) and isinstance(n.value, str) and n.value in
+                     ('project_context', 'project_search', 'project_publish', 'project_handoff')]
+    return re.findall(r'\{"name": "(\w+)"', block) + list(dict.fromkeys(project_tools))
 
 
 def build():

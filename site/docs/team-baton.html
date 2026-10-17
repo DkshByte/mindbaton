@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team Baton (experimental, opt in) · Mindbaton docs</title>
+<meta name="description" content="Team Baton adds isolated shared project memory to one Mindbaton host. Teammates need project invitations, not personal Mindbaton accounts. Personal categories are navigation only: ">
+<meta name="theme-color" content="#111110">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://mindbaton.com/docs/team-baton.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Mindbaton">
+<meta property="og:title" content="Team Baton (experimental, opt in) · Mindbaton docs">
+<meta property="og:description" content="Team Baton adds isolated shared project memory to one Mindbaton host. Teammates need project invitations, not personal Mindbaton accounts. Personal categories are navigation only: ">
+<meta property="og:image" content="https://mindbaton.com/og.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="preload" href="../fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="docs.css">
+<script src="search-index.js" defer></script>
+<script src="docs.js" defer></script>
+</head>
+<!-- Made by docs_site.py from docs/team-baton.md. Edit that file, then run: python3 docs_site.py -->
+<body class="docs">
+<a class="skip" href="#doc">Skip to content</a>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+<header class="top">
+  <div class="top-in">
+    <button class="menu" type="button" aria-controls="side" aria-expanded="false" aria-label="Menu"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <a class="brand" href="../" aria-label="Mindbaton website"><span class="wordmark" aria-hidden="true"></span></a>
+    <a class="docs-l" href="./">Docs</a>
+    <button class="find" type="button" aria-haspopup="dialog"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Search the docs</span><kbd>/</kbd></button>
+    <div class="top-act">
+      <a class="btn ghost" href="https://github.com/DkshByte/mindbaton"><span class="lg m" style="--i:url(../icons/github.svg)" aria-hidden="true"></span><span class="gh-t">GitHub</span></a>
+      <a class="btn primary" href="../#install">Install</a>
+    </div>
+  </div>
+</header>
+<div class="shell">
+  <nav class="side" id="side" aria-label="Documentation"><p class="grp">Start</p><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="connect.html">Connect your AIs</a></li></ul><p class="grp">Guides</p><ul><li><a href="team-baton.html" aria-current="page">Team Baton (experimental)</a></li><li><a href="remote-access.html">Remote access</a></li><li><a href="configuration.html">Configuration</a></li><li><a href="backup-and-upgrade.html">Backup and upgrade</a></li><li><a href="troubleshooting.html">Troubleshooting</a></li></ul><p class="grp">Reference</p><ul><li><a href="api.html">API reference</a></li><li><a href="security.html">Security</a></li><li><a href="changelog.html">Changelog</a></li></ul></nav>
+  <main class="doc" id="doc">
+    <article>
+<h1>Team Baton (experimental, opt in)</h1>
+<p class="lede">Team Baton adds isolated shared project memory to one Mindbaton host. Teammates need project invitations, not personal Mindbaton accounts. Personal categories are navigation only: they never grant access or select conversations for sharing.</p>
+<p><strong>Disabled by default.</strong> Leave <code>MINDBATON_TEAM=0</code> for existing installs. Enable only in a test deployment with <code>MINDBATON_TEAM=1</code>, restart the host, then open <strong>Team Baton</strong> from the app. There is no personal-memory migration. Production release remains gated on the multi-laptop rehearsal and restore verification described below.</p>
+<h2 id="host-setup-and-invitations">Host setup and invitations<a class="anchor" href="#host-setup-and-invitations" aria-label="Link to this section">#</a></h2>
+<ol><li>Sign in to Mindbaton as an administrator and open Team Baton. Create a project and set its goals.</li><li>Generate a ten-minute invitation with a six-character code, displayed as <code>ABC-234</code> (uppercase letters and digits). Send the host's <code>/team.html</code> address and code to your teammate.</li><li>The teammate enters their name and the code in six boxes, or pastes the whole code. Approve the pending request in the project's Members panel.</li><li>Their browser receives a separate HttpOnly project session, valid for thirty days. They can read shared memory, publish reports and create project device credentials. They cannot reach personal memory or host administration.</li><li>Revoke one member to revoke all their devices and browser access. A new invite replaces the previous invite; Disable invite prevents new requests. Pending approvals also expire after ten minutes.</li></ol>
+<p>The project chooser shows a bento grid with measured health. Green means sharing is available; yellow means the project is read only or optional AI summaries need attention; red means a storage or connection check failed. Projects share one Team Baton host. Checks refresh every ten seconds while the grid is visible and retain last-known details during an outage. Missing project databases are never recreated by health checks or ordinary reads.</p>
+<p>Each project has a permanent random ID and <code>&lt;data&gt;/projects/&lt;id&gt;/project.db</code>. Memberships, invite hashes, request approvals and credential hashes live in <code>auth.db</code>. Project content, revisions, graph links, summaries, processing jobs, AI caches and usage estimates live only in the project database. Identical message IDs in two projects stay independent.</p>
+<p>Use HTTPS for access from another device. A TLS reverse proxy must connect from loopback; only its HTTPS header is trusted. Alternatively, set <code>MINDBATON_TEAM_PRIVATE_CIDRS</code> to the exact peer ranges of an <strong>encrypted</strong> private network (such as your WireGuard network). This is an operator assertion that transport is encrypted, not a way to secure a plain LAN. HTTP loopback works for local development. Browser and coding clients also require an explicit private network option when using remote HTTP. Avoid broad CIDRs and do not expose the backend port directly behind a proxy.</p>
+<h2 id="nearby-servers">Nearby servers<a class="anchor" href="#nearby-servers" aria-label="Link to this section">#</a></h2>
+<p>Opening <strong>Join with an invite</strong> automatically looks for other hosts on the <strong>Mindbaton server’s LAN</strong>. The invitation form shows the current host; <strong>Find nearby</strong> opens an inline list of other hosts. Close and reopen that list to check again. The six-box code input stays in the same invitation. Open a discovered HTTPS host, enter its six-character invitation code, and wait for that host’s approval. Discovery does not transfer sessions, credentials, invite codes, project names, or memory. Announcements are unverified: confirm the displayed host address with your teammate before opening it.</p>
+<p>Discovery starts with Team Baton. Set <code>MINDBATON_TEAM_DISCOVERY=0</code> and restart to disable it. To let teammates open this host, set <code>MINDBATON_PUBLIC_URL=https://your-host.example</code> to its working HTTPS origin. Hosts without an HTTPS origin appear as <strong>HTTPS needed</strong>; discovery does not bypass transport checks. A loopback-only host without a public URL can search but does not advertise itself.</p>
+<p>This uses a small Team Baton UDP protocol, not Bonjour/mDNS: IPv4 multicast <code>239.255.77.66</code>, UDP port <code>45837</code>, TTL 1, three queries over two seconds, at most 32 results, with ten-second caching. Allow this traffic on trusted LANs if the firewall blocks it. Discovery uses the server’s default interface. Guest Wi-Fi isolation, routed VLANs, VPNs and Docker bridge networking can block multicast; use the direct invitation URL in those cases. Opening a hosted page on a phone does not discover the phone’s own Wi-Fi network unless its Mindbaton server is also on that network. No dependencies or browser network scanning are required.</p>
+<h2 id="codex-and-claude-code">Codex and Claude Code<a class="anchor" href="#codex-and-claude-code" aria-label="Link to this section">#</a></h2>
+<p>Download <code>team_client.py</code> from your host or use the copy in this repository. Python 3.9+ is enough; there are no pip dependencies. Create a separate device token per client from the project's Connected clients panel.</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>python3 team_client.py --config project-device.json init --host https://mindbaton.example.com --project &lt;project-id&gt;</code></pre></div>
+<p>Enter the project token at the hidden prompt. Configuration and SQLite queue files are private to your OS user. For encrypted private-network HTTP, add <code>--private-network</code> to <code>init</code>.</p>
+<p>Install additional hooks without replacing unrelated configuration:</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>python3 team_client.py --config project-device.json install-hooks codex ~/.codex/hooks.json
+python3 team_client.py --config project-device.json install-hooks claude ~/.claude/settings.json</code></pre></div>
+<p>Both clients run <code>SessionStart</code>, <code>UserPromptSubmit</code> and <code>Stop</code>. Review and trust the new hooks in the coding client. Configuration backups are saved beside the edited file. The installer is idempotent; reinstalling the same definition does not duplicate it. Do not install several project configurations on the same session: select one explicit binding.</p>
+<p><strong>Every session starts Private.</strong> Find its session ID in the coding client's session metadata or hook payload, then bind that exact session to this configuration:</p>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>python3 team_client.py --config project-device.json bind codex &lt;session-id&gt;
+python3 team_client.py --config project-device.json bind claude &lt;session-id&gt;
+python3 team_client.py --config project-device.json watch</code></pre></div>
+<p>Keep <code>watch</code> running while the coding clients run. It resumes pending uploads after restart, retries with increasing delays capped at a minute, and stops on revoked access. <code>Stop</code> also attempts delivery after capturing completed responses. <code>UserPromptSubmit</code> stores the user prompt before requesting context. Context retrieval has a three-second retrieval deadline. If offline, it injects a dated cached briefing or a clear no-context notice. <code>status</code>, <code>flush</code>, and <code>context</code> are available as helper subcommands. <code>Ctrl+C</code> stops the watcher; restarting it resumes its durable queue.</p>
+<p>The helper uses separate queue/cache databases for every host, project and credential. New credentials get new stores; do not replace an old credential file until you have reviewed its pending work. Storage exhaustion reports a capture error and rolls back only the new capture; existing pending work is retained. Protocol errors retain queued work for review. Access revocation stops retries and invalidates briefing caches.</p>
+<p>The adapters read only visible user and completed assistant text. Hidden reasoning, tool output, system messages and marked <code>[team-baton]…[/team-baton]</code> context are excluded. Unknown transcript records fail with an explicit unsupported format error. Codex transcript formats are not a stable interface; the synthetic supported-schema fixtures are in <code>tests/fixtures/</code>. Adapters must be updated and tested when formats change. Source IDs are preserved where available; Codex records without IDs use their append-only record positions.</p>
+<p>Hook contracts: <a href="https://learn.chatgpt.com/docs/hooks" rel="noopener">official Codex hooks</a> and <a href="https://code.claude.com/docs/en/hooks" rel="noopener">Claude Code hooks</a>. Older clients without these lifecycle hooks can use the project MCP endpoint directly; automatic capture/context requires a supported client version.</p>
+<h2 id="browser-extension">Browser extension<a class="anchor" href="#browser-extension" aria-label="Link to this section">#</a></h2>
+<p>Update the extension. Open an AI conversation, open the extension popup, expand <strong>Connect a project</strong>, and enter the host address, project ID and a project device token. Grant access to that host. The popup explains whether external processing is enabled. Connecting does not share anything yet.</p>
+<p>Select a project under <strong>Share this conversation</strong>. Selection is explicit for the conversation URL and starts a new, device-owned shared conversation. Selecting Private ends new project capture; already queued shared updates still sync. Personal pairing and personal capture continue independently on Private conversations.</p>
+<p>The existing readers cover ChatGPT, Claude, Gemini, Google AI Studio, Perplexity, DeepSeek, Grok, Copilot, Poe and Mistral, including the extension's alternate ChatGPT and Copilot hosts. Both speakers are captured, with model information when available. Stable site message IDs preserve edits; when a site exposes none, changed text becomes an additional visible report instead of overwriting an uncertain source. Virtualized or off-screen text that is absent from the DOM cannot be captured until visible. Previously shared content is never deleted when the page shows a shorter transcript.</p>
+<p>Send and Enter retrieve project context before replaying one native Send click. The original user text is retained. A draft edited while context is loading is left for you to send again. A missing or changed send control shows <strong>Automatic retrieval unavailable</strong>; <strong>Alt+M</strong> inserts project context manually. A missing control is not proof that automatic retrieval happened. Inspect the draft before using a newly changed site adapter.</p>
+<p>Project uploads are saved in extension storage before delivery and acknowledged individually. Retry alarms survive the service worker restarting; backoff is capped at a minute. The popup shows Private, Sharing with Project, Synced, Pending upload, access errors, and context availability. Cached outage context is dated. A storage error preserves existing pending work and shows a capture error. Extension storage is finite; it does not silently trim project queues.</p>
+<h2 id="project-mcp-and-upload-protocol">Project MCP and upload protocol<a class="anchor" href="#project-mcp-and-upload-protocol" aria-label="Link to this section">#</a></h2>
+<p>Use <code>https://mindbaton.example.com/team/&lt;project-id&gt;/mcp</code> with <code>Authorization: Bearer tb_…</code>. These credentials cannot be used at <code>/mcp</code>, <code>/graph</code>, <code>/export</code> or host settings. There are exactly four project tools:</p>
+<div class="table"><table><thead><tr><th>Tool</th><th>Input</th><th>Result</th></tr></thead><tbody><tr><td><code>project_context</code></td><td>Optional <code>query</code>, <code>since</code> revision</td><td>Roughly 2,000-token briefing, source references, project revision, summary coverage and recent messages.</td></tr><tr><td><code>project_search</code></td><td>Optional <code>query</code> or exact <code>sources</code> array</td><td>Shared messages/publications or exact revisioned supporting messages.</td></tr><tr><td><code>project_publish</code></td><td><code>id</code>, <code>kind</code>, <code>content</code>, optional <code>sources</code>, <code>replaces</code></td><td>Explicit report with history; the host alone agrees decisions. Reuse an ID to retry safely.</td></tr><tr><td><code>project_handoff</code></td><td><code>query</code>, <code>teammate</code>, optional <code>since</code></td><td>Task-specific extractive briefing; works without AI.</td></tr></tbody></table></div>
+<p>Uploads use <code>POST /team/&lt;id&gt;/upload</code>:</p>
+<div class="code"><span>JSON</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>{
+  "session_id": "client-created-session-id",
+  "title": "Queue investigation",
+  "ai": "Codex",
+  "messages": [
+    {
+      "message_id": "client-created-message-id",
+      "revision": 1,
+      "speaker": "assistant",
+      "content": "Discovery: uploads survive restart.",
+      "timestamp": 1792240000,
+      "model": "available-model-name",
+      "branch": "available-branch"
+    }
+  ]
+}</code></pre></div>
+<p>One request accepts at most 200 updates and one megabyte. Message identity is <code>(session_id, message_id, revision)</code>. The authenticated device owns the session; member identity never comes from the body. Accepted data commits before acknowledgement. Identical retries return acknowledgements without duplicates; conflicting content at the same revision returns 409. Out-of-order revisions stay in history; only the highest becomes current. Shorter transcripts cannot delete previous content. Clients remove work only after matching every acknowledgement.</p>
+<h2 id="optional-external-ai">Optional external AI<a class="anchor" href="#optional-external-ai" aria-label="Link to this section">#</a></h2>
+<p>External processing starts <strong>off</strong> for every project. The host selects a provider/model from existing Mindbaton settings, a project monthly USD limit, and explicitly enables automatic processing. Existing host keys and the host paid-use cap are reused. A project call uses only its selected provider/model; it never silently falls through to another provider.</p>
+<p>Changed conversations batch after fifteen seconds of inactivity, with a maximum one-minute batching delay. One Team Baton provider job runs at a time. Jobs and source revisions survive host restarts. Results are cached by project, source versions, provider/model and prompt version. Structure and citations are validated before saving, and late results cannot replace a newer source revision. Input is bounded; a long conversation's newest messages are summarized, while all captured messages remain locally searchable. Local ranking considers the newest 2,000 matching messages. Summary coverage is reported by project revision.</p>
+<p>Budget reservations are conservative estimates and persist before calling the provider, including interrupted/failed calls whose billing is unknown. Usage is visible in the project interface. Provider timeout, quota, invalid JSON, unsupported citations or exhausted budget leave local search and extractive handoffs working. Costs depend on provider billing; set provider-side limits too. Free-provider estimates are zero, and do not cover a provider account with billing enabled outside Mindbaton's paid-provider list.</p>
+<p>AI output is marked <strong>unverified AI</strong>. A reported AI decision becomes a proposal, never an agreed decision. Progress is reported, not verified work. The host can agree a decision or publish an explicit replacement with history. Conflicting offline reports remain distinct publications for review. No scheduling or agent orchestration is performed.</p>
+<h2 id="export-backup-and-restore">Export, backup and restore<a class="anchor" href="#export-backup-and-restore" aria-label="Link to this section">#</a></h2>
+<p>The project host can export a JSON snapshot or save a backup in <code>&lt;data&gt;/project_backups/</code>. Export includes messages, revision history, knowledge/links, summaries, processing jobs/cache and usage estimates, but excludes memberships and credentials. Back up <code>auth.db</code> plus the entire data directory while the host is stopped to retain identities as well.</p>
+<p>Restore a JSON export in the project list. It is validated before a new permanent project ID is allocated, and external processing is disabled. Historical device IDs remain provenance; invite and provision clients again. Restore does not merge with or overwrite an existing project. The upload limit for a restore is 50 MB. Archived projects stay readable and reject new content/settings writes; access can still be revoked and snapshots exported.</p>
+<h2 id="verification-and-release-gate">Verification and release gate<a class="anchor" href="#verification-and-release-gate" aria-label="Link to this section">#</a></h2>
+<div class="code"><span>Terminal</span><button class="copy" type="button" aria-label="Copy code"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button><pre><code>python3 server.py --check
+python3 -m unittest discover -s tests -p 'test_team.py'
+python3 bench.py
+python3 docs_site.py --check
+node tests/team_extension.cjs
+node tests/team_browser.cjs
+node tests/team_ui.cjs</code></pre></div>
+<p>Browser checks require an existing Playwright installation and Chromium. Set <code>PLAYWRIGHT_MODULE</code> to that module's path when it is not on Node's normal search path. This is test tooling, not an app dependency. Synthetic fixtures cover every host in the extension manifest and check capture, single Enter/click submission, rapid Enter, edited drafts, outage notices and visible fallback. The UI check runs host approval, a project-only teammate, shared reports, archive and desktop/mobile layout against an isolated synthetic host. These checks do not establish compatibility with every current authenticated live-site layout.</p>
+<p>Before production enablement, rehearse with a host and at least two separate laptops: one Claude Code session publishes a discovery and a Codex session receives it before its next response, then reverse the direction; repeat using each supported browser site. Disconnect the host after an upload is saved but before acknowledgement. Restart clients, restore the host, verify one update per revision and missed context recovery. Revoke a member, check all their devices, and restore an exported project into a new test host. Keep the feature off until this rehearsal and restore review pass.</p>
+<p>There is one authoritative host. During outages teammates can work with cached context and queue their reports; live coordination is unavailable. Managed hosting, host election, task scheduling and agent orchestration are intentionally outside this version.</p>
+    </article>
+    <nav class="pns" aria-label="Previous and next"><a class="pn prev" href="connect.html"><span>Previous</span>Connect your AIs</a><a class="pn next" href="remote-access.html"><span>Next</span>Remote access</a></nav>
+    <p class="edit"><a href="https://github.com/DkshByte/mindbaton/edit/main/docs/team-baton.md" rel="noopener"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg>Edit this page on GitHub</a></p>
+  </main>
+  <aside class="toc" aria-label="On this page"><p class="grp">On this page</p><ul><li class="l2"><a href="#host-setup-and-invitations">Host setup and invitations</a></li><li class="l2"><a href="#nearby-servers">Nearby servers</a></li><li class="l2"><a href="#codex-and-claude-code">Codex and Claude Code</a></li><li class="l2"><a href="#browser-extension">Browser extension</a></li><li class="l2"><a href="#project-mcp-and-upload-protocol">Project MCP and upload protocol</a></li><li class="l2"><a href="#optional-external-ai">Optional external AI</a></li><li class="l2"><a href="#export-backup-and-restore">Export, backup and restore</a></li><li class="l2"><a href="#verification-and-release-gate">Verification and release gate</a></li></ul></aside>
+</div>
+<dialog class="sdlg" aria-label="Search the docs">
+  <form method="dialog" role="search">
+    <label class="sbox"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="vh">Search the docs</span><input type="search" placeholder="Search the docs" autocomplete="off" spellcheck="false" aria-controls="sres"><kbd>Esc</kbd></label>
+  </form>
+  <ul class="sres" id="sres" role="listbox" aria-label="Results"></ul>
+  <p class="shint">Try “setup code”, “Tailscale”, “token” or “backup”.</p>
+</dialog>
+</body>
+</html>

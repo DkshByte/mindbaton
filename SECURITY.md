@@ -65,3 +65,23 @@ can run `python3 server.py --reset-password`, and they can read the data folder 
 Never weaken the rules above to make something easier. New endpoints are authenticated by default; anything that
 reads request bodies does so before taking the graph lock; nothing logs a token, password or key. Run
 `python3 server.py --check` — it includes the auth tests.
+
+
+## Experimental Team Baton boundary
+
+Team Baton is disabled unless `MINDBATON_TEAM=1`. Projects use separate SQLite databases under `projects/<random-id>/`;
+project credentials are hashed in `auth.db` and never authorize personal memory or host account APIs. Existing project
+categories cannot authorize access or start sharing. Teammates receive project-only credentials after host approval;
+revoking a member revokes all their devices. Browser project sessions use a separate HttpOnly, SameSite=Strict cookie
+scoped to that project's API path. An explicit bearer token takes precedence over any cookie.
+
+Cross-device project access requires TLS or explicitly configured peer CIDRs on an encrypted private network. Only a
+loopback reverse proxy can assert HTTPS for Team Baton. A plain LAN is insufficient. The host operator is trusted and
+can read every project database and key on that machine.
+
+Uploads are owned by the authenticated device and preserve message revisions. Unknown source references cannot reach
+another project. Capture excludes marked injected briefings and hidden reasoning; secrets pass through existing
+redaction. External processing is off until the host explicitly selects it. Summaries and reported work remain
+unverified; only host-authored decisions are agreed. Exports omit credentials; restored projects receive new identities
+and external processing remains off. Cached client context may remain available during outages, but is discarded when
+a client learns its access was revoked. See [Team Baton](docs/team-baton.md) for release gates and client limitations.
